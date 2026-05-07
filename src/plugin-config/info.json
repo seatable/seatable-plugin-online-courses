@@ -1,24 +1,24 @@
 {
-  "name": "table-relationship",
-  "version": "1.2.3",
+  "name": "audit",
+  "version": "0.1.0",
   "display_type": "overlay",
   "display_name": {
-    "de": "Tabellenbeziehungen",
-    "en": "Table relationship",
-    "fr": "Relations de table",
-    "es": "Tabla de relaciones",
-    "pt": "Relações de tabela",
-    "ru": "Отношения в таблице",
-    "zh-cn": "表格关系"
+    "de": "Audit",
+    "en": "Audit",
+    "fr": "Audit",
+    "es": "Audit",
+    "pt": "Audit",
+    "ru": "Audit",
+    "zh-cn": "Audit"
   },
   "description": {
-    "de": "Zeigt die Beziehungen zwischen den Tabellen in einer Base.",
-    "en": "Display the relations between the tables in a base.",
-    "fr": "Afficher les relations entre les tables d'une base.",
-    "es": "Visualizar las relaciones entre las tablas de una base.",
-    "pt": "Visualizar as relações entre as tabelas de uma base.",
-    "ru": "Отображение отношений между таблицами в базе.",
-    "zh-cn": "显示数据库中表格之间的关系。"
+    "de": "Prüfung der Assets und Tabellennutzung in einer Base.",
+    "en": "Audit assets and table usage in a base.",
+    "fr": "Audit des assets et de l'utilisation des tables d'une base.",
+    "es": "Auditar los activos y el uso de tablas en una base.",
+    "pt": "Auditar os ativos e o uso das tabelas de uma base.",
+    "ru": "Аудит активов и использования таблиц в базе.",
+    "zh-cn": "审计数据库中的资产和表格使用情况。"
   },
   "active_components": {
     "settings_dropdowns": false,

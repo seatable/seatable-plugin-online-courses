@@ -287,7 +287,13 @@ export const appendPresetSuffix = (name: string, nameList: string[], suffix: str
   if (!nameList.includes(name.trim())) {
     return name;
   } else {
-    let _name = `${name} ${suffix}`;
+    let count = nameList.filter(
+      (n) =>
+        n === name.trim() ||
+        (n.match(/ \d+(?=[^ \d]*$)/) &&
+          n.slice(0, -n.match(/ \d+(?=[^ \d]*$)/)![0].length) === name.trim())
+    ).length;
+    let _name = suffix === 'new' ? `${name.trim()} ${count}` : `${name.trim()} ${suffix}`;
     return appendPresetSuffix(_name, nameList, suffix);
   }
 };

@@ -1,306 +1,199 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useCallback, useState, useRef } from 'react';
-import ReactFlow, {
-  useNodesState,
-  useEdgesState,
-  isNode,
-  useViewport,
-  useReactFlow,
-  Viewport,
-} from 'reactflow';
+import React, { useEffect, useRef, useCallback } from 'react';
+import intl from 'react-intl-universal';
+import { IPluginTRProps } from '../../utils/custom-interfaces/PluginTR';
+import { AssetsAuditResult } from '../../utils/custom-interfaces/AuditTypes';
 import {
-  IPluginTRProps,
-  ILinksData,
-  INodePositions,
-  NodeResultItem,
-  RelationshipState,
-  nodeCts,
-} from '../../utils/custom-interfaces/PluginTR';
-import CustomNode from './NodesComponent/CustomNode';
-
-// Import styles once
-import 'reactflow/dist/style.css';
+  PRESET_ASSETS_AUDIT,
+  PRESET_TABLES_AUDIT,
+  PRESET_LINKS_AUDIT,
+} from '../../utils/custom-constants/constants';
+import { PLUGIN_NAME } from '../../utils/template-constants';
+import { showToast } from './shared/showToast';
+import { createSnapshot } from './shared/createSnapshot';
+import AssetsAudit from './AssetsAudit';
+import TablesAudit from './TablesAudit';
+import LinksAudit from './LinksAudit';
+import styles from '../../styles/custom-styles/PluginTR.module.scss';
 import '../../styles/custom-styles/overview.css';
 
-// Import utils
-import {
-  generateNodes,
-  isCustomSettingsFn,
-  setPluginDataStoreFn,
-  checkMissingOrExtraIds,
-  checkNodesVsTablesIds,
-  filterRelationshipLinks,
-  filterNodesWithoutLinks,
-  generateEdges,
-  generateLinks,
-  setViewportPluginDataStoreFn,
-} from '../../utils/custom-utils/utils';
-
-import { TableArray } from '../../utils/template-interfaces/Table.interface';
-import {
-  IPresetInfo,
-  PresetCustomSettings,
-} from '../../utils/template-interfaces/PluginPresets/Presets.interface';
-import { IPluginDataStore } from '../../utils/template-interfaces/App.interface';
-
-const nodeTypes = {
-  custom: CustomNode,
-};
-// Plugin Table Relationships Component
-const PluginTR: React.FC<IPluginTRProps> = ({
+const CustomPlugin: React.FC<IPluginTRProps> = ({
   appActiveState,
   allTables,
   pluginDataStore,
-  activeRelationships,
+  verifyUrls,
+  auditTableDisplay,
+  autoRerun,
+  onPerfRunningChange,
 }) => {
-  const [_allTables, setAllTables] = useState<TableArray>([]);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [links, setLinks] = useState<ILinksData[]>([]);
-  const [nodesCts, setNodesCts] = useState<nodeCts[]>([]);
-  const [relationship, setRelationship] = useState(activeRelationships);
-  const [prevNodePositions, setPrevNodePositions]: [
-    INodePositions,
-    React.Dispatch<React.SetStateAction<INodePositions>>,
-  ] = useState({});
-  const viewPortState = useViewport();
-  const reactFlow = useReactFlow();
+  const initialized = useRef(false);
+  const snapshotDone = useRef(false);
 
-  const [_pluginVPDataStore, setPluginVPDataStore] = useState(viewPortState);
-  let activeCustomSettings: PresetCustomSettings;
-
+  // Create a snapshot as backup each time the plugin is opened
   useEffect(() => {
-    let _edges = edges;
-    let _links = generateLinks(allTables);
+    if (snapshotDone.current) return;
+    snapshotDone.current = true;
+    createSnapshot().then((ok) => {
+      if (ok) showToast(intl.get('snapshot.created').d('Snapshot created before audit'));
+    });
+  }, []);
 
-    const pluginPresetData =
-      pluginDataStore.presets[
-        pluginDataStore.presets.findIndex(
-          (preset: IPresetInfo) => preset._id === appActiveState.activePresetId
-        )
-      ];
-    const cs = pluginPresetData?.customSettings;
-    //   // no need to set relationship state if there's no change (precautionary measure for infinite loop)
-    if (JSON.stringify(activeRelationships) !== JSON.stringify(relationship)) {
-      setRelationship(activeRelationships);
-    }
-    // Filtering the links based on the active relationships
-    const filteredLinks = filterRelationshipLinks(_links, activeRelationships);
-
-    // Filtering the nodes based on the active relationships
-    const nodesNoLinks =
-      activeRelationships.tblNoLnk === false ? filterNodesWithoutLinks(nodes) : cs?.nodes;
-
-    // Further filtering the nodes to remove any nodes without a type
-    const validNodes =
-      nodesNoLinks !== undefined
-        ? (nodesNoLinks.filter((node: any) => node.type !== undefined) as NodeResultItem[])
-        : [];
-
-    _edges = generateEdges(filteredLinks, validNodes);
-
-    setLinks(filteredLinks);
-    setNodes(validNodes);
-    setEdges(_edges);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRelationships, relationship]);
-
+  // On first mount, replace the default "New chart" preset with our two audit presets
   useEffect(() => {
-    const pluginVPDataStore =
-      pluginDataStore.presets[appActiveState.activePresetIdx].customSettings?.vp;
-    if (pluginVPDataStore === undefined) {
-      reactFlow.fitView();
-    } else {
-      reactFlow.setViewport(pluginVPDataStore);
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const presets = pluginDataStore.presets || [];
+    const hasAssetsPreset = presets.some((p) => p.name.toLowerCase().includes('asset'));
+    const hasTablesPreset = presets.some((p) => p.name.toLowerCase().includes('table'));
+    const hasLinksPreset = presets.some((p) => p.name.toLowerCase().includes('link'));
+    // Legacy: earlier versions seeded a standalone "Performance audit" preset. The
+    // performance analysis is now an in-tab feature of Tables audit, so we drop any
+    // such preset we find.
+    const hasLegacyPerformancePreset = presets.some((p) =>
+      p.name.toLowerCase().includes('performance')
+    );
+
+    const needsSeed = !hasAssetsPreset || !hasTablesPreset || !hasLinksPreset;
+    const needsMigration = hasLegacyPerformancePreset;
+
+    if (needsSeed || needsMigration) {
+      const defaultTable =
+        allTables.length > 0
+          ? { value: allTables[0]._id, label: allTables[0].name }
+          : { value: '', label: '' };
+      const defaultView =
+        allTables.length > 0 && allTables[0].views?.length > 0
+          ? { value: allTables[0].views[0]._id, label: allTables[0].views[0].name }
+          : { value: '', label: '' };
+
+      const defaultSettings = {
+        selectedTable: defaultTable,
+        selectedView: defaultView,
+      };
+
+      // When seeding from empty, create the three audit presets. When migrating (e.g.
+      // removing the legacy Performance audit preset), preserve every existing preset
+      // except the performance one so user-customized presets survive.
+      const newPresets = needsSeed
+        ? [
+            { _id: 'aud1', name: PRESET_ASSETS_AUDIT, settings: { ...defaultSettings } },
+            { _id: 'aud2', name: PRESET_TABLES_AUDIT, settings: { ...defaultSettings } },
+            { _id: 'aud3', name: PRESET_LINKS_AUDIT, settings: { ...defaultSettings } },
+          ]
+        : presets.filter((p) => !p.name.toLowerCase().includes('performance'));
+
+      const activeIdx = pluginDataStore.activePresetIdx ?? 0;
+      const activeWasPerformance = (presets[activeIdx]?.name || '')
+        .toLowerCase()
+        .includes('performance');
+
+      const updatedStore = {
+        ...pluginDataStore,
+        activePresetId: activeWasPerformance
+          ? newPresets[0]?._id || 'aud1'
+          : pluginDataStore.activePresetId,
+        activePresetIdx: activeWasPerformance ? 0 : activeIdx,
+        presets: newPresets,
+      };
+
+      (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, updatedStore);
     }
-    setPluginVPDataStore(pluginVPDataStore);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appActiveState.activePresetId]);
+  }, [allTables, pluginDataStore]);
 
-  useEffect(() => {
-    const allTablesNodes = generateNodes(allTables);
-    const { isPDSCS, customSettings } = isCustomSettingsFn(
-      pluginDataStore,
-      allTables,
-      appActiveState.activePresetId
-    );
-    // eslint-disable-next-line
-    activeCustomSettings = customSettings;
-    if (isPDSCS === false) {
-      // if custom settings are not found, we set nodes, links, edges and relationship
-      const { links, nodes, edges, relationship } = activeCustomSettings;
-      setStates(links, nodes, edges, relationship);
-      setPluginDataStoreFn(
-        pluginDataStore,
-        relationship,
-        appActiveState.activePresetId,
-        nodes,
-        links,
-        edges
-      );
-    }
+  // Determine which audit view to show based on the active preset name
+  const activePreset =
+    pluginDataStore.presets?.[appActiveState.activePresetIdx] || pluginDataStore.presets?.[0];
+  const presetName = activePreset?.name || '';
 
-    // In any case and whenever there is a change in the Tables, we need to check if the nodes and tables are equal
-    const storedNodesVsTablesNodes = activeCustomSettings.nodes.length === allTablesNodes.length;
+  const isTablesAudit = presetName.toLowerCase().includes('table');
+  const isLinksAudit = presetName.toLowerCase().includes('link');
+  const accountToken = pluginDataStore.accountToken || '';
+  const rerunAt = activePreset?.customSettings?.rerunAt;
+  const presetId = activePreset?._id || '';
+  const savedAudit = activePreset?.customSettings?.savedAudit || null;
+  const savedTablesAudit = activePreset?.customSettings?.savedTablesAudit || null;
+  const savedLinksAudit = activePreset?.customSettings?.savedLinksAudit || null;
+  const savedPerformanceAudit = activePreset?.customSettings?.savedPerformanceAudit || null;
 
-    // If the nodes and tables are equal, we check if the ids and columns are equal
-    //else we find which nodes are missing or extra
-    const newCustomSettings = storedNodesVsTablesNodes
-      ? checkNodesVsTablesIds(activeCustomSettings, allTablesNodes, allTables)
-      : checkMissingOrExtraIds(activeCustomSettings, allTablesNodes, allTables);
-
-    const { links, nodes, edges, relationship } = newCustomSettings as PresetCustomSettings;
-
-    setStates(links, nodes, edges, relationship);
-    setPluginDataStoreFn(
-      pluginDataStore,
-      relationship,
-      appActiveState.activePresetId,
-      nodes,
-      links,
-      edges
-    );
-  }, [JSON.stringify(allTables), appActiveState.activePresetId]);
-
-  // This function sets the states of the nodes, links, edges and relationship in the ERD Plugin component
-  function setStates(_links: any, _nodes: any, _edges: any, _relationship: RelationshipState) {
-    setLinks(_links);
-    setNodes(_nodes);
-    setEdges(_edges);
-    setRelationship(_relationship);
-    setPluginDataStoreFn(
-      pluginDataStore,
-      _relationship,
-      appActiveState.activePresetId,
-      _nodes,
-      _links,
-      _edges
-    );
-  }
-
-  const onNodeDragStart = useCallback(
-    (event, node) => {
-      // Store the current position of all nodes when dragging starts
-      const positions: { [key: string]: { x: number; y: number } } = {};
-      nodes.forEach((n) => {
-        positions[n.id] = { x: n.position.x, y: n.position.y };
-      });
-      setPrevNodePositions(positions);
-    },
-    [nodes]
-  );
-
-  const onNodeDrag = useCallback(
-    (event, node) => {
-      node.data.selected = true;
-      if (isNode(node) && links && allTables) {
-        // Node position is continuously changing, update node's position in state
-        const updatedNodes = nodes.map((n) => {
-          if (n.id === node.id) {
-            // Update node's position in state
-            return {
-              ...n,
-              position: node.position,
-              data: {
-                ...n.data,
-                position: node.position,
-              },
-            };
-          }
-          return n;
-        }) as NodeResultItem[];
-
-        setNodes(updatedNodes);
-
-        const nodeDataArray = updatedNodes.map((node) => {
-          return { n: node.id, cts: node.position.x };
+  const handleSaveToStore = useCallback(
+    (key: string, data: any) => {
+      try {
+        const currentData =
+          (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || pluginDataStore;
+        const updatedPresets = (currentData.presets || []).map((preset: any) =>
+          preset._id === presetId
+            ? { ...preset, customSettings: { ...preset.customSettings, [key]: data } }
+            : preset
+        );
+        (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
+          ...currentData,
+          presets: updatedPresets,
         });
-        setNodesCts(nodeDataArray);
-
-        const updatedEdges = edges.map((e) => {
-          const sourceNode = nodeDataArray.find((node) => node.n === e.source);
-          const targetNode = nodeDataArray.find((node) => node.n === e.target);
-
-          if (!sourceNode || !targetNode || e.source === e.target) {
-            return e;
-          }
-          const isSourceEarlier = sourceNode.cts + 90 < targetNode.cts;
-
-          return {
-            ...e,
-            sourceHandle: e.sourceHandle?.replace(
-              isSourceEarlier ? '_l-' : '_r-',
-              isSourceEarlier ? '_r-' : '_l-'
-            ),
-            targetHandle: e.targetHandle?.replace(
-              isSourceEarlier ? '_r-' : '_l-',
-              isSourceEarlier ? '_l-' : '_r-'
-            ),
-          };
-        });
-        setEdges(updatedEdges);
+      } catch (err) {
+        console.error('Failed to persist audit:', err);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes, setNodes, prevNodePositions]
+    [presetId, pluginDataStore]
   );
 
-  const onNodeDragStop = useCallback(
-    (event, node) => {
-      const updatedNodes = nodes.map((n) => {
-        if (n.id === node.id) {
-          // Update node's position in state
-          return {
-            ...n,
-
-            data: {
-              ...n.data,
-              selected: false,
-            },
-          };
-        }
-        return n;
-      }) as NodeResultItem[];
-
-      setNodes(updatedNodes);
-      setPluginDataStoreFn(
-        pluginDataStore,
-        activeRelationships,
-        appActiveState.activePresetId,
-        updatedNodes,
-        links,
-        edges
-      );
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes]
+  const handleSaveAudit = useCallback(
+    (data: { result: AssetsAuditResult; date: string; deletedPaths?: string[] }) =>
+      handleSaveToStore('savedAudit', data),
+    [handleSaveToStore]
   );
 
-  // const proOptions = { hideAttribution: true };
+  const handleSaveTablesAudit = useCallback(
+    (data: any) => handleSaveToStore('savedTablesAudit', data),
+    [handleSaveToStore]
+  );
+
+  const handleSaveLinksAudit = useCallback(
+    (data: any) => handleSaveToStore('savedLinksAudit', data),
+    [handleSaveToStore]
+  );
+
+  const handleSavePerformanceAudit = useCallback(
+    (data: any) => handleSaveToStore('savedPerformanceAudit', data),
+    [handleSaveToStore]
+  );
+
   return (
-    <>
-      <ReactFlow
-        key={nodes.length}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeDragStart={onNodeDragStart}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStop={onNodeDragStop}
-        defaultViewport={_pluginVPDataStore}
-        fitView={false}
-        // proOptions={proOptions}
-        onMoveEnd={() => {
-          setViewportPluginDataStoreFn(
-            pluginDataStore,
-            appActiveState.activePresetId,
-            viewPortState
-          );
-        }}
-        nodeTypes={nodeTypes}></ReactFlow>
-    </>
+    <div className={styles.custom}>
+      {isLinksAudit ? (
+        <LinksAudit
+          presetId={presetId}
+          rerunAt={rerunAt}
+          autoRerun={autoRerun}
+          savedAudit={!autoRerun ? savedLinksAudit : null}
+          onSaveAudit={!autoRerun ? handleSaveLinksAudit : undefined}
+        />
+      ) : isTablesAudit ? (
+        // Unified Tables audit: fast structural audit on the table tabs,
+        // on-demand Performance analysis as a virtual tab.
+        <TablesAudit
+          presetId={presetId}
+          rerunAt={rerunAt}
+          auditTableDisplay={auditTableDisplay}
+          autoRerun={autoRerun}
+          savedAudit={!autoRerun ? savedTablesAudit : null}
+          onSaveAudit={!autoRerun ? handleSaveTablesAudit : undefined}
+          accountToken={accountToken}
+          savedPerformanceAudit={savedPerformanceAudit}
+          onSavePerformanceAudit={handleSavePerformanceAudit}
+          onPerfRunningChange={onPerfRunningChange}
+        />
+      ) : (
+        <AssetsAudit
+          accountToken={accountToken}
+          presetId={presetId}
+          rerunAt={rerunAt}
+          verifyUrls={verifyUrls}
+          savedAudit={savedAudit}
+          onSaveAudit={handleSaveAudit}
+        />
+      )}
+    </div>
   );
 };
 
-export default PluginTR;
+export default CustomPlugin;

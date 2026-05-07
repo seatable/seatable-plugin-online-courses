@@ -1,4 +1,4 @@
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import App from './app';
 import info from './plugin-config/info.json';
 import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from './locale';
@@ -11,7 +11,16 @@ const SeaTablePlugin = {
         ? window.dtable.lang
         : DEFAULT_LOCALE;
     intl.init({ currentLocale: lang, locales: AVAILABLE_LOCALES });
-    ReactDOM.render(<App showDialog={true} />, document.querySelector('#plugin-wrapper'));
+    const container = document.querySelector('#plugin-wrapper') as HTMLElement;
+    if (!container) return;
+
+    const rootKey = '__audit_plugin_root';
+    let root = (container as any)[rootKey];
+    if (!root) {
+      root = createRoot(container);
+      (container as any)[rootKey] = root;
+    }
+    root.render(<App showDialog={true} key={Date.now()} />);
   },
 };
 

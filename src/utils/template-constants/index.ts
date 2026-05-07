@@ -5,14 +5,42 @@ import pluginContext from '../../plugin-context';
 import { PresetSettings } from '../template-interfaces/PluginPresets/Presets.interface';
 import { AppActiveState, AppIsShowState } from '../template-interfaces/App.interface';
 import { IActivePresetSettings } from '../template-interfaces/PluginSettings.interface';
+import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../locale';
 
 // Constants
 const POSSIBLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz0123456789';
 const DTABLE_UUID = pluginContext.getSetting('dtableUuid');
 
-const PLUGIN_NAME = info.name
-  .replace(/-([a-z])/g, (_, match) => ' ' + match.toUpperCase())
-  .replace(/^./, (str) => str.toUpperCase());
+let PLUGIN_NAME: string;
+
+switch (DEFAULT_LOCALE) {
+  case 'de':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  case 'en':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  case 'fr':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  case 'es':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  case 'pt':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  case 'ru':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  case 'zh-cn':
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+  default:
+    PLUGIN_NAME = info.display_name['en'];
+    break;
+}
+
+//const PLUGIN_NAME =  DEFAULT_LOCALE in Object.keys(info.display_name)?info.display_name[DEFAULT_LOCALE]:'en';
 const PLUGIN_ID = `${info.name}-component`;
 
 export const ACTIVE_PRESET_ID =
@@ -20,7 +48,7 @@ export const ACTIVE_PRESET_ID =
 
 // Table and Preset Defaults
 const TABLE_NAME = 'table_name';
-const DEFAULT_PRESET_NAME = 'Unnamed relationship chart';
+const DEFAULT_PRESET_NAME = 'New chart';
 
 // Default Select Option
 const DEFAULT_SELECT_OPTION = {
@@ -57,6 +85,8 @@ const PresetHandleAction = {
   duplicate: 'duplicate',
   edit: 'edit',
   new: 'new',
+  reset: 'reset',
+  export: 'export',
 };
 
 // KeyDown Actions
@@ -71,6 +101,7 @@ const INITIAL_IS_SHOW_STATE: AppIsShowState = {
   isShowSettings: false,
   isLoading: true,
   isShowPresets: true,
+  isShowWaiting: false,
 };
 
 const INITIAL_CURRENT_STATE: AppActiveState = {

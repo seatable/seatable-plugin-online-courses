@@ -1,21 +1,20 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
-import info from '../src/plugin-config/info.json';
 
 // Import of Component
 import Header from './components/template-components/Header';
 import PluginSettings from './components/template-components/PluginSettings';
 import PluginPresets from './components/template-components/PluginPresets';
 import ResizableWrapper from './components/template-components/ResizableWrapper';
-import PluginTR from './components/custom-components/index';
+import CustomPlugin from './components/custom-components/index';
 // Import of Interfaces
 import {
   AppActiveState,
   AppIsShowState,
-  IActiveComponents,
   IAppProps,
   IPluginDataStore,
 } from './utils/template-interfaces/App.interface';
+import { AuditTableDisplayState } from './utils/custom-interfaces/AuditTypes';
 import {
   TableArray,
   TableViewArray,
@@ -25,7 +24,6 @@ import {
   IActiveTableAndView,
 } from './utils/template-interfaces/Table.interface';
 import { PresetsArray } from './utils/template-interfaces/PluginPresets/Presets.interface';
-import { SelectOption } from './utils/template-interfaces/PluginSettings.interface';
 // Import of CSS
 import styles from './styles/template-styles/Plugin.module.scss';
 import './assets/css/plugin-layout.css';
@@ -46,16 +44,10 @@ import {
   findPresetName,
   getActiveStateSafeGuard,
   getActiveTableAndActiveView,
-  getDefaultLinkColumn,
   getPluginDataStore,
   isMobile,
   parsePluginDataToActiveState,
 } from './utils/template-utils/utils';
-import { SettingsOption } from './utils/types';
-import { ReactFlowProvider } from 'reactflow';
-import { RelationshipState } from './utils/custom-interfaces/PluginTR';
-import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from './locale';
-
 const App: React.FC<IAppProps> = (props) => {
   const { isDevelopment, lang } = props;
 
@@ -67,20 +59,11 @@ const App: React.FC<IAppProps> = (props) => {
   const [activeTableViews, setActiveTableViews] = useState<TableViewArray>([]);
   const [pluginDataStore, setPluginDataStore] = useState<IPluginDataStore>(DEFAULT_PLUGIN_DATA);
   const [pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
+  // Transient: true while the on-demand performance analysis is in flight.
+  // Used by PluginSettings to disable the staleness-rerun link.
+  const [perfRunning, setPerfRunning] = useState(false);
   // appActiveState: Define the app's active Preset + (Table + View) state using the useState hook
-  // For better understanding read the comments in the AppActiveState interface
   const [appActiveState, setAppActiveState] = useState<AppActiveState>(INITIAL_CURRENT_STATE);
-  const [activeComponents, setActiveComponents] = useState<IActiveComponents>({});
-  const [activeRelationships, setActiveRelationships] = useState<RelationshipState>({
-    recRel: true,
-    lkRel: true,
-    lk2Rel: true,
-    countLinks: true,
-    rollup: true,
-    findmax: true,
-    findmin: true,
-    tblNoLnk: true,
-  });
   // Destructure properties from the app's active state for easier access
   const { activeTable, activePresetId, activePresetIdx } = appActiveState;
 
@@ -100,7 +83,6 @@ const App: React.FC<IAppProps> = (props) => {
 
   const initPluginDTableData = async () => {
     if (isDevelopment) {
-      // local develop //
       window.dtableSDK.subscribe('dtable-connect', () => {
         onDTableConnect();
       });
@@ -129,22 +111,17 @@ const App: React.FC<IAppProps> = (props) => {
   };
 
   const resetData = async () => {
-    let allTables: TableArray = cleanAllTables(); // All the Tables of the Base
-    let activeTable: Table = cleanActiveTable(); // How is the ActiveTable Set? allTables[0]?
-    let activeTableViews: TableViewArray = cleanActiveTableViews(activeTable); // All the Views of the specific Active Table
+    let allTables: TableArray = cleanAllTables();
+    let activeTable: Table = cleanActiveTable();
+    let activeTableViews: TableViewArray = cleanActiveTableViews(activeTable);
     let pluginDataStore: IPluginDataStore = getPluginDataStore(activeTable, PLUGIN_NAME);
-    let pluginPresets: PresetsArray = pluginDataStore.presets; // An array with all the Presets
+    let pluginPresets: PresetsArray = pluginDataStore.presets;
 
     let localActivePresetId = localStorage.getItem(ACTIVE_PRESET_ID);
     if (!localActivePresetId) {
       localActivePresetId = pluginPresets[0]._id;
       localStorage.setItem(ACTIVE_PRESET_ID, localActivePresetId);
     }
-    setActiveComponents((prevState) => ({
-      ...prevState,
-      settingsDropDowns: info.active_components.settings_dropdowns,
-      add_row_button: info.active_components.add_row_button,
-    }));
     setPluginDataStore(pluginDataStore);
     setAllTables(allTables);
     setPluginPresets(pluginPresets);
@@ -158,15 +135,8 @@ const App: React.FC<IAppProps> = (props) => {
       );
 
       onSelectPreset(localActivePresetId, appActiveState);
-      const activePresetRelationship = pluginPresets.find((p) => {
-        return p._id === localActivePresetId;
-      })?.customSettings?.relationship;
-      if (activePresetRelationship) {
-        setActiveRelationships(activePresetRelationship);
-      }
       return;
     } else {
-      // If there are no presets, the default one is created
       if (pluginPresets.length === 0) {
         const defaultPluginDataStore: IPluginDataStore = createDefaultPluginDataStore(
           activeTable,
@@ -174,12 +144,10 @@ const App: React.FC<IAppProps> = (props) => {
         );
         window.dtableSDK.updatePluginSettings(PLUGIN_NAME, defaultPluginDataStore);
       }
-      // Retrieve both objects of activeTable and activeView from the pluginPresets NOT from the window.dtableSDK
       const activeTableAndView: IActiveTableAndView = getActiveTableAndActiveView(
         pluginPresets,
         allTables
       );
-      // Get the activeViewRows from the window.dtableSDK
       const activeViewRows: TableRow[] = [];
 
       const activeStateSafeGuard = getActiveStateSafeGuard(
@@ -189,7 +157,6 @@ const App: React.FC<IAppProps> = (props) => {
         activeViewRows
       );
 
-      // At first we set the first Preset as the active one
       setActiveTableViews(activeTableAndView?.table?.views || activeTableViews);
       setAppActiveState(activeStateSafeGuard);
     }
@@ -202,9 +169,6 @@ const App: React.FC<IAppProps> = (props) => {
     window.app.onClosePlugin(lang);
   };
 
-  /**
-   * Handles the selection of a preset, updating the active state and associated data accordingly.
-   */
   const onSelectPreset = (presetId: string, newPresetActiveState?: AppActiveState) => {
     localStorage.setItem(ACTIVE_PRESET_ID, presetId);
 
@@ -249,9 +213,6 @@ const App: React.FC<IAppProps> = (props) => {
     setAppActiveState(updatedActiveState);
   };
 
-  /**
-   * Updates the presets and associated plugin data store.
-   */
   const updatePresets = (
     _activePresetIdx: number,
     updatedPresets: PresetsArray,
@@ -275,16 +236,10 @@ const App: React.FC<IAppProps> = (props) => {
     updatePluginDataStore(_pluginDataStore);
   };
 
-  // Update plugin data store (old plugin settings)
   const updatePluginDataStore = (pluginDataStore: IPluginDataStore) => {
     window.dtableSDK.updatePluginSettings(PLUGIN_NAME, pluginDataStore);
   };
 
-  /**
-   * Updates the active data based on the settings of the first preset.
-   * Retrieves table and view information from the first preset's settings, fetches the corresponding
-   * data from the available tables, and updates the active state accordingly.
-   */
   const updateActiveData = () => {
     let allTables: TableArray = cleanAllTables();
     let tableOfPresetOne = pluginPresets[0].settings?.selectedTable || {
@@ -312,7 +267,6 @@ const App: React.FC<IAppProps> = (props) => {
 
   const toggleSettings = () => {
     if (isMobile() && isShowState.isShowPresets) {
-      // Collapse presets if open
       togglePresets();
     }
 
@@ -321,170 +275,154 @@ const App: React.FC<IAppProps> = (props) => {
 
   const togglePresets = () => {
     if (isMobile() && isShowState.isShowSettings) {
-      // Collapse settings if open
       toggleSettings();
     }
 
     setIsShowState((prevState) => ({ ...prevState, isShowPresets: !prevState.isShowPresets }));
   };
 
-  /**
-   * Handles the change of the active table or view, updating the application state and presets accordingly.
-   */
-  const onTableOrViewChange = (type: SettingsOption, option: SelectOption) => {
-    //console.log('onTableOrViewChange');
-    let _activeViewRows: TableRow[];
-    let updatedPluginPresets: PresetsArray;
-
-    switch (type) {
-      case 'table':
-        const _activeTable = allTables.find((s) => s._id === option.value)!;
-        _activeViewRows = window.dtableSDK.getViewRows(_activeTable.views[0], _activeTable);
-        setActiveTableViews(_activeTable.views);
-        setAppActiveState((prevState) => ({
-          ...prevState,
-          activeTable: _activeTable,
-          activeTableName: _activeTable.name,
-          activeTableView: _activeTable.views[0],
-          activeViewRows: _activeViewRows,
-          activeRelationship: getDefaultLinkColumn(_activeTable),
-        }));
-
-        updatedPluginPresets = pluginPresets.map((preset) =>
-          preset._id === activePresetId
-            ? {
-                ...preset,
-                settings: {
-                  ...preset.settings,
-                  relationship: getDefaultLinkColumn(_activeTable),
-                  selectedTable: { value: _activeTable._id, label: _activeTable.name },
-                  selectedView: {
-                    value: _activeTable.views[0]._id,
-                    label: _activeTable.views[0].name,
-                  },
-                },
-              }
-            : preset
-        );
-        break;
-
-      case 'view':
-        let _activeTableView =
-          activeTableViews.find((s) => s._id === option.value) || activeTableViews[0];
-        _activeViewRows = window.dtableSDK.getViewRows(_activeTableView, activeTable);
-        setAppActiveState((prevState) => ({
-          ...prevState,
-          activeTableView: _activeTableView,
-          activeViewRows: _activeViewRows,
-        }));
-
-        updatedPluginPresets = pluginPresets.map((preset) =>
-          preset._id === activePresetId
-            ? {
-                ...preset,
-                settings: {
-                  ...preset.settings,
-                  selectedView: { value: _activeTableView._id, label: _activeTableView.name },
-                },
-              }
-            : preset
-        );
-        break;
-    }
-
-    setPluginPresets(updatedPluginPresets);
-    updatePluginDataStore({ ...pluginDataStore, presets: updatedPluginPresets });
+  const getAccountToken = (): string => {
+    // Shared across all presets — stored at store level
+    return pluginDataStore.accountToken || '';
   };
 
-  function handleRelationships(r: any) {
-    setActiveRelationships(r);
-    const updatedPresets = pluginDataStore.presets.map((preset) => {
-      if (preset._id === appActiveState.activePresetId) {
-        return {
-          ...preset,
-          customSettings: {
-            ...preset.customSettings,
-            relationship: r,
-          },
-        };
-      }
-      return preset;
-    });
+  const handleSaveAccountToken = (token: string) => {
+    const updatedStore = { ...pluginDataStore, accountToken: token };
+    setPluginDataStore(updatedStore);
+    updatePluginDataStore(updatedStore);
+  };
 
-    window.dtableSDK.updatePluginSettings(PLUGIN_NAME, {
-      ...pluginDataStore,
-      presets: updatedPresets,
-    });
-  }
+  const getVerifyUrls = (): boolean => {
+    const activePreset = pluginPresets[activePresetIdx];
+    return activePreset?.customSettings?.verifyUrls ?? false;
+  };
+
+  const handleVerifyUrlsChange = (value: boolean) => {
+    const updatedPresets = pluginPresets.map((preset, idx) =>
+      idx === activePresetIdx
+        ? { ...preset, customSettings: { ...preset.customSettings, verifyUrls: value } }
+        : preset
+    );
+    const updatedStore = { ...pluginDataStore, presets: updatedPresets };
+    setPluginPresets(updatedPresets);
+    setPluginDataStore(updatedStore);
+    updatePluginDataStore(updatedStore);
+  };
+
+  const getAutoRerun = (): boolean => {
+    const activePreset = pluginPresets[activePresetIdx];
+    return activePreset?.customSettings?.autoRerun ?? false;
+  };
+
+  const handleAutoRerunChange = (value: boolean) => {
+    const updatedPresets = pluginPresets.map((preset, idx) =>
+      idx === activePresetIdx
+        ? { ...preset, customSettings: { ...preset.customSettings, autoRerun: value } }
+        : preset
+    );
+    const updatedStore = { ...pluginDataStore, presets: updatedPresets };
+    setPluginPresets(updatedPresets);
+    setPluginDataStore(updatedStore);
+    updatePluginDataStore(updatedStore);
+  };
+
+  const getAuditTableDisplay = (): AuditTableDisplayState => {
+    const activePreset = pluginPresets[activePresetIdx];
+    const saved = activePreset?.customSettings?.auditTableDisplay;
+    if (saved) return saved;
+    // Default: all tables selected, all columns, first view per table
+    return {
+      selectedTables: allTables.map((t) => t._id),
+      selectedViews: Object.fromEntries(allTables.map((t) => [t._id, t.views?.[0]?._id || ''])),
+      isAllSelected: true,
+      auditAllCols: true,
+    };
+  };
+
+  const handleAuditTableDisplayChange = (display: AuditTableDisplayState) => {
+    const updatedPresets = pluginPresets.map((preset, idx) =>
+      idx === activePresetIdx
+        ? { ...preset, customSettings: { ...preset.customSettings, auditTableDisplay: display } }
+        : preset
+    );
+    const updatedStore = { ...pluginDataStore, presets: updatedPresets };
+    setPluginPresets(updatedPresets);
+    setPluginDataStore(updatedStore);
+    updatePluginDataStore(updatedStore);
+  };
 
   if (!isShowPlugin) {
     return null;
   }
+
   return isLoading ? (
     <div></div>
   ) : (
-    <ReactFlowProvider>
-      <ResizableWrapper>
-        {/* presets  */}
-        <PluginPresets
-          allTables={allTables}
-          pluginPresets={pluginPresets}
-          activePresetIdx={activePresetIdx}
-          pluginDataStore={pluginDataStore}
+    <ResizableWrapper>
+      {/* presets  */}
+      <PluginPresets
+        appActiveState={appActiveState}
+        allTables={allTables}
+        pluginPresets={pluginPresets}
+        activePresetIdx={activePresetIdx}
+        pluginDataStore={pluginDataStore}
+        isShowPresets={isShowPresets}
+        onTogglePresets={togglePresets}
+        onToggleSettings={toggleSettings}
+        onSelectPreset={onSelectPreset}
+        updatePresets={updatePresets}
+        updateActiveData={updateActiveData}
+        isShowState={isShowState}
+        setIsShowState={setIsShowState}
+      />
+      <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
+        <Header
+          presetName={findPresetName(pluginPresets, activePresetId)}
           isShowPresets={isShowPresets}
+          isShowSettings={isShowSettings}
           onTogglePresets={togglePresets}
-          onToggleSettings={toggleSettings}
-          onSelectPreset={onSelectPreset}
-          updatePresets={updatePresets}
-          updateActiveData={updateActiveData}
+          toggleSettings={toggleSettings}
+          togglePlugin={onPluginToggle}
         />
-        <div className={styles.plugin}>
-          <Header
-            presetName={findPresetName(pluginPresets, activePresetId)}
-            isShowPresets={isShowPresets}
-            isShowSettings={isShowSettings}
-            onTogglePresets={togglePresets}
-            toggleSettings={toggleSettings}
-            togglePlugin={onPluginToggle}
-            appActiveState={appActiveState}
-            pluginDataStore={pluginDataStore}
-          />
-          {/* main body  */}
+        {/* main body  */}
+        <div
+          className="d-flex position-relative"
+          style={{ height: 'calc(100% - 50px)', width: '100%', backgroundColor: '#f5f5f5' }}>
           <div
-            className="d-flex position-relative"
-            style={{ height: '94%', width: '100%', backgroundColor: '#f5f5f5' }}>
-            <div
-              id={PLUGIN_NAME}
-              className={styles.body}
-              style={{ padding: '10px', width: '100%' }}>
-              {/* Note: The CustomPlugin component serves as a placeholder and should be replaced with your custom plugin component. */}
-              <PluginTR
-                appActiveState={appActiveState}
-                allTables={allTables}
-                pluginDataStore={pluginDataStore}
-                activeRelationships={
-                  pluginPresets[activePresetIdx].customSettings?.relationship || activeRelationships
-                }
-                setPluginDataStore={setPluginDataStore}
-              />
-            </div>
-
-            <PluginSettings
-              activeComponents={activeComponents}
-              isShowSettings={isShowSettings}
-              allTables={allTables}
+            id={PLUGIN_NAME}
+            className={styles.body}
+            style={{ padding: '10px', flex: '1', minWidth: 0 }}>
+            <CustomPlugin
               appActiveState={appActiveState}
-              activeTableViews={activeTableViews}
-              pluginPresets={pluginPresets}
-              onTableOrViewChange={onTableOrViewChange}
-              onToggleSettings={toggleSettings}
-              activeRelationships={activeRelationships}
-              handleRelationships={handleRelationships}
+              allTables={allTables}
+              pluginDataStore={pluginDataStore}
+              verifyUrls={getVerifyUrls()}
+              auditTableDisplay={getAuditTableDisplay()}
+              autoRerun={getAutoRerun()}
+              onPerfRunningChange={setPerfRunning}
             />
           </div>
+
+          <PluginSettings
+            allTables={allTables}
+            appActiveState={appActiveState}
+            activeTableViews={activeTableViews}
+            pluginPresets={pluginPresets}
+            isShowSettings={isShowSettings}
+            onToggleSettings={toggleSettings}
+            onSaveAccountToken={handleSaveAccountToken}
+            accountToken={getAccountToken()}
+            verifyUrls={getVerifyUrls()}
+            onVerifyUrlsChange={handleVerifyUrlsChange}
+            auditTableDisplay={getAuditTableDisplay()}
+            onAuditTableDisplayChange={handleAuditTableDisplayChange}
+            autoRerun={getAutoRerun()}
+            onAutoRerunChange={handleAutoRerunChange}
+            perfRunning={perfRunning}
+          />
         </div>
-      </ResizableWrapper>
-    </ReactFlowProvider>
+      </div>
+    </ResizableWrapper>
   );
 };
 

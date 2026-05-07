@@ -39,6 +39,7 @@ import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
 const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
 
 const PluginPresets: React.FC<IPresetsProps> = ({
+  appActiveState,
   allTables,
   pluginPresets,
   activePresetIdx,
@@ -49,6 +50,8 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   onSelectPreset,
   updatePresets,
   updateActiveData,
+  isShowState,
+  setIsShowState,
 }) => {
   const [dragItemIndex, setDragItemIndex] = useState<number | null>(null);
   const [dragOverItemIndex, setDragOverItemIndex] = useState<number | null>(null);
@@ -129,7 +132,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
       setShowNewPresetPopUp(false);
     }
 
-    setPresetName('');
+    setPresetName(intl.get('preset_new'));
     setShowEditPresetPopUp(type === PresetHandleAction.edit ? false : true);
   };
 
@@ -140,7 +143,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
       setPresetName(presetName);
       setShowEditPresetPopUp((prev) => !prev);
     } else {
-      setPresetName('');
+      setPresetName(intl.get('preset_new'));
       setShowNewPresetPopUp((prev) => !prev);
     }
   };
@@ -223,6 +226,36 @@ const PluginPresets: React.FC<IPresetsProps> = ({
     updatePresets(0, newPluginPresets, pluginDataStore, pluginDataStore.presets[0]._id);
   };
 
+  const downloadImage = (dataUrl: string, fileName: string) => {
+    const a = document.createElement('a');
+
+    a.setAttribute('download', fileName + '.png');
+    a.setAttribute('href', dataUrl);
+    a.click();
+    setIsShowState({ ...isShowState, isShowWaiting: false });
+    // TODO: add FileSaver ?
+  };
+
+  // Rerun audit: preserve settings (like accountToken) but trigger a rerun
+  const resetPreset = () => {
+    let newPluginPresets = deepCopy(pluginPresets);
+    const oldPreset = pluginPresets[activePresetIdx];
+    newPluginPresets[activePresetIdx] = {
+      ...oldPreset,
+      customSettings: {
+        ...oldPreset.customSettings,
+        rerunAt: Date.now(),
+      },
+    };
+    pluginDataStore.presets = newPluginPresets;
+    updatePresets(activePresetIdx, newPluginPresets, pluginDataStore, oldPreset._id);
+  };
+
+  // Export the selected Preset
+  const exportPreset = () => {
+    // TODO: Implement export functionality for your custom plugin
+  };
+
   // drag and drop logic
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.stopPropagation();
@@ -294,10 +327,14 @@ const PluginPresets: React.FC<IPresetsProps> = ({
               }
               onSelectPreset={onSelectPreset}
               deletePreset={deletePreset}
+              exportPreset={exportPreset}
+              resetPreset={resetPreset}
               duplicatePreset={duplicatePreset}
               togglePresetsUpdate={togglePresetsUpdate}
               showEditPresetPopUp={showEditPresetPopUp}
               onToggleSettings={onToggleSettings}
+              isShowState={isShowState}
+              setIsShowState={setIsShowState}
             />
           </div>
         ))}
@@ -311,15 +348,6 @@ const PluginPresets: React.FC<IPresetsProps> = ({
             setIsEditing={setShowNewPresetPopUp}
             presetName={presetName}
           />
-        )}
-        {/* add new preset button  */}
-        {!showNewPresetPopUp && (
-          <button
-            onClick={(e) => togglePresetsUpdate(e, PresetHandleAction.new)}
-            className={`d-flex ${stylesPresets.presets_add_button}`}>
-            <i className="dtable-font dtable-icon-add-table"></i>
-            <p className="mx-1">{intl.get('preset_add').d(`${d.preset_add}`)}</p>
-          </button>
         )}
       </div>
     </div>

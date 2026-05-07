@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 1.2.4 (17.03.2026)
+
+- Allows individual tables to be displayed or not
+- Allows to display only the columns for a specific view of each table
+- Allows to modify theming: table headers background color, line width, color and dash pattern
+- Allows to reset the graph and to export it as a png file
+- Allows to add extra notes on the diagram
+
 ## Version 1.2.3 (27.04.2025)
 
 - remove btn-close css class

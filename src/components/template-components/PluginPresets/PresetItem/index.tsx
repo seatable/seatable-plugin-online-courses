@@ -26,10 +26,14 @@ const PresetItem: React.FC<IPresetItemProps> = ({
   presetNameAlreadyExists,
   onChangePresetName,
   deletePreset,
+  exportPreset,
+  resetPreset,
   onSelectPreset,
   duplicatePreset,
   togglePresetsUpdate,
   onToggleSettings,
+  isShowState,
+  setIsShowState,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showPresetDropdown, setShowPresetDropdown] = useState(false);
@@ -80,6 +84,15 @@ const PresetItem: React.FC<IPresetItemProps> = ({
       case PresetHandleAction.duplicate:
         duplicatePreset(p);
         setShowPresetDropdown(false);
+        break;
+      case PresetHandleAction.reset:
+        resetPreset();
+        setShowPresetDropdown(false);
+        break;
+      case PresetHandleAction.export:
+        setIsShowState({ ...isShowState, isShowWaiting: true });
+        togglePresetDropdown();
+        exportPreset();
         break;
       default:
     }
@@ -141,6 +154,7 @@ const PresetItem: React.FC<IPresetItemProps> = ({
             dropdownRef={popupDomNode}
             pluginPresets={pluginPresets}
             togglePresetsUpdatePopUp={handlePresetsUpdate}
+            presetName={p.name}
           />
         )}
       </div>

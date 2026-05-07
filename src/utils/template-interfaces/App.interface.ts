@@ -12,6 +12,7 @@ export interface AppIsShowState {
   isShowSettings: boolean;
   isLoading: boolean;
   isShowPresets: boolean;
+  isShowWaiting: boolean;
 }
 
 // AppActiveState is a state that holds the active state of what is shown in the plugin
@@ -34,10 +35,13 @@ export interface AppActiveState {
   activeViewRows?: TableRow[]; // Represents the currently active view rows in the app
 }
 
-export interface IPluginDataStore
-  extends Pick<AppActiveState, 'activePresetId' | 'activePresetIdx'> {
+export interface IPluginDataStore extends Pick<
+  AppActiveState,
+  'activePresetId' | 'activePresetIdx'
+> {
   presets: PresetsArray;
   pluginName: string;
+  accountToken?: string;
 }
 
 export interface AvailableLocales {
