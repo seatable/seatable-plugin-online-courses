@@ -5,7 +5,6 @@ import { IPluginSettingsProps } from '../../../utils/template-interfaces/PluginS
 import { HiOutlineChevronDoubleRight } from 'react-icons/hi2';
 import intl from 'react-intl-universal';
 import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
-import DtableSelect from '../Elements/dtable-select';
 import PerfIcon from '../../custom-components/shared/PerfIcon';
 const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
 
@@ -376,16 +375,6 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
     if (!display || !onAuditTableDisplayChange) return;
     onAuditTableDisplayChange({ ...display, perfRerunAt: Date.now() });
   };
-  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
-
-  const toggleTableExpand = (tableId: string) => {
-    setExpandedTables((prev) => {
-      const next = new Set(prev);
-      if (next.has(tableId)) next.delete(tableId);
-      else next.add(tableId);
-      return next;
-    });
-  };
 
   const toggleTable = (tableId: string) => {
     if (!display || !onAuditTableDisplayChange) return;
@@ -410,19 +399,6 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
         isAllSelected: true,
       });
     }
-  };
-
-  const toggleAuditAllCols = () => {
-    if (!display || !onAuditTableDisplayChange) return;
-    onAuditTableDisplayChange({ ...display, auditAllCols: !display.auditAllCols });
-  };
-
-  const setViewForTable = (tableId: string, viewId: string) => {
-    if (!display || !onAuditTableDisplayChange) return;
-    onAuditTableDisplayChange({
-      ...display,
-      selectedViews: { ...display.selectedViews, [tableId]: viewId },
-    });
   };
 
   return (
@@ -516,21 +492,6 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
                 />
               </div>
 
-              {/* Audit all columns toggle */}
-              <div className="mb-2 d-flex align-items-center justify-content-between">
-                <p style={{ margin: 0 }}>
-                  {intl.get('settings.audit_all_cols').d('Audit all columns regardless of views')}
-                </p>
-                <button
-                  onClick={toggleAuditAllCols}
-                  className={
-                    display.auditAllCols
-                      ? stylesPSettings.settings_fields_toggle_btns_active
-                      : stylesPSettings.settings_fields_toggle_btns
-                  }
-                />
-              </div>
-
               {/* Row archival threshold — rows with _ctime AND _mtime older than this
                   many days are flagged as candidates in the Rows section. */}
               <div className="mb-2">
@@ -614,22 +575,14 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
                 </button>
               </div>
 
-              {/* Table list */}
+              {/* Table list — single row per table: name + selection toggle */}
               {allTables.map((table) => {
                 const isSelected = display.selectedTables.includes(table._id);
-                const isExpanded = expandedTables.has(table._id);
-                const tableViews = (table.views || []).filter(
-                  (v: any) => v.type === 'table' || !v.type
-                );
-                const currentViewId = display.selectedViews?.[table._id] || tableViews[0]?._id;
-                const currentView = tableViews.find((v: any) => v._id === currentViewId);
-
                 return (
                   <div
                     key={table._id}
                     className={stylesPSettings.settings_fields_columns}
-                    style={{ flexWrap: 'wrap', padding: '3px' }}>
-                    {/* Header row */}
+                    style={{ padding: '3px' }}>
                     <div
                       style={{
                         display: 'flex',
@@ -637,24 +590,7 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
                         width: '100%',
                         gap: 4,
                       }}>
-                      <span
-                        onClick={() => toggleTableExpand(table._id)}
-                        style={{
-                          cursor: 'pointer',
-                          fontSize: 10,
-                          color: '#999',
-                          width: 12,
-                          textAlign: 'center',
-                        }}>
-                        <i
-                          className={`dtable-font ${isExpanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-                          style={{ fontSize: 10 }}
-                        />
-                      </span>
-                      <p
-                        className="ml-1 mb-0"
-                        style={{ flex: 1, cursor: 'pointer' }}
-                        onClick={() => toggleTableExpand(table._id)}>
+                      <p className="ml-1 mb-0" style={{ flex: 1 }}>
                         {table.name}
                       </p>
                       <button
@@ -667,30 +603,6 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
                         style={{ marginLeft: 'auto' }}
                       />
                     </div>
-
-                    {/* Expanded: view selector */}
-                    {isExpanded && (
-                      <div
-                        style={{ width: '100%', paddingLeft: 20, paddingTop: 4, paddingBottom: 4 }}>
-                        <p className="d-inline mb-1 mt-0" style={{ fontSize: 12 }}>
-                          {intl.get('common.view').d('View')}
-                        </p>
-                        <DtableSelect
-                          value={
-                            currentView
-                              ? { value: currentView._id, label: currentView.name }
-                              : tableViews.length > 0
-                                ? { value: tableViews[0]._id, label: tableViews[0].name }
-                                : { value: '', label: '' }
-                          }
-                          options={tableViews.map((v: any) => ({ value: v._id, label: v.name }))}
-                          onChange={(newValue: any) => {
-                            if (newValue) setViewForTable(table._id, newValue.value);
-                          }}
-                          isDisabled={!isSelected || display.auditAllCols}
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })}

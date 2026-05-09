@@ -7,7 +7,7 @@ import {
 } from '../../../utils/custom-interfaces/AuditTypes';
 import ContextMenu from '../shared/ContextMenu';
 import { showToast } from '../shared/showToast';
-import ChainGraph from '../shared/ChainGraph';
+import ChainGraph, { ChainGraphRoot } from '../shared/ChainGraph';
 
 interface TableGroupProps {
   tableName: string;
@@ -15,7 +15,15 @@ interface TableGroupProps {
   linkFormulas: LinkFormulaInfo[];
   redundantLinks: RedundantLink[];
   defaultOpen: boolean;
+  // When true, every link col and every formula starts expanded. The parent
+  // remounts TableGroup on its page-level Expand-all toggle, so this only
+  // needs to seed the initial state.
+  defaultExpandAll?: boolean;
   onRefresh: () => void;
+}
+
+function formulaKey(c: LinkFormulaInfo): string {
+  return `${c.tableId}-${c.columnKey}-${c.formulaType}-${c.targetColumnName}`;
 }
 
 function deleteColumn(tableName: string, columnKey: string): boolean {
@@ -49,6 +57,18 @@ const Badge: React.FC<{ label: string; color: string; bg: string }> = ({ label, 
   </span>
 );
 
+function consumerRoot(c: LinkFormulaInfo): ChainGraphRoot {
+  if (c.columnType === 'link-formula') {
+    return {
+      columnType: 'link-formula',
+      name: c.columnName,
+      formulaType: c.formulaType,
+      referencedLinkName: c.dependsOnColumnName,
+    };
+  }
+  return { columnType: 'formula', name: c.columnName };
+}
+
 function isRedundant(lc: LinkColumnInfo, redundantLinks: RedundantLink[]): boolean {
   return redundantLinks.some((r) =>
     r.columns.some(
@@ -81,32 +101,49 @@ const FillSummary: React.FC<{
 
 const ConsumerRow: React.FC<{
   consumer: LinkFormulaInfo;
+  expanded: boolean;
+  onToggle: () => void;
   onDelete: () => void;
-}> = ({ consumer, onDelete }) => {
+}> = ({ consumer, expanded, onToggle, onDelete }) => {
   const icon =
     consumer.columnType === 'formula' ? 'dtable-icon-formula' : 'dtable-icon-link-formulas';
+  const hasChain = !!consumer.outboundChain && consumer.outboundChain.length > 0;
   return (
     <div style={{ marginTop: 8 }}>
       <div
+        onClick={hasChain ? onToggle : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 6,
           fontSize: 13,
+          cursor: hasChain ? 'pointer' : undefined,
+          userSelect: hasChain ? 'none' : undefined,
         }}>
+        {hasChain ? (
+          <i
+            className={`dtable-font ${expanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
+            style={{ fontSize: 10, color: '#888', width: 10, flexShrink: 0 }}
+          />
+        ) : (
+          <span style={{ width: 10, flexShrink: 0 }} />
+        )}
         <i className={`dtable-font ${icon}`} style={{ fontSize: 14, color: '#aaa' }} />
         <span>{consumer.columnName}</span>
         <span style={{ color: '#888', fontSize: 12 }}>— {consumer.formulaType}</span>
-        <span style={{ marginLeft: 'auto' }}>
+        <span style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>
           <ContextMenu
             onDelete={onDelete}
             label={intl.get('common.delete_column').d('Delete column')}
           />
         </span>
       </div>
-      {consumer.outboundChain && consumer.outboundChain.length > 0 && (
+      {expanded && hasChain && (
         <div style={{ paddingLeft: 20 }}>
-          <ChainGraph chain={consumer.outboundChain} />
+          <ChainGraph
+            chain={consumer.outboundChain!}
+            rootColumn={consumerRoot(consumer)}
+          />
         </div>
       )}
     </div>
@@ -119,23 +156,9 @@ const TableGroup: React.FC<TableGroupProps> = ({
   linkFormulas,
   redundantLinks,
   defaultOpen,
+  defaultExpandAll = false,
   onRefresh,
 }) => {
-  const [open, setOpen] = useState(defaultOpen);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const totalItems = linkColumns.length + linkFormulas.length;
-
-  if (totalItems === 0) return null;
-
-  const toggleRow = (key: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
   // Group link-formulas by the link column they depend on
   const formulasByLinkKey: Record<string, LinkFormulaInfo[]> = {};
   const orphanedFormulas: LinkFormulaInfo[] = [];
@@ -149,6 +172,66 @@ const TableGroup: React.FC<TableGroupProps> = ({
       orphanedFormulas.push(lf);
     }
   }
+
+  // Stable sets of "expandable" keys, used for the section-level expand-all toggle
+  // and for seeding initial state when defaultExpandAll is on.
+  const expandableLinkKeys = linkColumns
+    .filter(
+      (lc) =>
+        (lc.outboundChain && lc.outboundChain.length > 0) ||
+        (formulasByLinkKey[lc.columnKey]?.length ?? 0) > 0
+    )
+    .map((lc) => `${lc.tableId}-${lc.columnKey}`);
+  const expandableFormulaKeys = [
+    ...Object.values(formulasByLinkKey).flat(),
+    ...orphanedFormulas,
+  ]
+    .filter((c) => c.outboundChain && c.outboundChain.length > 0)
+    .map(formulaKey);
+
+  const [open, setOpen] = useState(defaultOpen);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(
+    () => new Set(defaultExpandAll ? expandableLinkKeys : [])
+  );
+  const [expandedFormulas, setExpandedFormulas] = useState<Set<string>>(
+    () => new Set(defaultExpandAll ? expandableFormulaKeys : [])
+  );
+
+  const totalItems = linkColumns.length + linkFormulas.length;
+  if (totalItems === 0) return null;
+
+  const allExpanded =
+    expandableLinkKeys.every((k) => expandedRows.has(k)) &&
+    expandableFormulaKeys.every((k) => expandedFormulas.has(k)) &&
+    expandableLinkKeys.length + expandableFormulaKeys.length > 0;
+
+  const toggleAllInSection = () => {
+    if (allExpanded) {
+      setExpandedRows(new Set());
+      setExpandedFormulas(new Set());
+    } else {
+      setExpandedRows(new Set(expandableLinkKeys));
+      setExpandedFormulas(new Set(expandableFormulaKeys));
+    }
+  };
+
+  const toggleRow = (key: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleFormula = (key: string) => {
+    setExpandedFormulas((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const unusedColumns = linkColumns.filter((lc) => lc.fillRate === 0);
 
@@ -186,8 +269,33 @@ const TableGroup: React.FC<TableGroupProps> = ({
               .d(', {count} formula(s)')}
           )
         </span>
+        {open && (expandableLinkKeys.length + expandableFormulaKeys.length) > 0 && (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleAllInSection();
+            }}
+            style={{
+              marginLeft: 'auto',
+              fontSize: 11,
+              color: '#ff8000',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}>
+            {allExpanded
+              ? intl.get('common.collapse_all').d('Collapse all')
+              : intl.get('common.expand_all').d('Expand all')}
+          </span>
+        )}
         {unusedColumns.length > 0 && (
-          <span style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>
+          <span
+            style={{
+              marginLeft:
+                open && (expandableLinkKeys.length + expandableFormulaKeys.length) > 0
+                  ? 8
+                  : 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}>
             <ContextMenu
               onDelete={() => {
                 let deleted = 0;
@@ -289,20 +397,28 @@ const TableGroup: React.FC<TableGroupProps> = ({
                 {hasDetails && isExpanded && (
                   <div style={{ paddingLeft: 20, marginTop: 4 }}>
                     {lc.outboundChain && lc.outboundChain.length > 0 && (
-                      <ChainGraph chain={lc.outboundChain} />
+                      <ChainGraph
+                        chain={lc.outboundChain}
+                        rootColumn={{ columnType: 'link', name: lc.columnName }}
+                      />
                     )}
                     {consumers.length > 0 && (
                       <div style={{ marginTop: 12 }}>
                         <div style={{ fontSize: 12, color: '#666', fontWeight: 500 }}>
                           {intl.get('links.used_by').d('Used by')}
                         </div>
-                        {consumers.map((c) => (
-                          <ConsumerRow
-                            key={`${c.tableId}-${c.columnKey}-${c.formulaType}-${c.targetColumnName}`}
-                            consumer={c}
-                            onDelete={() => handleDelete(c.columnKey, c.columnName)}
-                          />
-                        ))}
+                        {consumers.map((c) => {
+                          const fk = formulaKey(c);
+                          return (
+                            <ConsumerRow
+                              key={fk}
+                              consumer={c}
+                              expanded={expandedFormulas.has(fk)}
+                              onToggle={() => toggleFormula(fk)}
+                              onDelete={() => handleDelete(c.columnKey, c.columnName)}
+                            />
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -313,13 +429,18 @@ const TableGroup: React.FC<TableGroupProps> = ({
           {/* Formulas whose parent link column was not found in this table */}
           {orphanedFormulas.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              {orphanedFormulas.map((lf) => (
-                <ConsumerRow
-                  key={`${lf.tableId}-${lf.columnKey}-orphan`}
-                  consumer={lf}
-                  onDelete={() => handleDelete(lf.columnKey, lf.columnName)}
-                />
-              ))}
+              {orphanedFormulas.map((lf) => {
+                const fk = formulaKey(lf);
+                return (
+                  <ConsumerRow
+                    key={`${lf.tableId}-${lf.columnKey}-orphan`}
+                    consumer={lf}
+                    expanded={expandedFormulas.has(fk)}
+                    onToggle={() => toggleFormula(fk)}
+                    onDelete={() => handleDelete(lf.columnKey, lf.columnName)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

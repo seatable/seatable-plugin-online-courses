@@ -117,40 +117,14 @@ export async function auditAllTables(
 
     const allColumns = table.columns || [];
 
-    // Determine which columns to audit based on settings
-    let columnsToAudit: any[];
-    let selectedViewName: string | undefined;
-    if (displayState && !displayState.auditAllCols) {
-      // Use columns visible in the selected view
-      const selectedViewId = displayState.selectedViews?.[table._id];
-      const selectedView = (table.views || []).find((v: any) => v._id === selectedViewId);
-      if (selectedView) {
-        selectedViewName = selectedView.name;
-        if (selectedView.hidden_columns) {
-          const hiddenSet = new Set(selectedView.hidden_columns);
-          columnsToAudit = allColumns.filter(
-            (col: any) =>
-              col.type !== 'button' && !col.name.startsWith('(') && !hiddenSet.has(col.key)
-          );
-        } else {
-          columnsToAudit = allColumns.filter(
-            (col: any) => col.type !== 'button' && !col.name.startsWith('(')
-          );
-        }
-      } else {
-        columnsToAudit = allColumns.filter(
-          (col: any) => col.type !== 'button' && !col.name.startsWith('(')
-        );
-      }
-    } else {
-      columnsToAudit = allColumns.filter(
-        (col: any) => col.type !== 'button' && !col.name.startsWith('(')
-      );
-    }
-
-    const allColumnsFiltered = allColumns.filter(
+    // Always audit every non-button, non-system column. The earlier
+    // "audit only columns visible in a chosen view" path was dropped — it
+    // added settings complexity (a per-table view selector) that nobody
+    // used and confused the perf audit's denominator semantics.
+    const columnsToAudit = allColumns.filter(
       (col: any) => col.type !== 'button' && !col.name.startsWith('(')
     );
+    const allColumnsFiltered = columnsToAudit;
     const rows: any[] = table.rows || [];
     const rowCount = rows.length;
     const columnCount = columnsToAudit.length;
@@ -336,7 +310,6 @@ export async function auditAllTables(
       columnCount,
       totalColumnCount,
       viewCount: views.length,
-      selectedViewName,
       lastRowAdded,
       lastRowModified,
       columns: auditColumns,

@@ -1,6 +1,7 @@
 import React from 'react';
 import intl from 'react-intl-universal';
 import { ChainNode } from '../../../utils/custom-interfaces/AuditTypes';
+import { colorForTable } from './tablePalette';
 
 export const COL_ICONS: Record<string, string> = {
   text: 'dtable-icon-single-line-text',
@@ -18,210 +19,287 @@ export const COL_ICONS: Record<string, string> = {
   formula: 'dtable-icon-formula',
 };
 
-const DEPTH_COLORS = ['#17a2b8', '#6f42c1', '#e67e22', '#28a745'];
-
-interface FlatRow {
-  node: ChainNode;
-  depth: number;
-  isLast: boolean;
-}
-
-function flattenChain(nodes: ChainNode[], depth: number = 0): FlatRow[] {
-  const rows: FlatRow[] = [];
-  nodes.forEach((node, i) => {
-    rows.push({ node, depth, isLast: i === nodes.length - 1 });
-    const children = node.children || [];
-    if (children.length > 0) {
-      rows.push(...flattenChain(children, depth + 1));
-    }
-  });
-  return rows;
-}
-
+// Layout constants. ROW_H is shared between col-rows and table-label rows so
+// the L-curve geometry (vertical + bend) stays uniform regardless of which
+// row sits between two dots.
 const ROW_H = 22;
-const COL_LINE_H = 20;
-const GAP = 6;
+const GAP = 4;
 const INDENT = 18;
 const DOT_R = 4;
 const CURVE_R = 6;
 
-interface RowLayout {
-  y: number;
-  dotY: number;
-  height: number;
-  depth: number;
-  isLast: boolean;
-  node: ChainNode;
+const REFERENCE_STROKE = 'lightgray';
+const REFERENCE_WIDTH = 0.5; // user spec: ".3 and lightgray"; 0.5 is the
+// smallest width that reliably renders across browsers; if the visual is
+// too thin we can bump up.
+const TRAVERSAL_WIDTH = 2;
+const TRAVERSAL_OPACITY = 0.5;
+const HEAD_RING = '#aaa';
+
+export type ChainGraphRoot =
+  | { columnType: 'link'; name: string }
+  | {
+      columnType: 'link-formula';
+      name: string;
+      formulaType?: string;
+      referencedLinkName?: string;
+    }
+  | { columnType: 'formula'; name: string };
+
+interface ChainGraphProps {
+  chain: ChainNode[];
+  rootColumn: ChainGraphRoot;
 }
 
-export const ChainGraph: React.FC<{ chain: ChainNode[] }> = ({ chain }) => {
-  if (chain.length === 0) return null;
+type EdgeKind = 'reference' | 'traversal' | 'none';
 
-  const rows = flattenChain(chain);
+interface ColRow {
+  kind: 'col';
+  depth: number;
+  iconClass: string;
+  name: string;
+  edge: EdgeKind;
+  parentIdx: number | null;
+  edgeColor?: string;
+  tintColor?: string;
+  // Only set on traversal arrival rows: the target table whose color this
+  // row carries. Used by the table-label row above it to color the bold
+  // table name in the same hue.
+  targetTableName?: string;
+}
 
-  const layout: RowLayout[] = [];
+interface TableLabelRow {
+  kind: 'tableLabel';
+  depth: number;
+  tableName: string;
+  tableRows: number;
+  color: string;
+}
+
+type DisplayRow = ColRow | TableLabelRow;
+
+function buildRows(chain: ChainNode[], root: ChainGraphRoot): DisplayRow[] {
+  const rows: DisplayRow[] = [];
+
+  // No head row: the chain is always rendered under the consumer's column
+  // header, which already names the column. For link-formula with a known
+  // referenced link, that link column is a *different* column from the
+  // consumer's, so it leads the chain at depth 0 and carries the reference
+  // edge from a virtual "formula above" parent.
+  let firstTraversalParent: number | null = null;
+  let firstTraversalParentDepth = -1;
+
+  if (root.columnType === 'link-formula' && root.referencedLinkName) {
+    rows.push({
+      kind: 'col',
+      depth: 0,
+      iconClass: 'dtable-icon-link-other-record',
+      name: root.referencedLinkName,
+      edge: 'reference',
+      parentIdx: null,
+    });
+    firstTraversalParent = 0;
+    firstTraversalParentDepth = 0;
+  }
+
+  function walk(nodes: ChainNode[], parentIdx: number | null, parentDepth: number): void {
+    for (const node of nodes) {
+      const tableColor = colorForTable(node.tableName);
+      const labelDepth = parentDepth + 1;
+      rows.push({
+        kind: 'tableLabel',
+        depth: labelDepth,
+        tableName: node.tableName,
+        tableRows: node.tableRows,
+        color: tableColor,
+      });
+
+      if (node.columns.length === 0) {
+        // countlinks-style: no target column on this hop. The label stands
+        // alone; recursion stops here regardless of node.children.
+        continue;
+      }
+
+      for (const col of node.columns) {
+        const colIdx = rows.length;
+        rows.push({
+          kind: 'col',
+          depth: labelDepth,
+          iconClass: COL_ICONS[col.type] || 'dtable-icon-single-line-text',
+          name: col.name,
+          edge: 'traversal',
+          parentIdx,
+          edgeColor: tableColor,
+          tintColor: tableColor,
+          targetTableName: node.tableName,
+        });
+        if (node.children && node.children.length > 0) {
+          walk(node.children, colIdx, labelDepth);
+        }
+      }
+    }
+  }
+
+  walk(chain, firstTraversalParent, firstTraversalParentDepth);
+
+  return rows;
+}
+
+const dotX = (depth: number): number => depth * INDENT + INDENT;
+
+export const ChainGraph: React.FC<ChainGraphProps> = ({ chain, rootColumn }) => {
+  const rows = buildRows(chain, rootColumn);
+  if (rows.length === 0) return null;
+
+  // Layout pass — assign y per row, dotY for col rows.
+  const layout: Array<{ y: number; height: number; dotY?: number }> = [];
   let y = 0;
   for (const row of rows) {
-    const cols = (row.node.columns || []).length;
-    const contentH = ROW_H + cols * COL_LINE_H;
-    const dotY = y + ROW_H / 2;
-    layout.push({
-      y,
-      dotY,
-      height: contentH,
-      depth: row.depth,
-      isLast: row.isLast,
-      node: row.node,
-    });
-    y += contentH + GAP;
+    const height = ROW_H;
+    const dotY = row.kind === 'col' ? y + ROW_H / 2 : undefined;
+    layout.push({ y, height, dotY });
+    y += height + GAP;
   }
   const totalH = y - GAP;
 
-  const dotX = (depth: number) => depth * INDENT + INDENT;
-
-  const maxDepth = Math.max(...layout.map((r) => r.depth));
+  const maxDepth = Math.max(...rows.map((r) => r.depth));
   const svgW = dotX(maxDepth) + DOT_R + 3;
 
   const svgElements: React.ReactNode[] = [];
 
-  for (let i = 0; i < layout.length; i++) {
-    const row = layout[i];
-    if (row.isLast) {
-      const children = row.node.children || [];
-      if (children.length > 0 && i + 1 < layout.length) {
-        const childRow = layout[i + 1];
-        const childColor = DEPTH_COLORS[Math.min(childRow.depth, DEPTH_COLORS.length - 1)];
-        const x = dotX(row.depth);
-        svgElements.push(
-          <line
-            key={`v-child-${i}`}
-            x1={x}
-            y1={row.dotY + DOT_R + 2}
-            x2={x}
-            y2={childRow.y}
-            stroke={childColor}
-            strokeWidth={2}
-            strokeOpacity={0.5}
-          />
-        );
-      }
-      continue;
-    }
-    for (let j = i + 1; j < layout.length; j++) {
-      if (layout[j].depth === row.depth) {
-        const color = DEPTH_COLORS[Math.min(row.depth, DEPTH_COLORS.length - 1)];
-        const x = dotX(row.depth);
-        svgElements.push(
-          <line
-            key={`v-${i}-${j}`}
-            x1={x}
-            y1={row.dotY}
-            x2={x}
-            y2={layout[j].dotY}
-            stroke={color}
-            strokeWidth={2}
-            strokeOpacity={0.5}
-          />
-        );
-        const children = row.node.children || [];
-        if (children.length > 0 && i + 1 < layout.length && layout[i + 1].depth > row.depth) {
-          const childRow = layout[i + 1];
-          const childColor = DEPTH_COLORS[Math.min(childRow.depth, DEPTH_COLORS.length - 1)];
-          const px = dotX(row.depth);
-          svgElements.push(
-            <line
-              key={`v-child2-${i}`}
-              x1={px}
-              y1={row.dotY}
-              x2={px}
-              y2={childRow.y}
-              stroke={childColor}
-              strokeWidth={2}
-              strokeOpacity={0.5}
-            />
-          );
-        }
-        break;
-      }
-      if (layout[j].depth < row.depth) break;
-    }
-  }
+  // Curves first, dots second so dots paint over curve ends cleanly.
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.kind !== 'col' || row.edge === 'none') continue;
 
-  for (let i = 0; i < layout.length; i++) {
-    const row = layout[i];
-    const color = DEPTH_COLORS[Math.min(row.depth, DEPTH_COLORS.length - 1)];
     const cx = dotX(row.depth);
-    const cy = row.dotY;
+    const cy = layout[i].dotY!;
 
-    const lx = row.depth > 0 ? dotX(row.depth - 1) : cx - INDENT + 2;
-    const ly = row.y;
-    const curveEndY = cy;
-    const curveStartY = curveEndY - CURVE_R;
+    // Top-level rows (parentIdx === null but edge !== 'none') hang from a
+    // virtual parent placed above the SVG, one indent to the left of the
+    // row's own dot. With overflow: visible the curve renders above y=0.
+    let lx: number;
+    let verticalStartY: number;
+    if (row.parentIdx === null) {
+      lx = Math.max(0, cx - INDENT);
+      verticalStartY = -ROW_H / 2 + DOT_R + 2;
+    } else {
+      const parent = rows[row.parentIdx] as ColRow;
+      const parentLayout = layout[row.parentIdx];
+      if (parentLayout.dotY === undefined) continue;
+      lx = dotX(parent.depth);
+      verticalStartY = parentLayout.dotY + DOT_R + 2;
+    }
+
+    const curveStartY = cy - CURVE_R;
+    const stroke = row.edge === 'reference' ? REFERENCE_STROKE : row.edgeColor || HEAD_RING;
+    const strokeWidth = row.edge === 'reference' ? REFERENCE_WIDTH : TRAVERSAL_WIDTH;
+    const strokeOpacity = row.edge === 'reference' ? 1 : TRAVERSAL_OPACITY;
+
     svgElements.push(
       <path
-        key={`l-${i}`}
-        d={`M ${lx} ${ly} L ${lx} ${curveStartY} Q ${lx} ${curveEndY} ${lx + CURVE_R} ${curveEndY} L ${cx - DOT_R - 2} ${curveEndY}`}
+        key={`p-${i}`}
+        d={`M ${lx} ${verticalStartY} L ${lx} ${curveStartY} Q ${lx} ${cy} ${lx + CURVE_R} ${cy} L ${cx - DOT_R - 2} ${cy}`}
         fill="none"
-        stroke={color}
-        strokeWidth={2}
-        strokeOpacity={0.5}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        strokeOpacity={strokeOpacity}
       />
-    );
-
-    svgElements.push(
-      <circle key={`d-${i}`} cx={cx} cy={cy} r={DOT_R} fill="#fff" stroke={color} strokeWidth={2} />
     );
   }
 
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.kind !== 'col') continue;
+    const cx = dotX(row.depth);
+    const cy = layout[i].dotY!;
+    const ringColor =
+      row.edge === 'reference'
+        ? REFERENCE_STROKE
+        : row.edge === 'traversal'
+          ? row.tintColor || HEAD_RING
+          : HEAD_RING;
+    svgElements.push(
+      <circle
+        key={`d-${i}`}
+        cx={cx}
+        cy={cy}
+        r={DOT_R}
+        fill="#fff"
+        stroke={ringColor}
+        strokeWidth={2}
+      />
+    );
+  }
+
+  // Absolute positioning per row keeps the dot↔text gap constant: each row's
+  // text starts at (its own dot x) + DOT_R + TEXT_GAP. Deeper rows naturally
+  // get more left padding, so chain depth is reflected in text indent the
+  // same way it is in dot position. The SVG is layered behind the rows and
+  // takes pointer-events: none so it never blocks interactions.
+  const SVG_LEFT = 20; // first vertical (SVG x=0) lands at this absolute x
+  const TEXT_GAP = 6;
   return (
-    <div style={{ display: 'flex', marginTop: 4, gap: 4 }}>
-      <svg width={svgW} height={totalH} style={{ flexShrink: 0, overflow: 'visible' }}>
+    <div style={{ position: 'relative', marginTop: 4, height: totalH }}>
+      <svg
+        width={svgW}
+        height={totalH}
+        style={{
+          position: 'absolute',
+          left: SVG_LEFT,
+          top: 0,
+          overflow: 'visible',
+          pointerEvents: 'none',
+        }}>
         {svgElements}
       </svg>
-      <div style={{ flex: 1 }}>
-        {layout.map((row, i) => {
-          const columns = row.node.columns || [];
+      {rows.map((row, i) => {
+        // Col text sits TEXT_GAP px right of its own dot. Table labels
+        // anchor at the child column's dot — i.e., (DOT_R + TEXT_GAP) ≈ 10
+        // pixels to the left of the col text — so each hop reads as
+        // table > column with a tight, dot-aligned visual.
+        const left =
+          row.kind === 'tableLabel'
+            ? SVG_LEFT + dotX(row.depth)
+            : SVG_LEFT + dotX(row.depth) + DOT_R + TEXT_GAP;
+        const baseStyle: React.CSSProperties = {
+          position: 'absolute',
+          top: layout[i].y,
+          left,
+          height: ROW_H,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          lineHeight: `${ROW_H}px`,
+        };
+        if (row.kind === 'tableLabel') {
           return (
-            <div
-              key={i}
-              style={{
-                height: row.height + (i < layout.length - 1 ? GAP : 0),
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-              }}>
-              <div style={{ fontSize: 12, lineHeight: `${ROW_H}px` }}>
-                <span style={{ fontWeight: 600, color: '#333' }}>{row.node.tableName}</span>
-                <span style={{ color: '#888', marginLeft: 4 }}>
-                  ({row.node.tableRows} {intl.get('common.rows').d('rows')})
-                </span>
-              </div>
-              {columns.map((col, ci) => {
-                const colIcon = COL_ICONS[col.type] || 'dtable-icon-single-line-text';
-                return (
-                  <div
-                    key={ci}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: 12,
-                      color: '#555',
-                      lineHeight: `${COL_LINE_H}px`,
-                      paddingLeft: 10,
-                    }}>
-                    <i
-                      className={`dtable-font ${colIcon}`}
-                      style={{ fontSize: 12, color: '#aaa' }}
-                    />
-                    <span>{col.name}</span>
-                  </div>
-                );
-              })}
+            <div key={i} style={{ ...baseStyle, fontSize: 11 }}>
+              <span
+                style={{
+                  color: '#aaa',
+                  textTransform: 'lowercase',
+                }}>
+                {intl.get('common.table').d('Table')}
+              </span>
+              <span style={{ fontWeight: 600, color: row.color }}>{row.tableName}</span>
+              <span style={{ color: '#888' }}>
+                ({row.tableRows} {intl.get('common.rows').d('rows')})
+              </span>
             </div>
           );
-        })}
-      </div>
+        }
+        const tint = row.edge === 'traversal' ? row.tintColor || '#555' : '#555';
+        return (
+          <div key={i} style={{ ...baseStyle, fontSize: 12, color: tint }}>
+            <i
+              className={`dtable-font ${row.iconClass}`}
+              style={{ fontSize: 12, color: '#aaa' }}
+            />
+            <span>{row.name}</span>
+          </div>
+        );
+      })}
     </div>
   );
 };

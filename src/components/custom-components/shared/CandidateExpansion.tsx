@@ -9,7 +9,9 @@ import {
   PerformanceCandidateColumn,
   RemediatedColumnHide,
 } from '../../../utils/custom-interfaces/AuditTypes';
-import ChainGraph from './ChainGraph';
+import ChainGraph, { ChainGraphRoot } from './ChainGraph';
+import ImpactBadge from './ImpactBadge';
+import { impactBandFromPct, BAND_SORT_ORDER, ImpactBand } from './impactBands';
 
 interface CandidateExpansionProps {
   candidate: PerformanceCandidateColumn;
@@ -20,6 +22,26 @@ interface CandidateExpansionProps {
   costByKey: Map<string, number>;
   visibleRowsByKey: Map<string, number>;
   totalViewLoadMs: number;
+  // Per-view total load ms keyed `${tableId}:${viewId}` — used to derive each
+  // view's loading band (slow / moderate / fast). Sourced from the audit's
+  // `result.views[].loadMs` so the band matches what the user sees on the
+  // TableTab Views section.
+  viewLoadMsByKey: Map<string, number>;
+}
+
+function candidateRoot(c: PerformanceCandidateColumn): ChainGraphRoot {
+  if (c.columnType === 'link-formula') {
+    return {
+      columnType: 'link-formula',
+      name: c.columnName,
+      formulaType: c.formulaType,
+      referencedLinkName: c.dependsOnLinkColumnName,
+    };
+  }
+  if (c.columnType === 'link') {
+    return { columnType: 'link', name: c.columnName };
+  }
+  return { columnType: 'formula', name: c.columnName };
 }
 
 /**
@@ -46,6 +68,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
   costByKey,
   visibleRowsByKey,
   totalViewLoadMs,
+  viewLoadMsByKey,
 }) => {
   const hasChain = !!c.chain && c.chain.length > 0;
   const stagedViewIdsForCol = (() => {
@@ -61,17 +84,14 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
       viewId: string;
       viewName: string;
       ruleKinds: string[];
-      costSavedPct: number;
+      band: ImpactBand;
       isHidden: boolean;
     }>;
-    const tableRows = (t.rows || []).length;
-    const colTotal = costByKey.get(`${c.tableId}:${c.columnKey}`) || 0;
-    const perCell = tableRows > 0 ? colTotal / tableRows : 0;
     const out: Array<{
       viewId: string;
       viewName: string;
       ruleKinds: string[];
-      costSavedPct: number;
+      band: ImpactBand;
       isHidden: boolean;
     }> = [];
     for (const v of t.views || []) {
@@ -82,22 +102,30 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
         ? edits.has(c.columnKey)
         : stagedViewIdsForCol.has(v._id);
       const ruleKinds = getColumnRuleKindsInView(v, c.columnKey);
-      const isReferenced = ruleKinds.length > 0;
-      const visibleRows = visibleRowsByKey.get(`${c.tableId}:${v._id}`) ?? 0;
-      const contribution = perCell * visibleRows;
-      const costSavedPct =
-        isReferenced || totalViewLoadMs <= 0
-          ? 0
-          : (contribution / totalViewLoadMs) * 100;
+      // Show each view's overall loading band — the user picks which views
+      // to hide-in based on which views feel slow, not on a derived "% saved"
+      // number. Within-band ordering preserves the savings ranking implicitly
+      // (heavier views = larger drop when this column is hidden).
+      const viewMs = viewLoadMsByKey.get(`${c.tableId}:${v._id}`) ?? 0;
+      const viewPct = totalViewLoadMs > 0 ? (viewMs / totalViewLoadMs) * 100 : 0;
+      const band = impactBandFromPct(viewPct);
       out.push({
         viewId: v._id,
         viewName: v.name,
         ruleKinds,
-        costSavedPct,
+        band,
         isHidden,
       });
     }
-    out.sort((a, b) => b.costSavedPct - a.costSavedPct);
+    // Sort by band order (high → low → not-relevant). Within a band, preserve
+    // the audit's natural per-view weight order via viewLoadMsByKey lookup.
+    out.sort((a, b) => {
+      const ord = BAND_SORT_ORDER[a.band] - BAND_SORT_ORDER[b.band];
+      if (ord !== 0) return ord;
+      const am = viewLoadMsByKey.get(`${c.tableId}:${a.viewId}`) ?? 0;
+      const bm = viewLoadMsByKey.get(`${c.tableId}:${b.viewId}`) ?? 0;
+      return bm - am;
+    });
     return out;
   })();
   const hasDrill = drillRows.length > 0;
@@ -124,7 +152,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
     <>
       {hasChain && (
         <div style={{ marginLeft: 20 }}>
-          <ChainGraph chain={c.chain!} />
+          <ChainGraph chain={c.chain!} rootColumn={candidateRoot(c)} />
         </div>
       )}
       {hasDrill && (
@@ -195,17 +223,23 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
                         />
                       )}
                     </td>
-                    <td
-                      style={{
-                        padding: '3px 8px',
-                        color: row.ruleKinds.length > 0 ? '#aaa' : '#28a745',
-                        fontStyle: row.ruleKinds.length > 0 ? 'italic' : 'normal',
-                      }}>
-                      {row.ruleKinds.length > 0
-                        ? intl
-                            .get('performance.hide_used_in_rules', { kinds: localizedKinds })
-                            .d(`0% — used in ${localizedKinds}`)
-                        : `−${row.costSavedPct.toFixed(1)}%`}
+                    <td style={{ padding: '3px 8px' }}>
+                      {row.ruleKinds.length > 0 ? (
+                        <span
+                          style={{
+                            color: '#aaa',
+                            fontStyle: 'italic',
+                            fontSize: 12,
+                          }}>
+                          {intl
+                            .get('performance.hide_used_in_rules_band', {
+                              kinds: localizedKinds,
+                            })
+                            .d(`hiding doesn't help — used in ${localizedKinds}`)}
+                        </span>
+                      ) : (
+                        <ImpactBadge band={row.band} surface="view" />
+                      )}
                     </td>
                   </tr>
                 );

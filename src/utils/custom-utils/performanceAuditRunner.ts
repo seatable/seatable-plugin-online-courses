@@ -59,14 +59,18 @@ export function resolveOtherTableId(currentTableId: string, colData: any): strin
 export async function countViewRows(
   value: any,
   onProgress?: (msg: string) => void,
-  progressPrefix: string = 'Counting view rows'
+  progressPrefix: string = 'Counting view rows',
+  selectedTableIds?: string[] | null
 ): Promise<ViewLoadTiming[]> {
   const Views = dtableStoreModule.Views;
   const tables: any[] = value.tables || [];
+  const selectedSet =
+    selectedTableIds && selectedTableIds.length > 0 ? new Set(selectedTableIds) : null;
   const out: ViewLoadTiming[] = [];
 
   for (let ti = 0; ti < tables.length; ti++) {
     const t = tables[ti];
+    if (selectedSet && !selectedSet.has(t._id)) continue;
     if (onProgress) {
       onProgress(`${progressPrefix}: ${t.name} (table ${ti + 1}/${tables.length})...`);
       await tick();
@@ -168,9 +172,10 @@ export async function benchmarkInMemory(
   value: any,
   costByKey: Map<string, number>,
   onProgress?: (msg: string) => void,
-  progressPrefix: string = 'Benchmarking'
+  progressPrefix: string = 'Benchmarking',
+  selectedTableIds?: string[] | null
 ): Promise<BenchmarkTimings> {
-  const viewLoads = await countViewRows(value, onProgress, progressPrefix);
+  const viewLoads = await countViewRows(value, onProgress, progressPrefix, selectedTableIds);
   const theoreticalByKey = computeTheoreticalViewCosts(costByKey, viewLoads, value);
   for (const vl of viewLoads) {
     const ms = theoreticalByKey.get(`${vl.tableId}:${vl.viewId}`);
@@ -1096,17 +1101,24 @@ function buildChainForFormula(
  * subsequent cost measurement is ~70s.
  */
 export async function scanCandidateColumns(
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  selectedTableIds?: string[] | null
 ): Promise<PerformanceCandidateColumn[]> {
   const dtableSDK = (window as any).dtableSDK;
   const tables: any[] = dtableSDK.getTables();
   const tableById: Record<string, any> = {};
   for (const t of tables) tableById[t._id] = t;
 
+  // tableById stays complete so chain construction can resolve references to
+  // unselected tables (a selected formula may chain into an unselected one).
+  const selectedSet =
+    selectedTableIds && selectedTableIds.length > 0 ? new Set(selectedTableIds) : null;
+
   const candidates: PerformanceCandidateColumn[] = [];
 
   for (let ti = 0; ti < tables.length; ti++) {
     const table = tables[ti];
+    if (selectedSet && !selectedSet.has(table._id)) continue;
     if (onProgress) {
       onProgress(`${table.name} (table ${ti + 1}/${tables.length})...`);
       await tick();
@@ -1268,6 +1280,7 @@ export async function scanCandidateColumns(
             isMultiValue,
             isPrimaryColumn,
             replacementType,
+            dependsOnLinkColumnName: dependsOnCol.name,
           });
         }
       }
@@ -1378,11 +1391,14 @@ function computeLinkFormulaSignature(c: PerformanceCandidateColumn): string | nu
  */
 export async function measurePerColumnCost(
   value: any,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  selectedTableIds?: string[] | null
 ): Promise<Map<string, number>> {
   const Views = dtableStoreModule.Views;
   const result = new Map<string, number>();
   const tables: any[] = value.tables || [];
+  const selectedSet =
+    selectedTableIds && selectedTableIds.length > 0 ? new Set(selectedTableIds) : null;
 
   const median = (arr: number[]) => {
     const s = [...arr].sort((a, b) => a - b);
@@ -1391,6 +1407,7 @@ export async function measurePerColumnCost(
 
   for (let ti = 0; ti < tables.length; ti++) {
     const t = tables[ti];
+    if (selectedSet && !selectedSet.has(t._id)) continue;
     const rows: any[] = t.rows || [];
     if (rows.length === 0) continue;
     const formulaCols = (t.columns || []).filter(
@@ -2301,7 +2318,12 @@ export async function applyRemediationsToBase(
 
 export async function runPerformanceAudit(
   onProgress?: (msg: string) => void,
-  rowArchivalThresholdDays: number = 730
+  rowArchivalThresholdDays: number = 730,
+  // Subset of table IDs to audit. Undefined / null / empty = audit all tables.
+  // When provided, only the listed tables produce candidates, view weights, or
+  // archival output. The cross-table link scan inside archival still walks all
+  // tables (a non-selected table can reference a selected one).
+  selectedTableIds?: string[] | null
 ): Promise<PerformanceAuditResult> {
   const TOTAL_STEPS = 4;
   const stepOnProgress = (step: number, label: string) => (msg: string) => {
@@ -2316,7 +2338,7 @@ export async function runPerformanceAudit(
   const step1 = stepOnProgress(1, 'Scanning formulas');
   step1('Inventorying formula columns...');
   await tick();
-  const candidates = await scanCandidateColumns(step1);
+  const candidates = await scanCandidateColumns(step1, selectedTableIds);
 
   // Attach affected-rule references to each candidate so the UI can surface "used by N
   // rule(s)" upfront (before the user commits to a test). One scan, all candidates.
@@ -2340,7 +2362,11 @@ export async function runPerformanceAudit(
   const step2 = stepOnProgress(2, 'Measuring formula cost');
   step2('Timing each formula column...');
   await tick();
-  const costByKey = await measurePerColumnCost(dtableSDK.dtableStore.value, step2);
+  const costByKey = await measurePerColumnCost(
+    dtableSDK.dtableStore.value,
+    step2,
+    selectedTableIds
+  );
   for (const c of candidates) {
     const cost = costByKey.get(`${c.tableId}:${c.columnKey}`);
     if (cost !== undefined) c.measuredCostMs = cost;
@@ -2361,7 +2387,12 @@ export async function runPerformanceAudit(
   const step3 = stepOnProgress(3, 'Computing view weights');
   step3('Counting visible rows per view...');
   await tick();
-  const viewLoads = await countViewRows(dtableSDK.dtableStore.value, step3);
+  const viewLoads = await countViewRows(
+    dtableSDK.dtableStore.value,
+    step3,
+    'Counting view rows',
+    selectedTableIds
+  );
 
   // Theoretical per-view cost from per-column compute × visible rows. Cheap rollup
   // (no extra measurement), deterministic, anchored on the reproducible per-column
@@ -2392,7 +2423,7 @@ export async function runPerformanceAudit(
   const step4 = stepOnProgress(4, 'Finding archivable rows');
   step4('Scanning row staleness and incoming links...');
   await tick();
-  const archival = await measureRowArchival(rowArchivalThresholdDays, step4);
+  const archival = await measureRowArchival(rowArchivalThresholdDays, step4, selectedTableIds);
 
   return {
     candidates,
@@ -2485,10 +2516,16 @@ export function computeCostPerRowTags(
  */
 async function measureRowArchival(
   thresholdDays: number,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  selectedTableIds?: string[] | null
 ): Promise<PerformanceAuditTableArchival[]> {
   const dtableSDK = (window as any).dtableSDK;
   const tables: any[] = dtableSDK.getTables();
+  // Step 1 (incoming-link scan) walks ALL tables — an unselected table can
+  // still reference a selected one, and the safety subset depends on it.
+  // Step 2 only emits archival counts for selected tables.
+  const selectedSet =
+    selectedTableIds && selectedTableIds.length > 0 ? new Set(selectedTableIds) : null;
   const thresholdMs = Date.now() - thresholdDays * 24 * 60 * 60 * 1000;
   const thresholdDateISO = new Date(thresholdMs).toISOString();
 
@@ -2533,6 +2570,7 @@ async function measureRowArchival(
   const out: PerformanceAuditTableArchival[] = [];
   for (let ti = 0; ti < tables.length; ti++) {
     const t = tables[ti];
+    if (selectedSet && !selectedSet.has(t._id)) continue;
     if (onProgress) {
       onProgress(`Scanning rows in ${t.name} (table ${ti + 1}/${tables.length})...`);
       await tick();

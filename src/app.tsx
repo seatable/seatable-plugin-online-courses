@@ -330,12 +330,10 @@ const App: React.FC<IAppProps> = (props) => {
     const activePreset = pluginPresets[activePresetIdx];
     const saved = activePreset?.customSettings?.auditTableDisplay;
     if (saved) return saved;
-    // Default: all tables selected, all columns, first view per table
+    // Default: all tables selected.
     return {
       selectedTables: allTables.map((t) => t._id),
-      selectedViews: Object.fromEntries(allTables.map((t) => [t._id, t.views?.[0]?._id || ''])),
       isAllSelected: true,
-      auditAllCols: true,
     };
   };
 

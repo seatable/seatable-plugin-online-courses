@@ -250,9 +250,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
   const tablesAuditRelevant = (d?: AuditTableDisplayState) =>
     JSON.stringify({
       selectedTables: d?.selectedTables,
-      selectedViews: d?.selectedViews,
       isAllSelected: d?.isAllSelected,
-      auditAllCols: d?.auditAllCols,
     });
   const displayRef = useRef(tablesAuditRelevant(auditTableDisplay));
   useEffect(() => {
@@ -517,6 +515,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 savedAudit={savedPerformanceAudit}
                 onSaveAudit={onSavePerformanceAudit}
                 rowArchivalThresholdDays={auditTableDisplay?.rowArchivalThresholdDays}
+                selectedTableIds={auditTableDisplay?.selectedTables}
                 onResultChange={(r, d) => {
                   setPerfResult(r);
                   setPerfAuditDate(d);

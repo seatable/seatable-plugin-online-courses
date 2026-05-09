@@ -90,7 +90,6 @@ export interface TableAuditResult {
   columnCount: number;
   totalColumnCount: number;
   viewCount: number;
-  selectedViewName?: string;
   lastRowAdded: string | null;
   lastRowModified: string | null;
   columns: ColumnAuditInfo[];
@@ -99,9 +98,7 @@ export interface TableAuditResult {
 
 export interface AuditTableDisplayState {
   selectedTables: string[]; // Array of table IDs to audit
-  selectedViews: Record<string, string>; // Map of table ID -> selected view ID
   isAllSelected: boolean;
-  auditAllCols: boolean; // true = audit all columns regardless of views
   // Row archival threshold in days — rows whose _ctime AND _mtime are older than this
   // are flagged as archival candidates in the Rows section.
   rowArchivalThresholdDays?: number; // default 730 (2 years)
@@ -204,6 +201,11 @@ export interface PerformanceCandidateColumn {
   formulaType?: string; // lookup, rollup, countlinks, findmax, findmin, or formula subtype
   labels: string[]; // problem tags: "nested formula", "large linked table", etc.
   chain: ChainNode[]; // dependency tree for visual display (grouped by table)
+  // For link-formula candidates only: the human-readable name of the link
+  // column this formula traverses (e.g. "Customer" for a lookup that walks
+  // the Customer link). Used by ChainGraph to render the reference edge from
+  // the formula head to the explicit link-column row.
+  dependsOnLinkColumnName?: string;
   rowCount: number;
   isMultiValue?: boolean; // true if any row's value is an array with length >= 2
   isPrimaryColumn?: boolean; // true when this is the first column of its table — SeaTable disallows deletion

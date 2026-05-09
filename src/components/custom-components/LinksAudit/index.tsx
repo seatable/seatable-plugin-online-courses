@@ -277,7 +277,10 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
               </table>
             </div>
 
-            {/* Links section header */}
+            {/* Links section header. The count parenthesis ({N}) was dropped
+              — it summed link columns + link-formula columns, which read like
+              one number but mixed two kinds of items. The collapse stays
+              because there's a sibling "Lookup suggestions" section below. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0' }}>
               <div
                 onClick={() => setSectionOpen(!sectionOpen)}
@@ -295,11 +298,7 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
                   className={`dtable-font ${sectionOpen ? 'dtable-icon-down' : 'dtable-icon-right'}`}
                   style={{ fontSize: 12 }}
                 />
-                {intl
-                  .get('links.links_title', {
-                    count: result.linkColumns.length + result.linkFormulas.length,
-                  })
-                  .d('Links ({count})')}
+                {intl.get('links.links_section_title').d('Links')}
               </div>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span
@@ -322,6 +321,7 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
                     linkFormulas={result.linkFormulas.filter((lf) => lf.tableName === name)}
                     redundantLinks={result.redundantLinks}
                     defaultOpen={allExpanded}
+                    defaultExpandAll={allExpanded}
                     onRefresh={debouncedRefresh}
                   />
                 ))}

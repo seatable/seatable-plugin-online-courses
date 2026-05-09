@@ -10,10 +10,11 @@ import {
 } from '../../../utils/custom-interfaces/AuditTypes';
 import stylesPSettings from '../../../styles/template-styles/PluginSettings.module.scss';
 import FillRateBar from './FillRateBar';
-import PercentBar, { MIN_RELEVANT_PCT } from '../shared/PercentBar';
+import PercentBar from '../shared/PercentBar';
+import ImpactBadge from '../shared/ImpactBadge';
+import { MIN_RELEVANT_PCT } from '../shared/impactBands';
 import { COLUMN_TYPE_ICONS } from '../shared/columnTypeIcons';
 import ContextMenu from '../shared/ContextMenu';
-import ChainGraph from '../shared/ChainGraph';
 import PerfIcon from '../shared/PerfIcon';
 import { deleteColumnDirect, deleteViewDirect } from '../shared/sdkActions';
 import ViewVisibilityDrill from '../shared/ViewVisibilityDrill';
@@ -235,6 +236,13 @@ const TableTab: React.FC<TableTabProps> = ({
   }, [perfResult]);
   const totalViewLoadMs = useMemo(() => {
     return (perfResult?.views || []).reduce((s, v) => s + (v.loadMs || 0), 0);
+  }, [perfResult]);
+  const viewLoadMsByKey = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const v of perfResult?.views || []) {
+      m.set(`${v.tableId}:${v.viewId}`, v.loadMs || 0);
+    }
+    return m;
   }, [perfResult]);
 
   // Archival info for this table — used to show the small file-cabinet hint in the
@@ -845,13 +853,13 @@ const TableTab: React.FC<TableTabProps> = ({
                 <th
                   style={{ padding: '8px 12px', textAlign: 'left', ...sortableThStyle }}
                   title={intl
-                    .get('performance.view_weight_tooltip')
+                    .get('performance.view_loading_tooltip')
                     .d(
-                      'This view\'s share of total view-load time (rowCount × ms) before the remediation.'
+                      'How long this view takes to load relative to the rest. Slow-loading views feel sluggish when a user opens them.'
                     )}
                   onClick={() => toggleViewSort('weight')}>
                   <PerfIcon size={12} style={{ marginRight: 4 }} />
-                  {intl.get('performance.weight').d('Weight')}
+                  {intl.get('performance.loading_header').d('Loading')}
                   {viewSortIndicator('weight')}
                 </th>
               )}
@@ -1004,41 +1012,16 @@ const TableTab: React.FC<TableTabProps> = ({
                         </td>
                       );
                     })()}
-                    {perfResult &&
-                    (() => {
-                      const pct = viewWeightPctByName.get(view.name);
-                      if (pct === undefined || pct < MIN_RELEVANT_PCT) {
-                        return (
-                          <td
-                            style={{
-                              padding: '6px 12px',
-                              textAlign: 'left',
-                              color: '#aaa',
-                              fontSize: 13,
-                              fontStyle: 'italic',
-                            }}>
-                            {intl.get('performance.not_relevant').d('not relevant')}
-                          </td>
-                        );
-                      }
-                      return (
-                        <td style={{ padding: '6px 12px', textAlign: 'left' }}>
-                          <PercentBar pct={pct} />
-                        </td>
-                      );
-                    })()}
+                    {perfResult && (
+                      <td style={{ padding: '6px 12px', textAlign: 'left' }}>
+                        <ImpactBadge
+                          pct={viewWeightPctByName.get(view.name)}
+                          surface="view"
+                        />
+                      </td>
+                    )}
                     <td style={{ padding: '6px 4px', textAlign: 'center' }}>
                       {!isDeleted && (() => {
-                      const stagedViewKey = `${result.tableId}:${view.viewId}`;
-                      const stageActive = !!stagedViews?.has(stagedViewKey);
-                      const weightPct = viewWeightPctByName.get(view.name);
-                      const stageNotRelevant =
-                        weightPct === undefined || weightPct < MIN_RELEVANT_PCT;
-                      const stageLabel = stageActive
-                        ? intl
-                            .get('performance.unstage_delete_view')
-                            .d('Unstage delete view')
-                        : intl.get('performance.stage_delete_view').d('Stage delete view');
                       const directLabel = view.privateFor
                         ? intl
                             .get('performance.delete_private_view_now')
@@ -1046,50 +1029,11 @@ const TableTab: React.FC<TableTabProps> = ({
                         : intl
                             .get('performance.delete_view_now')
                             .d('Delete view now');
-                      // Build the menu in two banks separated by a divider:
-                      //   Stage bank (gauge) — Stage update view, Stage delete view
-                      //   ----- divider -----
-                      //   Direct "now" bank — Update view now, Delete view now
-                      // (Delete view now is appended automatically by ContextMenu via onDelete.)
+                      // Direct-only menu: views are hygiene cleanup, not a
+                      // staged remediation. "Update view now" applies any
+                      // pending column-slider changes to this view; ContextMenu
+                      // appends "Delete view now" automatically via onDelete.
                       const extras: any[] = [];
-                      if (expandable) {
-                        extras.push({
-                          label: intl
-                            .get('performance.stage_update_view')
-                            .d('Stage update view'),
-                          icon: 'dtable-icon-gauge',
-                          color: isDirty ? '#dc3545' : '#999',
-                          disabled: !isDirty,
-                          disabledTooltip: intl
-                            .get('performance.no_unsaved_visibility')
-                            .d('Toggle the column sliders first.'),
-                          onClick: () => stageVisibilityChanges(view.viewId, view.name),
-                        });
-                      }
-                      if (onToggleViewDelete) {
-                        extras.push({
-                          label: stageLabel,
-                          icon: 'dtable-icon-gauge',
-                          color: stageActive ? '#999' : '#dc3545',
-                          disabled: stageNotRelevant && !stageActive,
-                          disabledTooltip: intl
-                            .get('performance.stage_not_relevant_tooltip')
-                            .d(
-                              'Not significant — staging this won\'t measurably improve performance.'
-                            ),
-                          onClick: () =>
-                            onToggleViewDelete({
-                              tableId: result.tableId,
-                              tableName: result.tableName,
-                              viewId: view.viewId,
-                              viewName: view.name,
-                              privateFor: view.privateFor ?? null,
-                            }),
-                        });
-                      }
-                      if (extras.length > 0) {
-                        extras.push({ divider: true, label: '', onClick: () => {} });
-                      }
                       if (expandable) {
                         extras.push({
                           label: intl
@@ -1162,13 +1106,6 @@ const TableTab: React.FC<TableTabProps> = ({
         {intl
           .get('tables.columns_title', { count: result.columnCount })
           .d(`Columns (${result.columnCount})`)}
-        {result.selectedViewName && (
-          <span style={{ fontWeight: 400, fontSize: 13, color: '#888', marginLeft: 8 }}>
-            {intl
-              .get('tables.columns_view', { name: result.selectedViewName })
-              .d(`view: ${result.selectedViewName}`)}
-          </span>
-        )}
       </div>
       {showColumns && (
         <table
@@ -1214,11 +1151,13 @@ const TableTab: React.FC<TableTabProps> = ({
               <th
                 style={{ padding: '8px 12px', textAlign: 'left', ...sortableThStyle }}
                 title={intl
-                  .get('tables.col_compute_hint')
-                  .d('Share of total compute time — from the most recent Performance analysis.')}
+                  .get('tables.col_impact_hint')
+                  .d(
+                    'How much this column weighs on the base — from the most recent Performance analysis.'
+                  )}
                 onClick={() => toggleColSort('cost')}>
                 <PerfIcon size={12} style={{ marginRight: 4 }} />
-                {intl.get('tables.col_compute').d('Compute %')}
+                {intl.get('tables.col_impact').d('Impact')}
                 {sortIndicator('cost')}
               </th>
               <th style={{ padding: '8px 4px' }}></th>
@@ -1339,7 +1278,7 @@ const TableTab: React.FC<TableTabProps> = ({
                     cursor: expandable ? 'pointer' : undefined,
                   }}
                   onClick={expandable ? () => toggleColumnChain(col.name) : undefined}>
-                  <td style={{ padding: '6px 12px' }}>
+                  <td style={{ padding: '6px 12px', verticalAlign: 'top' }}>
                     <div
                       style={{
                         display: 'flex',
@@ -1438,6 +1377,7 @@ const TableTab: React.FC<TableTabProps> = ({
                         costByKey={perfResult.costByKey}
                         visibleRowsByKey={visibleRowsByKey}
                         totalViewLoadMs={totalViewLoadMs}
+                        viewLoadMsByKey={viewLoadMsByKey}
                       />
                     )}
                     {hasLabels && (
@@ -1467,10 +1407,11 @@ const TableTab: React.FC<TableTabProps> = ({
                       fontSize: 12,
                       color: '#888',
                       whiteSpace: 'nowrap',
+                      verticalAlign: 'top',
                     }}>
                     {formatDate(col.lastActivity)}
                   </td>
-                  <td style={{ padding: '6px 12px' }}>
+                  <td style={{ padding: '6px 12px', verticalAlign: 'top' }}>
                     {NO_FILL_RATE_TYPES.has(col.type) ? (
                       col.errorRate != null && col.errorRate > 0 ? (
                         <span style={{ color: '#dc3545', fontSize: 13 }}>
@@ -1487,25 +1428,28 @@ const TableTab: React.FC<TableTabProps> = ({
                       <FillRateBar rate={col.fillRate} />
                     )}
                   </td>
-                  {/* Compute % cell — shows when perf data is available and this column
-                    is a candidate. Otherwise "(not computed)" in muted grey. */}
-                  <td style={{ padding: '6px 12px', textAlign: 'left' }}>
-                    {candidate?.measuredCostMs !== undefined &&
-                    costPct !== undefined &&
-                    costPct >= MIN_RELEVANT_PCT ? (
-                      <span
-                        title={intl
-                          .get('performance.cost_tooltip')
-                          .d('Share of total formula compute time across all formula columns.')}>
-                        <PercentBar pct={costPct} />
-                      </span>
-                    ) : (
-                      <span style={{ color: '#aaa', fontSize: 13, fontStyle: 'italic' }}>
-                        {intl.get('performance.not_relevant').d('not relevant')}
-                      </span>
-                    )}
+                  {/* Compute-impact cell — coloured band for ranking, no
+                    integer percentage. Non-candidate columns (no measured
+                    cost) render the muted "not relevant" pill. */}
+                  <td
+                    style={{
+                      padding: '6px 12px',
+                      textAlign: 'center',
+                      verticalAlign: 'top',
+                    }}>
+                    <span
+                      title={intl
+                        .get('performance.cost_tooltip')
+                        .d(
+                          'How much this column weighs on the base. Higher impact = more time spent computing this column when something is loaded.'
+                        )}>
+                      <ImpactBadge
+                        pct={candidate?.measuredCostMs !== undefined ? costPct : undefined}
+                        surface="column"
+                      />
+                    </span>
                   </td>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                  <td style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}>
                     {!isDeleted &&
                       (() => {
                         // Non-candidate columns: simpler menu (just direct delete).
@@ -1542,20 +1486,6 @@ const TableTab: React.FC<TableTabProps> = ({
                             } else if (onSelectColumnForReplacement) {
                               onSelectColumnForReplacement(tableId, columnKey);
                             }
-                          },
-                          onStageColumnVisibility: (
-                            tableId,
-                            tableName,
-                            columnKey,
-                            columnName
-                          ) => {
-                            if (onStageColumnVisibility)
-                              onStageColumnVisibility(
-                                tableId,
-                                tableName,
-                                columnKey,
-                                columnName
-                              );
                           },
                           onApplyColumnVisibility: (
                             tableId,

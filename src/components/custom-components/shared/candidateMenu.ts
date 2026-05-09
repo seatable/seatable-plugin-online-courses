@@ -14,12 +14,6 @@ interface BuildCandidateMenuExtrasParams {
   // them; Overview filters them out, so passing false there is fine.
   notRelevant?: boolean;
   onToggleAction: (key: string, action: RemediationAction) => void;
-  onStageColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
   onApplyColumnVisibility: (
     tableId: string,
     tableName: string,
@@ -31,11 +25,15 @@ interface BuildCandidateMenuExtrasParams {
 /**
  * Returns the `extraActions[]` for a candidate column's three-dots menu.
  * The primary "Delete column now" entry is set by the caller via
- * ContextMenu's `onDelete` + `label` props; this helper produces the five
- * stage/apply items above the divider.
+ * ContextMenu's `onDelete` + `label` props.
  *
- * Order: Stage views changes / Stage delete column / Stage replace by static
- * data / divider / Apply views changes now.
+ * Order: Stage delete column / Stage replace by static data / divider /
+ * Apply views changes now.
+ *
+ * View visibility changes are direct-only — toggling the per-view sliders
+ * + clicking "Apply views changes now" commits to the base immediately. The
+ * old "Stage views changes" affordance was removed alongside the broader
+ * view-staging redesign (views are hygiene cleanup, not test workflow).
  *
  * Shared between Overview's CandidateRow and TableTab's Columns row when a
  * column is a candidate. Non-candidate columns in TableTab use a simpler
@@ -47,7 +45,6 @@ export function buildCandidateMenuExtras({
   isColumnDirty,
   notRelevant = false,
   onToggleAction,
-  onStageColumnVisibility,
   onApplyColumnVisibility,
 }: BuildCandidateMenuExtrasParams): MenuAction[] {
   const key = `${c.tableId}:${c.columnKey}`;
@@ -100,15 +97,6 @@ export function buildCandidateMenuExtras({
       : undefined;
 
   return [
-    {
-      label: intl.get('performance.stage_views_changes').d('Stage views changes'),
-      icon: 'dtable-icon-gauge',
-      color: isColumnDirty ? '#dc3545' : '#999',
-      disabled: !isColumnDirty,
-      disabledTooltip: noUnsavedTooltip,
-      onClick: () =>
-        onStageColumnVisibility(c.tableId, c.tableName, c.columnKey, c.columnName),
-    },
     {
       label: stageDeleteLabel,
       icon: 'dtable-icon-gauge',

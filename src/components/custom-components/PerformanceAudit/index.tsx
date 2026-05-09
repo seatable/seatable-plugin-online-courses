@@ -51,8 +51,9 @@ import { DEFAULT_ROW_ARCHIVAL_DAYS } from '../../../utils/custom-interfaces/Audi
 import { showToast } from '../shared/showToast';
 import { createSnapshot } from '../shared/createSnapshot';
 import ContextMenu from '../shared/ContextMenu';
-import ChainGraph from '../shared/ChainGraph';
-import PercentBar, { MIN_RELEVANT_PCT } from '../shared/PercentBar';
+import PercentBar from '../shared/PercentBar';
+import ImpactBadge, { DeltaBadge } from '../shared/ImpactBadge';
+import { MIN_RELEVANT_PCT, impactBandFromPct } from '../shared/impactBands';
 import PerfIcon from '../shared/PerfIcon';
 import { deleteColumnDirect, deleteViewDirect } from '../shared/sdkActions';
 import { COLUMN_TYPE_ICONS } from '../shared/columnTypeIcons';
@@ -95,6 +96,12 @@ interface PerformanceAuditProps {
   onSaveAudit?: (data: SavedPerformanceAudit) => void;
   // Row archival threshold in days. Defaults applied at audit-run time if undefined.
   rowArchivalThresholdDays?: number;
+  // Subset of table IDs the host wants audited. Undefined / null / empty
+  // means "audit all tables". When narrowed, the runner skips non-selected
+  // tables in scan / cost / view-rows / archival emission, and a useMemo on
+  // the rendered result filters cached audits by the same set so toggling the
+  // selection between runs gives a consistent view without forcing a rerun.
+  selectedTableIds?: string[] | null;
   // When true, this component is rendered inside another audit (Tables audit's
   // Performance analysis area). Suppresses auto-run on mount and on preset change —
   // the host provides its own Run button. Also swaps the full-height column layout
@@ -218,6 +225,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       savedAudit,
       onSaveAudit,
       rowArchivalThresholdDays,
+      selectedTableIds,
       embedded = false,
       onResultChange,
       onStatusChange,
@@ -340,6 +348,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     const rowArchivalThresholdDaysRef = useRef(rowArchivalThresholdDays);
     rowArchivalThresholdDaysRef.current = rowArchivalThresholdDays;
 
+    // Snapshot of `selectedTableIds` for closures — doAudit and the three
+    // benchmarkInMemory callsites are memoized on `[presetId]`, so a direct
+    // capture would freeze the selection at first render. Read through the
+    // ref to always pick up the host's latest selection.
+    const selectedTableIdsRef = useRef(selectedTableIds);
+    selectedTableIdsRef.current = selectedTableIds;
+
     // Read savedAudit through a ref so the persist callback below (memoized on
     // [presetId]) sees the latest persisted value rather than the one captured
     // at mount. Without this, the auto-persist that fires when doAudit resets
@@ -427,9 +442,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
               // value the user just changed, not the value captured when doAudit
               // was first memoized.
               const thresholdNow = rowArchivalThresholdDaysRef.current ?? DEFAULT_ROW_ARCHIVAL_DAYS;
-              const auditResult = await runPerformanceAudit((msg) => {
-                if (!silent) setProgressMsg(msg);
-              }, thresholdNow);
+              const auditResult = await runPerformanceAudit(
+                (msg) => {
+                  if (!silent) setProgressMsg(msg);
+                },
+                thresholdNow,
+                selectedTableIdsRef.current
+              );
               const now = formatNow();
               setResult(auditResult);
               setAuditDate(now);
@@ -980,7 +999,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             baseValue,
             result.costByKey,
             (msg) => setProgressMsg(msg),
-            beforeLabel
+            beforeLabel,
+            selectedTableIdsRef.current
           );
         }
 
@@ -994,7 +1014,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           mutatedValue,
           result.costByKey,
           (msg) => setProgressMsg(msg),
-          afterLabel
+          afterLabel,
+          selectedTableIdsRef.current
         );
 
         updateTest({
@@ -1030,7 +1051,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           dtableSDK.dtableStore.value,
           result.costByKey,
           (msg) => setProgressMsg(msg),
-          intl.get('performance.benchmark_original').d('Benchmarking original base')
+          intl.get('performance.benchmark_original').d('Benchmarking original base'),
+          selectedTableIdsRef.current
         );
       } catch {
         sharedBefore = undefined;
@@ -1272,6 +1294,17 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       return m;
     }, [result]);
 
+    // Per-view total compute cost (ms) keyed `${tableId}:${viewId}`. Drives the
+    // loading-band classification in CandidateExpansion's drill so each view's
+    // pill matches what the TableTab Views section shows.
+    const viewLoadMsByKey = useMemo(() => {
+      const m = new Map<string, number>();
+      for (const v of result?.views || []) {
+        m.set(`${v.tableId}:${v.viewId}`, v.loadMs || 0);
+      }
+      return m;
+    }, [result]);
+
     // Live SDK value snapshot — used by the per-candidate drill to read the
     // current views' hidden_columns + rule references. Read on every render
     // because the user might toggle visibility outside the plugin while
@@ -1292,14 +1325,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     const hiddenCandidatesCount = result
       ? result.candidates.length - displayedCandidates.length
       : 0;
-    const displayedViews = result
-      ? totalViewLoadMs > 0
-        ? (result.views || []).filter(
-            (v) => (v.loadMs / totalViewLoadMs) * 100 >= OVERVIEW_MIN_SHARE_PCT
-          )
-        : result.views || []
-      : [];
-    const hiddenViewsCount = result ? (result.views?.length ?? 0) - displayedViews.length : 0;
 
     const tableNames = Array.from(new Set(displayedCandidates.map((c) => c.tableName)));
 
@@ -1335,18 +1360,15 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       return [...cs].sort((a, b) => ((a.measuredCostMs ?? 0) - (b.measuredCostMs ?? 0)) * dir);
     };
 
-    // Views-by-size section: same toggle, separate state.
-    const [viewsListMode, setViewsListMode] = useState<'grouped' | 'flat'>('flat');
     // Deleted views — marked visually with strikethrough, removed from real base
     // immediately, but we don't rerun the audit since measuring view sizes is expensive.
+    // Still tracked here because TableTab's per-table tab also surfaces views.
     const [deletedViewKeys, setDeletedViewKeys] = useState<Set<string>>(new Set());
 
-    // Collapsible state for the Views and Columns sections in the Overview. Default to
-    // open so users see everything after the first run; persists across re-renders but
-    // not across audit reruns (each audit-start resets because the result object changes).
-    // Archival has its own umbrella section without a toggle.
+    // Collapsible state for the Columns section in the Overview. Default open
+    // so users see everything after the first run. Archival has its own umbrella
+    // section without a toggle. Views moved to TableTab — no longer shown here.
     const [columnsSectionOpen, setColumnsSectionOpen] = useState(true);
-    const [viewsSectionOpen, setViewsSectionOpen] = useState(true);
 
     const handleDeleteView = (tableName: string, viewName: string, keyStr: string) => {
       try {
@@ -2226,87 +2248,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                 .d('Performance candidates')}
             </div>
 
-            {/* ---- Views by size ---- */}
-            <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 16,
-                  color: '#333',
-                  marginBottom: 8,
-                }}>
-                <i
-                  onClick={() => setViewsSectionOpen(!viewsSectionOpen)}
-                  className={`dtable-font ${viewsSectionOpen ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-                  style={{ fontSize: 12, color: '#666', cursor: 'pointer' }}
-                />
-                <span
-                  style={{ flex: 1, cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => setViewsSectionOpen(!viewsSectionOpen)}>
-                  {intl.get('performance.views_title').d('Views')}
-                </span>
-                {viewsSectionOpen && result.views && result.views.length > 0 && (
-                  <ViewModeToggle
-                    mode={viewsListMode}
-                    onChange={setViewsListMode}
-                    flatLabel={intl.get('performance.view_flat_by_rows').d('Flat by rows')}
-                  />
-                )}
-              </div>
-              {viewsSectionOpen && (
-                <>
-                  <ViewsSection
-                    views={displayedViews}
-                    totalLoadMsOverride={totalViewLoadMs}
-                    archival={result.archival || []}
-                    mode={viewsListMode}
-                    deletedViewKeys={deletedViewKeys}
-                    viewRemediations={viewRemediations}
-                    viewEdits={viewEdits}
-                    onSetViewEdit={(viewId, hidden) =>
-                      setViewEdits((prev) => {
-                        const next = new Map(prev);
-                        next.set(viewId, hidden);
-                        return next;
-                      })
-                    }
-                    hideRemediations={hideRemediations}
-                    liveValue={liveValue}
-                    candidateColumnKeys={
-                      new Set(result.candidates.map((c) => c.columnKey))
-                    }
-                    onApplyVisibility={handleApplyVisibilityChanges}
-                    onStageVisibility={handleStageVisibilityChanges}
-                    onDelete={handleDeleteView}
-                    onToggleStage={(payload) =>
-                      toggleViewRemediation(`${payload.tableId}:${payload.viewId}`, payload)
-                    }
-                  />
-                  {hiddenViewsCount > 0 && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: '#888',
-                        fontStyle: 'italic',
-                        padding: '6px 8px',
-                      }}>
-                      {intl
-                        .get('performance.minor_views_hidden', {
-                          count: hiddenViewsCount,
-                          threshold: OVERVIEW_MIN_SHARE_PCT,
-                        })
-                        .d(
-                          `+${hiddenViewsCount} minor views hidden (each <${OVERVIEW_MIN_SHARE_PCT}% of total view-load weight).`
-                        )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* ---- Performance candidate columns — grouped or flat ---- */}
+            {/* ---- Performance candidate columns — grouped by table or by impact ---- */}
             <div style={{ marginBottom: 24 }}>
               <div
                 style={{
@@ -2328,7 +2270,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                   {intl.get('performance.columns_short_title').d('Columns')}
                 </span>
                 {columnsSectionOpen && result.candidates.length > 0 && (
-                  <ViewModeToggle mode={candidatesViewMode} onChange={setCandidatesViewMode} />
+                  <ViewModeToggle
+                    mode={candidatesViewMode}
+                    onChange={setCandidatesViewMode}
+                    flatLabel={intl
+                      .get('performance.view_banded')
+                      .d('Grouped by impact')}
+                  />
                 )}
               </div>
 
@@ -2353,18 +2301,12 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                       }}>
                       {top5SharePct >= 50
                         ? intl
-                            .get('performance.concentration_high', {
-                              pct: Math.round(top5SharePct),
-                            })
-                            .d(
-                              `Top 5 columns account for ${Math.round(top5SharePct)}% of total compute — a few columns dominate.`
-                            )
+                            .get('performance.concentration_high')
+                            .d('A few columns drive most of the load — focus on those first.')
                         : intl
-                            .get('performance.concentration_low', {
-                              pct: Math.round(top5SharePct),
-                            })
+                            .get('performance.concentration_low')
                             .d(
-                              `Top 5 columns account for only ${Math.round(top5SharePct)}% of total compute — cost is spread broadly.`
+                              'Load is spread across many columns — no silver bullet, broader cleanup needed.'
                             )}
                     </div>
                   )}
@@ -2380,7 +2322,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                       }}>
                       <colgroup>
                         <col />
-                        <col style={{ width: 140 }} />
+                        <col style={{ width: 280 }} />
                         <col style={{ width: 32 }} />
                       </colgroup>
                       <thead>
@@ -2389,14 +2331,19 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                             {intl.get('common.column').d('Column')}
                           </th>
                           <th
-                            style={{ padding: '8px 12px', cursor: 'pointer', userSelect: 'none' }}
+                            style={{
+                              padding: '8px 12px',
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                              textAlign: 'center',
+                            }}
                             title={intl
                               .get('performance.cost_tooltip')
                               .d(
-                                'Share of total formula compute time across all formula columns.'
+                                'How much this column weighs on the base. Higher impact = more time spent computing this column when something is loaded.'
                               )}
                             onClick={toggleCandidatesSort}>
-                            {intl.get('performance.compute_cost').d('Compute cost')}
+                            {intl.get('performance.impact_header').d('Impact')}
                             {sortIndicator(candidatesSortDir !== null, candidatesSortDir ?? 'asc')}
                           </th>
                           <th />
@@ -2422,6 +2369,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 costByKey={result.costByKey}
                                 visibleRowsByKey={visibleRowsByKey}
                                 totalViewLoadMs={totalViewLoadMs}
+                                viewLoadMsByKey={viewLoadMsByKey}
                                 viewEdits={viewEdits}
                                 onSetViewEdit={(viewId, hidden) =>
                                   setViewEdits((prev) => {
@@ -2436,26 +2384,35 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                               />
                             );
                           })
-                        : (
-                          <tbody>
-                            {sortCandidates(displayedCandidates).map((c, i) => (
-                              <CandidateRow
-                                key={`${c.tableId}:${c.columnKey}`}
-                                c={c}
+                        : (['high', 'medium', 'low'] as const).map((band) => {
+                            // Filter candidates whose cost-share lands in this band.
+                            // The runner already orders by cost desc; preserve that
+                            // within each band so the heaviest column always heads
+                            // the High group.
+                            const inBand = displayedCandidates.filter((c) => {
+                              const pct =
+                                c.measuredCostMs !== undefined && totalCostMs > 0
+                                  ? (c.measuredCostMs / totalCostMs) * 100
+                                  : 0;
+                              return impactBandFromPct(pct) === band;
+                            });
+                            if (inBand.length === 0) return null;
+                            return (
+                              <CandidateBandGroup
+                                key={band}
+                                band={band}
+                                candidates={inBand}
                                 remediations={remediations}
                                 onToggleAction={toggleColumnAction}
                                 onDeleteNow={handleDeleteCandidateNow}
                                 deletedCandidateKeys={deletedCandidateKeys}
                                 totalCostMs={totalCostMs}
-                                costPerRowTag={costPerRowTags.get(
-                                  `${c.tableId}:${c.columnKey}`
-                                )}
-                                showTableName
-                                rowIdx={i}
+                                costPerRowTags={costPerRowTags}
                                 liveValue={liveValue}
                                 costByKey={result.costByKey}
                                 visibleRowsByKey={visibleRowsByKey}
                                 totalViewLoadMs={totalViewLoadMs}
+                                viewLoadMsByKey={viewLoadMsByKey}
                                 viewEdits={viewEdits}
                                 onSetViewEdit={(viewId, hidden) =>
                                   setViewEdits((prev) => {
@@ -2468,9 +2425,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 onStageColumnVisibility={handleStageColumnVisibility}
                                 onApplyColumnVisibility={handleApplyColumnVisibility}
                               />
-                            ))}
-                          </tbody>
-                        )}
+                            );
+                          })}
                     </table>
                   )}
 
@@ -2485,10 +2441,9 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                       {intl
                         .get('performance.minor_candidates_hidden', {
                           count: hiddenCandidatesCount,
-                          threshold: OVERVIEW_MIN_SHARE_PCT,
                         })
                         .d(
-                          `+${hiddenCandidatesCount} minor columns hidden (each <${OVERVIEW_MIN_SHARE_PCT}% of total compute).`
+                          `+${hiddenCandidatesCount} negligible-impact column(s) hidden — see the per-table tab to inspect them.`
                         )}
                     </div>
                   )}
@@ -3365,7 +3320,7 @@ const RowsSection: React.FC<{
   onCreateArchivalView?: (a: PerformanceAuditTableArchival) => void;
   onDeleteArchivalRows?: (a: PerformanceAuditTableArchival) => void;
 }> = ({ archival, deletedTableIds, onCreateArchivalView, onDeleteArchivalRows }) => {
-  type SortKey = 'table' | 'rows' | 'candidates' | 'impact';
+  type SortKey = 'table' | 'rows' | 'candidates';
   // Default sort: most archival candidates first. Biggest absolute wins lead.
   const [sortKey, setSortKey] = useState<SortKey | null>('candidates');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -3380,12 +3335,6 @@ const RowsSection: React.FC<{
     }
   };
 
-  // Total base rows — used for the per-row "% of base" PercentBar (display only,
-  // no longer a gate).
-  const totalBaseRows = archival.reduce((s, a) => s + a.totalRows, 0);
-  const baseSharePct = (a: PerformanceAuditTableArchival) =>
-    totalBaseRows > 0 ? (a.candidateCount / totalBaseRows) * 100 : 0;
-
   // Filter: only show tables with enough archival candidates to be worth acting on.
   const significant = archival.filter((a) => a.candidateCount >= ROWS_MIN_CANDIDATES);
   // Tables that *do* have archival candidates but fall below the threshold — surfaced
@@ -3399,8 +3348,7 @@ const RowsSection: React.FC<{
         let cmp = 0;
         if (sortKey === 'table') cmp = a.tableName.localeCompare(b.tableName);
         else if (sortKey === 'rows') cmp = a.totalRows - b.totalRows;
-        else if (sortKey === 'candidates') cmp = a.candidateCount - b.candidateCount;
-        else cmp = baseSharePct(a) - baseSharePct(b);
+        else cmp = a.candidateCount - b.candidateCount;
         return sortDir === 'asc' ? cmp : -cmp;
       });
 
@@ -3428,7 +3376,6 @@ const RowsSection: React.FC<{
           <col />
           <col style={{ width: 100 }} />
           <col style={{ width: 280 }} />
-          <col style={{ width: 130 }} />
           <col style={{ width: 32 }} />
         </colgroup>
         <thead>
@@ -3446,21 +3393,10 @@ const RowsSection: React.FC<{
               {sortIndicator(sortKey === 'rows', sortDir)}
             </th>
             <th
-              style={{ padding: '8px 12px', ...SORTABLE_TH }}
+              style={{ padding: '8px 12px', textAlign: 'center', ...SORTABLE_TH }}
               onClick={() => toggleSort('candidates')}>
               {intl.get('performance.rows_archival_header').d('Archival candidates')}
               {sortIndicator(sortKey === 'candidates', sortDir)}
-            </th>
-            <th
-              style={{ padding: '8px 12px', ...SORTABLE_TH }}
-              onClick={() => toggleSort('impact')}
-              title={intl
-                .get('performance.rows_base_impact_tooltip')
-                .d(
-                  'Share of total base rows this table\'s archival candidates represent. Higher = more performance impact if archived.'
-                )}>
-              {intl.get('performance.rows_base_impact_header').d('Base impact')}
-              {sortIndicator(sortKey === 'impact', sortDir)}
             </th>
             <th />
           </tr>
@@ -3468,7 +3404,6 @@ const RowsSection: React.FC<{
         <tbody>
           {sorted.map((a, i) => {
             const pct = a.totalRows > 0 ? (a.candidateCount / a.totalRows) * 100 : 0;
-            const basePct = baseSharePct(a);
             const isDeleted = deletedTableIds?.has(a.tableId) === true;
           return (
             <tr
@@ -3485,7 +3420,7 @@ const RowsSection: React.FC<{
               </td>
               <td style={{ padding: '6px 12px', color: '#888' }}>{a.totalRows}</td>
               <td
-                style={{ padding: '6px 12px', color: '#555' }}
+                style={{ padding: '6px 12px', color: '#555', textAlign: 'center' }}
                 title={intl
                   .get('performance.rows_archival_tooltip_combined')
                   .d(
@@ -3507,15 +3442,6 @@ const RowsSection: React.FC<{
                       .d(
                         `${a.candidateCount} archival (${Math.round(pct)}%) — ${a.candidateCountNoIncomingLinks} safe`
                       )}
-              </td>
-              <td
-                style={{ padding: '6px 12px' }}
-                title={intl
-                  .get('performance.rows_base_impact_tooltip')
-                  .d(
-                    'Share of total base rows this table\'s archival candidates represent. Higher = more performance impact if archived.'
-                  )}>
-                <PercentBar pct={basePct} />
               </td>
               <td style={{ padding: '6px 4px' }}>
                 <ContextMenu
@@ -3629,6 +3555,7 @@ const CandidateRow: React.FC<{
   costByKey: Map<string, number>;
   visibleRowsByKey: Map<string, number>;
   totalViewLoadMs: number;
+  viewLoadMsByKey: Map<string, number>;
   viewEdits: Map<string, Set<string>>;
   onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
   // Read-only view of staged hides — included in the drill's effective state
@@ -3660,6 +3587,7 @@ const CandidateRow: React.FC<{
   costByKey,
   visibleRowsByKey,
   totalViewLoadMs,
+  viewLoadMsByKey,
   viewEdits,
   onSetViewEdit,
   stagedHides,
@@ -3818,7 +3746,7 @@ const CandidateRow: React.FC<{
         cursor: expandable ? 'pointer' : undefined,
         userSelect: expandable ? 'none' : undefined,
       }}>
-      <td style={{ padding: '6px 12px', wordBreak: 'break-word' }}>
+      <td style={{ padding: '6px 12px', wordBreak: 'break-word', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {expandable ? (
             <i
@@ -3877,6 +3805,7 @@ const CandidateRow: React.FC<{
             costByKey={costByKey}
             visibleRowsByKey={visibleRowsByKey}
             totalViewLoadMs={totalViewLoadMs}
+            viewLoadMsByKey={viewLoadMsByKey}
           />
         )}
 
@@ -3942,22 +3871,18 @@ const CandidateRow: React.FC<{
             </div>
           )}
       </td>
-      <td style={{ padding: '6px 12px' }}>
-        {costPct !== undefined && costPct >= MIN_RELEVANT_PCT ? (
-          <span
-            title={intl
-              .get('performance.cost_tooltip')
-              .d('Share of total formula compute time across all formula columns.')}>
-            <PercentBar pct={costPct} />
-          </span>
-        ) : (
-          <span style={{ color: '#aaa', fontSize: 13, fontStyle: 'italic' }}>
-            {intl.get('performance.not_relevant').d('not relevant')}
-          </span>
-        )}
+      <td style={{ padding: '6px 12px', textAlign: 'center', verticalAlign: 'top' }}>
+        <span
+          title={intl
+            .get('performance.cost_tooltip')
+            .d(
+              'How much this column weighs on the base. Higher impact = more time spent computing this column when something is loaded.'
+            )}>
+          <ImpactBadge pct={costPct} surface="column" />
+        </span>
       </td>
       <td
-        style={{ padding: '6px 4px', textAlign: 'center' }}
+        style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}
         onClick={(e) => e.stopPropagation()}>
         {!isDeletedNow && (() => {
           const extras = buildCandidateMenuExtras({
@@ -3965,7 +3890,6 @@ const CandidateRow: React.FC<{
             remediations,
             isColumnDirty,
             onToggleAction,
-            onStageColumnVisibility,
             onApplyColumnVisibility,
           });
           return (
@@ -4006,6 +3930,7 @@ const CandidateTableGroup: React.FC<{
   costByKey: Map<string, number>;
   visibleRowsByKey: Map<string, number>;
   totalViewLoadMs: number;
+  viewLoadMsByKey: Map<string, number>;
   viewEdits: Map<string, Set<string>>;
   onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
   stagedHides: Map<string, RemediatedColumnHide>;
@@ -4034,6 +3959,7 @@ const CandidateTableGroup: React.FC<{
   costByKey,
   visibleRowsByKey,
   totalViewLoadMs,
+  viewLoadMsByKey,
   viewEdits,
   onSetViewEdit,
   stagedHides,
@@ -4106,6 +4032,149 @@ const CandidateTableGroup: React.FC<{
             costByKey={costByKey}
             visibleRowsByKey={visibleRowsByKey}
             totalViewLoadMs={totalViewLoadMs}
+            viewLoadMsByKey={viewLoadMsByKey}
+            viewEdits={viewEdits}
+            onSetViewEdit={onSetViewEdit}
+            stagedHides={stagedHides}
+            onStageColumnVisibility={onStageColumnVisibility}
+            onApplyColumnVisibility={onApplyColumnVisibility}
+          />
+        ))}
+    </tbody>
+  );
+};
+
+// Group candidates by impact band (high → medium → low). Mirrors
+// CandidateTableGroup's shape (collapsible header + bulk-select-all-for-delete)
+// but the grouping axis is the cost band, not the table — surfaced when the
+// user picks "Grouped by impact" in the candidates toggle. Lets a user stage
+// every High-impact column for deletion in one click.
+const CandidateBandGroup: React.FC<{
+  band: 'high' | 'medium' | 'low';
+  candidates: PerformanceAuditResult['candidates'];
+  remediations: Map<string, RemediationAction>;
+  onToggleAction: (key: string, action: RemediationAction) => void;
+  onDeleteNow: (
+    tableName: string,
+    tableId: string,
+    columnName: string,
+    columnKey: string
+  ) => void;
+  deletedCandidateKeys: Set<string>;
+  totalCostMs: number;
+  costPerRowTags: Map<string, 'structural' | 'volume'>;
+  liveValue: any;
+  costByKey: Map<string, number>;
+  visibleRowsByKey: Map<string, number>;
+  totalViewLoadMs: number;
+  viewLoadMsByKey: Map<string, number>;
+  viewEdits: Map<string, Set<string>>;
+  onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
+  stagedHides: Map<string, RemediatedColumnHide>;
+  onStageColumnVisibility: (
+    tableId: string,
+    tableName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
+  onApplyColumnVisibility: (
+    tableId: string,
+    tableName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
+}> = ({
+  band,
+  candidates,
+  remediations,
+  onToggleAction,
+  onDeleteNow,
+  deletedCandidateKeys,
+  totalCostMs,
+  costPerRowTags,
+  liveValue,
+  costByKey,
+  visibleRowsByKey,
+  totalViewLoadMs,
+  viewLoadMsByKey,
+  viewEdits,
+  onSetViewEdit,
+  stagedHides,
+  onStageColumnVisibility,
+  onApplyColumnVisibility,
+}) => {
+  const [open, setOpen] = useState(true);
+
+  const allKeys = candidates.map((c) => `${c.tableId}:${c.columnKey}`);
+  const allSelected = allKeys.length > 0 && allKeys.every((k) => remediations.has(k));
+
+  const handleSelectAllForDeletion = () => {
+    for (const c of candidates) {
+      if (c.isPrimaryColumn) continue;
+      const key = `${c.tableId}:${c.columnKey}`;
+      if (!remediations.has(key)) onToggleAction(key, 'delete');
+    }
+  };
+
+  const handleUnselectAll = () => {
+    for (const key of allKeys) {
+      const current = remediations.get(key);
+      if (current) onToggleAction(key, current);
+    }
+  };
+
+  return (
+    <tbody>
+      <tr
+        onClick={() => setOpen(!open)}
+        className="asset-audit-group"
+        style={{ cursor: 'pointer', userSelect: 'none' }}>
+        <td colSpan={2} style={{ padding: '6px 12px' }}>
+          <i
+            className={`dtable-font ${open ? 'dtable-icon-down' : 'dtable-icon-right'}`}
+            style={{ fontSize: 10, color: '#666', marginRight: 6 }}
+          />
+          <ImpactBadge band={band} surface="column" />
+          <span style={{ color: '#888', fontSize: 12, marginLeft: 8 }}>
+            ({candidates.length} column{candidates.length !== 1 ? 's' : ''})
+          </span>
+        </td>
+        <td
+          style={{ padding: '6px 4px', textAlign: 'center' }}
+          onClick={(e) => e.stopPropagation()}>
+          <ContextMenu
+            onDelete={allSelected ? handleUnselectAll : handleSelectAllForDeletion}
+            confirmDelete={false}
+            label={
+              allSelected
+                ? intl
+                    .get('performance.unselect_band')
+                    .d('Unselect all columns in this band')
+                : intl
+                    .get('performance.select_band')
+                    .d('Stage all columns in this band for deletion')
+            }
+          />
+        </td>
+      </tr>
+      {open &&
+        candidates.map((c, i) => (
+          <CandidateRow
+            key={`${c.tableId}:${c.columnKey}`}
+            c={c}
+            remediations={remediations}
+            onToggleAction={onToggleAction}
+            onDeleteNow={onDeleteNow}
+            deletedCandidateKeys={deletedCandidateKeys}
+            totalCostMs={totalCostMs}
+            costPerRowTag={costPerRowTags.get(`${c.tableId}:${c.columnKey}`)}
+            showTableName
+            rowIdx={i}
+            liveValue={liveValue}
+            costByKey={costByKey}
+            visibleRowsByKey={visibleRowsByKey}
+            totalViewLoadMs={totalViewLoadMs}
+            viewLoadMsByKey={viewLoadMsByKey}
             viewEdits={viewEdits}
             onSetViewEdit={onSetViewEdit}
             stagedHides={stagedHides}
@@ -4146,18 +4215,7 @@ const DeltaDisplay: React.FC<{ before: BenchmarkTimings; after: BenchmarkTimings
     weightedDiff += aMs - b.ms;
   }
   const pct = weightedBefore > 0 ? (weightedDiff / weightedBefore) * 100 : 0;
-  const improved = pct < 0;
-  const worsened = pct > 0;
-  return (
-    <span
-      style={{
-        color: improved ? '#28a745' : worsened ? '#dc3545' : '#666',
-        fontWeight: 600,
-      }}>
-      {improved ? '' : '+'}
-      {pct.toFixed(1)}%
-    </span>
-  );
+  return <DeltaBadge pct={pct} />;
 };
 
 /**
@@ -4191,11 +4249,11 @@ const TestResultDisplay: React.FC<{
           <div
             style={{ fontWeight: 500, marginBottom: 4 }}
             title={intl
-              .get('performance.delta_tooltip')
+              .get('performance.test_comparison_tooltip')
               .d(
-                'Change in theoretical compute cost per view (Σ per-cell × visible rows). Big views weight more naturally — no extra row-count factor needed.'
+                'Estimated improvement of the modified base compared to the original. Computed across all views, weighted so heavier views count more.'
               )}>
-            {intl.get('performance.delta').d('Delta')}
+            {intl.get('performance.test_comparison').d('Comparison with original base')}
           </div>
           <DeltaDisplay before={before} after={after} />
         </div>
@@ -4297,24 +4355,21 @@ const PerViewDeltaTable: React.FC<{
               {intl.get('performance.rows').d('Rows')}
             </th>
             <th
-            style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}
+            style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'left' }}
             title={intl
-              .get('performance.view_weight_tooltip')
+              .get('performance.view_loading_tooltip')
               .d(
-                'This view\'s share of total view-load time (rowCount × ms) before the remediation.'
+                'How long this view takes to load relative to the rest. Slow-loading views feel sluggish when a user opens them.'
               )}>
-              {intl.get('performance.weight').d('Weight')}
+              {intl.get('performance.loading_header').d('Loading')}
             </th>
-            <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'right' }}>
-              {intl.get('performance.delta').d('Delta')}
+            <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'left' }}>
+              {intl.get('performance.test_comparison_short').d('Comparison')}
             </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => {
-          const improved = r.deltaPct < 0;
-          const worsened = r.deltaPct > 0;
-          return (
+          {rows.map((r, i) => (
             <tr
               key={`${r.tableName}/${r.viewName}/${i}`}
               style={{ borderBottom: '1px solid #eee' }}>
@@ -4325,22 +4380,14 @@ const PerViewDeltaTable: React.FC<{
               <td style={{ padding: '4px 8px', textAlign: 'right', color: '#666' }}>
                 {r.rowCount}
               </td>
-              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#666' }}>
-                {r.weightPct < 0.1 ? '<0.1%' : `${r.weightPct.toFixed(1)}%`}
+              <td style={{ padding: '4px 8px', textAlign: 'left' }}>
+                <ImpactBadge pct={r.weightPct} surface="view" />
               </td>
-              <td
-                style={{
-                  padding: '4px 8px',
-                  textAlign: 'right',
-                  fontWeight: 600,
-                  color: improved ? '#28a745' : worsened ? '#dc3545' : '#666',
-                }}>
-                {improved ? '' : '+'}
-                {r.deltaPct.toFixed(1)}%
+              <td style={{ padding: '4px 8px', textAlign: 'left' }}>
+                <DeltaBadge pct={r.deltaPct} />
               </td>
             </tr>
-          );
-        })}
+          ))}
         </tbody>
       </table>
       {hiddenCount > 0 && (

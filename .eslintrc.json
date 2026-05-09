@@ -44,6 +44,18 @@
 
     "jsx-a11y/anchor-has-content": "off",
     "jsx-a11y/href-no-hash": "off",
-    "@typescript-eslint/no-unused-vars": ["off"]
+    "@typescript-eslint/no-unused-vars": ["off"],
+
+    "no-restricted-globals": [
+      "error",
+      "addEventListener", "blur", "close", "closed", "confirm", "defaultStatus", "defaultstatus",
+      "event", "external", "find", "focus", "frameElement", "frames", "history", "innerHeight",
+      "innerWidth", "length", "location", "locationbar", "menubar", "moveBy", "moveTo",
+      "onblur", "onerror", "onfocus", "onload", "onresize", "onunload", "open", "opener",
+      "opera", "outerHeight", "outerWidth", "pageXOffset", "pageYOffset", "parent", "print",
+      "removeEventListener", "resizeBy", "resizeTo", "screen", "screenLeft", "screenTop",
+      "screenX", "screenY", "scroll", "scrollbars", "scrollBy", "scrollTo", "scrollX", "scrollY",
+      "self", "status", "statusbar", "stop", "toolbar", "top"
+    ]
   }
 }
