@@ -12,8 +12,18 @@ import {
   RemediatedView,
   RemediatedColumnHide,
   AffectedRule,
+  FrozenColumnRecord,
 } from '../custom-interfaces/AuditTypes';
 import { getAuthContext } from './authHelper';
+import { freezeColumnViaIndirection, waitForServerSettled } from './freezeColumn';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DTable: any = require('dtable-sdk').default;
+// Internal dtable-sdk classes we need to bypass DTable.init()'s broken
+// getDTableAccessToken call. See buildSandboxSDK for the why.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DTableWebAPI: any = require('dtable-sdk/dist/dtable-web-api').default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DTableWebProxyAPI: any = require('dtable-sdk/dist/dtable-web-proxy-api').default;
 
 // Module-level access to dtable-store's compute functions. The SDK wires these to its own
 // dtableStore.value; to benchmark remediations we need to call them against a mutated
@@ -895,7 +905,17 @@ function computeReplacementType(
   }
 
   // Fallback: use the base type (from result_type / array_type) when target resolution didn't work.
-  return baseType ? { type: baseType, data: baseData } : undefined;
+  if (baseType) return { type: baseType, data: baseData };
+  // Final fallback for link-formula columns whose leaf shape isn't directly
+  // representable as a plain column type (e.g. chains ending in 'link',
+  // 'collaborator', 'file', etc.). With the indirection mechanism, these can
+  // still be frozen — the snapshot column is long-text holding the serialized
+  // value. The shape detection at apply time will pick the right snapshot
+  // type per actual row data (typed for collapsed-array, long-text for
+  // multi-array). The placeholder `{type: 'long-text'}` here is unused by the
+  // runner (which derives the snapshot type from result_type at freeze time);
+  // it only signals "this column is freezable" to the audit's UI gate.
+  return { type: 'long-text', data: {} };
 }
 
 /**
@@ -1603,9 +1623,25 @@ export async function createSandboxFullCopy(
   if (onProgress) onProgress(`Exporting "${dtableName}" (this may take a moment)...`);
   const blob = await exportBase(accountToken, workspaceId, dtableName, false);
 
-  if (onProgress)
-    onProgress(`Importing sandbox copy (${(blob.size / 1024 / 1024).toFixed(1)} MB)...`);
-  const imported = await importBase(accountToken, workspaceId, blob);
+  const totalMB = (blob.size / 1024 / 1024).toFixed(1);
+  if (onProgress) onProgress(`Importing sandbox copy (0 / ${totalMB} MB)...`);
+  // Throttle progress messages to ~10/s — onprogress can fire many times per
+  // second on a fast connection and React doesn't need every tick.
+  let lastTick = 0;
+  const imported = await importBase(accountToken, workspaceId, blob, (loaded, total) => {
+    if (!onProgress) return;
+    const now = Date.now();
+    const done = loaded >= total;
+    if (!done && now - lastTick < 100) return;
+    lastTick = now;
+    const loadedMB = (loaded / 1024 / 1024).toFixed(1);
+    const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
+    onProgress(
+      done
+        ? `Imported ${totalMB} MB — finalizing on server...`
+        : `Importing sandbox copy (${loadedMB} / ${totalMB} MB, ${pct}%)...`
+    );
+  });
 
   return {
     copyName: imported.name,
@@ -1692,35 +1728,52 @@ export async function exportBase(
  * identifying info. The response's `table` field carries the new base immediately,
  * though asset ingestion may continue in the background keyed by `task_id`. For our
  * sandbox purposes the base is usable right away; we don't poll the task.
+ *
+ * Uses XMLHttpRequest instead of fetch so we can surface upload progress via
+ * `xhr.upload.onprogress` — `fetch()` has no upload-progress event in browsers,
+ * which leaves users staring at a static "Importing sandbox copy..." message
+ * during multi-minute uploads of large bases.
  */
 export async function importBase(
   accountToken: string,
   workspaceId: number,
-  blob: Blob
+  blob: Blob,
+  onUploadProgress?: (loadedBytes: number, totalBytes: number) => void
 ): Promise<{ name: string; uuid: string; workspaceId: number }> {
   const config = (window as any).dtable || {};
   const serverUrl = config.server || '';
   const formData = new FormData();
   formData.append('dtable', blob, 'sandbox.dtable');
-  const resp = await fetch(`${serverUrl}/api/v2.1/workspace/${workspaceId}/import-dtable/`, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      authorization: `Bearer ${accountToken}`,
-    },
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${serverUrl}/api/v2.1/workspace/${workspaceId}/import-dtable/`);
+    xhr.setRequestHeader('accept', 'application/json');
+    xhr.setRequestHeader('authorization', `Bearer ${accountToken}`);
+    if (onUploadProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onUploadProgress(e.loaded, e.total);
+      };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          const table = data.table || data;
+          resolve({
+            name: table.name,
+            uuid: table.uuid,
+            workspaceId: table.workspace_id || workspaceId,
+          });
+        } catch (e: any) {
+          reject(new Error(`Failed to parse import response: ${e?.message || e}`));
+        }
+      } else {
+        reject(new Error(`Failed to import base (${xhr.status}): ${xhr.responseText}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during import upload'));
+    xhr.send(formData);
   });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`Failed to import base (${resp.status}): ${text}`);
-  }
-  const data = await resp.json();
-  const table = data.table || data;
-  return {
-    name: table.name,
-    uuid: table.uuid,
-    workspaceId: table.workspace_id || workspaceId,
-  };
 }
 
 export async function deleteBase(
@@ -1866,6 +1919,155 @@ export async function waitForApiGatewayReady(
   );
 }
 
+/**
+ * Build a dtable-sdk instance bound to a sandbox base (separate from window.dtableSDK).
+ * Used only when the apply batch contains at least one replace-static remediation,
+ * because `modify_column_type` over HTTP 504s on large tables — the SDK's websocket
+ * op channel has no nginx timeout. Other ops keep using HTTP because pure HTTP avoids
+ * the 5-30s `syncWithServer` setup cost this helper incurs.
+ *
+ * Why this assembles the SDK manually instead of calling `sdk.init(config)`:
+ * `init()` unconditionally calls `dtableWebAPI.getDTableAccessToken()`, which hits
+ * `/api/v2.1/dtable/app-access-token/` with `Authorization: Token ${APIToken}` —
+ * (a) 403s when APIToken isn't set, and (b) even if set, returns a token scoped
+ * to the *original* base, not our sandbox. The response then OVERWRITES our
+ * explicit `accessToken` and `dtableUuid` in config. So we replicate init()'s
+ * remaining steps directly: instantiate the web/proxy APIs, build a DTableStore
+ * with our config, wire up the eventBus. `updateDTableAccessToken` (a setInterval
+ * that periodically re-fetches the same broken endpoint) is overridden to a no-op.
+ */
+export async function buildSandboxSDK(
+  copyUuid: string,
+  copyWorkspaceId: number,
+  baseName: string,
+  accessToken: string,
+  onProgress?: (msg: string) => void
+): Promise<any> {
+  const config = (window as any).dtable || {};
+  const sandboxConfig: any = {
+    server: config.server,
+    workspaceID: copyWorkspaceId,
+    dtableName: baseName,
+    accessToken,
+    dtableUuid: copyUuid,
+    lang: config.lang,
+    appName: config.appName || 'sandbox',
+  };
+  if (onProgress) onProgress('Initializing sandbox SDK...');
+  const sdk = new DTable();
+  sdk.dtableWebAPI = new DTableWebAPI(sandboxConfig);
+  sdk.config = sandboxConfig;
+  sdk.dtableWebProxyAPI = new DTableWebProxyAPI(sandboxConfig);
+  sdk.dtableStore = new dtableStoreModule.DTableStore(sandboxConfig);
+  sdk.eventBus = sdk.dtableStore.eventBus;
+  // Token-refresh interval would 403 on every tick (same root cause as init's
+  // broken call). We don't need it: the sandbox-apply flow is short-lived
+  // relative to access-token lifetimes.
+  sdk.updateDTableAccessToken = () => {};
+  if (onProgress) onProgress('Syncing sandbox state...');
+  await sdk.syncWithServer();
+  return sdk;
+}
+
+/**
+ * Poll the api-gateway `/metadata/` until every expected post-condition is met.
+ * SDK ops are queued via websocket and processed server-side asynchronously — the
+ * client doesn't see a completion signal. For fast ops (view updates, deletes)
+ * this gap is sub-second; for `modify_column_type` on a large formula column it
+ * can be many minutes. We poll the metadata until the targeted column types and
+ * column/view existences reflect what we asked for.
+ *
+ * Post-conditions checked (one entry per expected outcome):
+ *   - { kind: 'columnType', tableName, columnKey, expectedType }
+ *   - { kind: 'columnAbsent', tableName, columnKey }
+ *   - { kind: 'viewAbsent', tableName, viewName }
+ *
+ * View-content cleanups (filters/sorts/groupbys/hidden_columns) aren't verified
+ * here — they're fast server-side and equality-checking the full payload is
+ * brittle. If they ever silently drop, surface as a polish task, not a re-arch.
+ */
+export type ApplyPostCondition =
+  | { kind: 'columnType'; tableName: string; columnKey: string; expectedType: string }
+  | { kind: 'columnAbsent'; tableName: string; columnKey: string }
+  | { kind: 'viewAbsent'; tableName: string; viewName: string };
+
+export async function pollMetadataUntilApplied(
+  uuid: string,
+  accessToken: string,
+  conditions: ApplyPostCondition[],
+  onProgress?: (msg: string) => void,
+  maxTotalMs: number = 30 * 60 * 1000
+): Promise<{ done: boolean; unmet: ApplyPostCondition[] }> {
+  if (conditions.length === 0) return { done: true, unmet: [] };
+  const config = (window as any).dtable || {};
+  const serverUrl = config.server || '';
+  const start = Date.now();
+  // Exponential backoff: 1s → 2s → 4s → 8s → 16s → 30s (capped).
+  let delayMs = 1000;
+  while (Date.now() - start < maxTotalMs) {
+    if (onProgress) {
+      onProgress('Waiting for sandbox changes to commit...');
+    }
+    try {
+      // cache: 'no-store' — without it the browser sends If-None-Match on repeat
+      // polls, the server returns 304, resp.ok is false, we never read the body,
+      // and the predicate never matches the new state. (A Cache-Control header
+      // would also work but is blocked by the api-gateway's CORS allowlist.)
+      const resp = await fetch(`${serverUrl}/api-gateway/api/v2/dtables/${uuid}/metadata/`, {
+        method: 'GET',
+        headers: { accept: 'application/json', authorization: `Bearer ${accessToken}` },
+        cache: 'no-store',
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const tables: any[] = data?.metadata?.tables || data?.tables || [];
+        const tableByName: Record<string, any> = {};
+        for (const t of tables) tableByName[t.name] = t;
+        const unmet = conditions.filter((c) => !isConditionMet(c, tableByName));
+        if (unmet.length === 0) return { done: true, unmet: [] };
+      }
+      // Non-200 response — treat as transient and keep polling.
+    } catch {
+      // Network blip — also transient; keep polling.
+    }
+    const wait = delayMs;
+    await new Promise((r) => setTimeout(r, wait));
+    delayMs = Math.min(delayMs * 2, 30000);
+  }
+  // Timed out — return the remaining unmet conditions for the caller to report.
+  try {
+    const resp = await fetch(`${serverUrl}/api-gateway/api/v2/dtables/${uuid}/metadata/`, {
+      method: 'GET',
+      headers: { accept: 'application/json', authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    });
+    const data = resp.ok ? await resp.json() : null;
+    const tables: any[] = data?.metadata?.tables || data?.tables || [];
+    const tableByName: Record<string, any> = {};
+    for (const t of tables) tableByName[t.name] = t;
+    const unmet = conditions.filter((c) => !isConditionMet(c, tableByName));
+    return { done: false, unmet };
+  } catch {
+    return { done: false, unmet: conditions };
+  }
+}
+
+function isConditionMet(c: ApplyPostCondition, tableByName: Record<string, any>): boolean {
+  const tbl = tableByName[c.tableName];
+  if (!tbl) return c.kind === 'columnAbsent' || c.kind === 'viewAbsent';
+  if (c.kind === 'columnType') {
+    const col = (tbl.columns || []).find((x: any) => x.key === c.columnKey);
+    return !!col && col.type === c.expectedType;
+  }
+  if (c.kind === 'columnAbsent') {
+    const col = (tbl.columns || []).find((x: any) => x.key === c.columnKey);
+    return !col;
+  }
+  // viewAbsent
+  const view = (tbl.views || []).find((x: any) => x.name === c.viewName);
+  return !view;
+}
+
 // ---------------------------------------------------------------------------
 // Apply remediations to a base (original or a remote copy).
 //   - Column-level ops (delete, modify type, set data) use SDK for 'original' and
@@ -1881,7 +2083,17 @@ export async function waitForApiGatewayReady(
 
 export type ApplyTarget =
   | { kind: 'original' }
-  | { kind: 'remote'; accessToken: string; dtableUuid: string };
+  | {
+      kind: 'remote';
+      accessToken: string;
+      dtableUuid: string;
+      // Optional sandbox-bound dtable-sdk instance. When present, every op routes
+      // via the SDK's websocket op channel (uniform within the batch). When absent,
+      // every op goes over HTTP (faster end-to-end when no per-row work is needed).
+      // The decision is per-batch and made by the caller — typically based on whether
+      // any remediation is `replace-static` (the one op that 504s on big tables).
+      sandboxSDK?: any;
+    };
 
 async function applyViewCleanupsHttp(
   accessToken: string,
@@ -1918,13 +2130,84 @@ async function applyViewCleanupsHttp(
   }
 }
 
+/**
+ * Apply view cleanups via the SDK op channel — one op per dirty field. Bypasses
+ * `dtableStore.updateFilters/updateSorts/updateGroups/hideColumns` because those
+ * helpers operate on the SDK's *currently active* view (`this.view_id`). We build
+ * the ops directly so we can target arbitrary view_ids in a sandbox SDK that has
+ * a different active view than the original.
+ */
+function applyViewCleanupsViaSDK(
+  sdk: any,
+  updates: {
+    tableId: string;
+    tableName: string;
+    viewId: string;
+    viewName: string;
+    viewPayload: any;
+  }[],
+  onProgress?: (msg: string) => void
+): void {
+  if (updates.length === 0) return;
+  const store = sdk.dtableStore;
+  for (const u of updates) {
+    if (onProgress) {
+      onProgress(`Cleaning up view "${u.viewName}" in ${u.tableName}...`);
+    }
+    const { filters, filter_conjunction, sorts, groupbys, hidden_columns } = u.viewPayload;
+    const dispatch = (op: any) => store.applyLocalOperation(store.createOperation(op));
+    dispatch({
+      type: 'modify_filters',
+      table_id: u.tableId,
+      view_id: u.viewId,
+      filter_conjunction,
+      filters,
+    });
+    dispatch({
+      type: 'modify_sorts',
+      table_id: u.tableId,
+      view_id: u.viewId,
+      sorts,
+    });
+    dispatch({
+      type: 'modify_groupbys',
+      table_id: u.tableId,
+      view_id: u.viewId,
+      groupbys,
+    });
+    dispatch({
+      type: 'modify_hidden_columns',
+      table_id: u.tableId,
+      view_id: u.viewId,
+      hidden_columns,
+    });
+  }
+}
+
 export async function applyRemediationsToBase(
   target: ApplyTarget,
   remediations: RemediatedColumn[],
   onProgress?: (msg: string) => void,
   viewsToDelete?: Array<{ tableName: string; viewName: string }>,
-  remediationHides?: RemediatedColumnHide[]
-): Promise<{ applied: number; failed: number; errors: string[] }> {
+  remediationHides?: RemediatedColumnHide[],
+  // Forwarded into each freeze call — fires when shape detection determines
+  // the column's freeze would change its array result shape to long-text.
+  // Caller (UI) should show a warning modal and return user's decision.
+  confirmMultiArray?: (info: {
+    tableName: string;
+    columnName: string;
+    rowCount: number;
+    arrayType: string | undefined;
+  }) => Promise<boolean>
+): Promise<{
+  applied: number;
+  failed: number;
+  errors: string[];
+  // One entry per replace-static remediation that froze successfully. Caller is
+  // responsible for persisting these to plugin settings for the original-base
+  // apply path (sandbox apply throws them away).
+  frozenColumns: FrozenColumnRecord[];
+}> {
   const dtableSDK = (window as any).dtableSDK;
   const sdkTables: any[] = dtableSDK.getTables();
   const sdkTablesById: Record<string, any> = {};
@@ -1937,6 +2220,22 @@ export async function applyRemediationsToBase(
   const isOriginal = target.kind === 'original';
   const remoteToken = target.kind === 'remote' ? target.accessToken : '';
   const remoteUuid = target.kind === 'remote' ? target.dtableUuid : '';
+  // When a caller passes a sandboxSDK, the sandbox apply routes every op through it
+  // (uniform within the batch — see ApplyTarget docs). Without one, the sandbox
+  // apply uses HTTP for every op (faster end-to-end when no per-row work is needed).
+  // The original-base apply keeps its prior split (SDK for column ops, HTTP for
+  // view ops) — not unifying here because (a) prior behavior is known-good and (b)
+  // SDK-for-views over wallclock-minutes-long flows is unverified.
+  const sandboxSDK = target.kind === 'remote' ? target.sandboxSDK : null;
+  // For SDK-routed COLUMN ops (modify_column_type, deleteColumn, setColumnData):
+  //   - isOriginal → window.dtableSDK (unchanged)
+  //   - sandbox + sandboxSDK → that SDK (new)
+  //   - sandbox without sandboxSDK → HTTP
+  const colOpsSDK = isOriginal ? dtableSDK : sandboxSDK;
+  // For SDK-routed VIEW ops (filters/sorts/groupbys/hidden_columns/deleteView):
+  //   - sandbox + sandboxSDK → that SDK (new)
+  //   - otherwise → HTTP (covers both isOriginal and sandbox-without-sandboxSDK)
+  const useSandboxSDKForViews = !isOriginal && !!sandboxSDK;
   // For original-base operations, resolve auth via the canonical helper (production:
   // window.dtable; dev: explicit token exchange via APIToken). One call; reused for
   // all sub-operations below.
@@ -1944,6 +2243,7 @@ export async function applyRemediationsToBase(
   const serverUrl = originalAuth?.serverUrl || (window as any).dtable?.server || '';
 
   const errors: string[] = [];
+  const frozenColumns: FrozenColumnRecord[] = [];
   let applied = 0;
   let failed = 0;
 
@@ -1958,8 +2258,12 @@ export async function applyRemediationsToBase(
 
   // -------- 2. Build view-cleanup payloads from each affected view
   // One update per (tableName, viewName), merging cleanups across all deletions.
+  // tableId + viewId are carried alongside names so the SDK op-dispatch path can
+  // target the exact view without name lookups (and survives view renames mid-flight).
   const viewUpdates: {
+    tableId: string;
     tableName: string;
+    viewId: string;
     viewName: string;
     viewPayload: any;
   }[] = [];
@@ -1978,7 +2282,9 @@ export async function applyRemediationsToBase(
       const delKeys = deletedKeysByTableId[rule.tableId] || new Set<string>();
       const cleaned = cleanupView(view, delKeys);
       viewUpdates.push({
+        tableId: rule.tableId,
         tableName: rule.tableName,
+        viewId: view._id,
         viewName: rule.viewName || view.name,
         viewPayload: {
           filters: cleaned.filters,
@@ -2053,7 +2359,7 @@ export async function applyRemediationsToBase(
     }
   }
 
-  // -------- 4. Apply view cleanups (HTTP for both kinds)
+  // -------- 4. Apply view cleanups
   // Skip cleanup for views that are about to be deleted entirely — PUT then DELETE
   // wastes a round-trip and can error if the cleanup leaves the view in an invalid state.
   const toDeleteSet = new Set((viewsToDelete || []).map((v) => `${v.tableName}::${v.viewName}`));
@@ -2061,24 +2367,33 @@ export async function applyRemediationsToBase(
     (u) => !toDeleteSet.has(`${u.tableName}::${u.viewName}`)
   );
   if (effectiveViewUpdates.length > 0) {
-    const token = isOriginal ? originalAuth?.accessToken : remoteToken;
-    const uuid = isOriginal ? originalAuth?.dtableUuid : remoteUuid;
-    if (token && uuid) {
+    if (useSandboxSDKForViews) {
       try {
-        await applyViewCleanupsHttp(token, uuid, effectiveViewUpdates, onProgress);
+        applyViewCleanupsViaSDK(sandboxSDK, effectiveViewUpdates, onProgress);
       } catch (e: any) {
         errors.push(`view cleanup: ${e?.message || e}`);
+      }
+    } else {
+      const token = isOriginal ? originalAuth?.accessToken : remoteToken;
+      const uuid = isOriginal ? originalAuth?.dtableUuid : remoteUuid;
+      if (token && uuid) {
+        try {
+          await applyViewCleanupsHttp(token, uuid, effectiveViewUpdates, onProgress);
+        } catch (e: any) {
+          errors.push(`view cleanup: ${e?.message || e}`);
+        }
       }
     }
   }
 
   // -------- 4b. Delete views entirely (user-opt-in for views that become rule-less)
   if (viewsToDelete && viewsToDelete.length > 0) {
-    if (isOriginal) {
+    if (isOriginal || useSandboxSDKForViews) {
+      const sdkForDelete = isOriginal ? dtableSDK : sandboxSDK;
       for (const v of viewsToDelete) {
         if (onProgress) onProgress(`Deleting view "${v.viewName}" in ${v.tableName}...`);
         try {
-          dtableSDK.deleteView(v.tableName, v.viewName);
+          sdkForDelete.deleteView(v.tableName, v.viewName);
         } catch (e: any) {
           errors.push(`deleteView "${v.viewName}": ${e?.message || e}`);
         }
@@ -2116,44 +2431,68 @@ export async function applyRemediationsToBase(
   // staged for that view. Skip views that are about to be deleted entirely
   // (already excluded from cleanup at step 4 via the same toDeleteSet).
   if (remediationHides && remediationHides.length > 0) {
+    type HideUpdate = {
+      tableId: string;
+      tableName: string;
+      viewName: string;
+      viewId: string;
+      columnKeys: Set<string>;
+    };
+    const byViewKey: Record<string, HideUpdate> = {};
+    for (const h of remediationHides) {
+      for (const v of h.views) {
+        const k = `${h.tableName}::${v.viewId}`;
+        if (!byViewKey[k]) {
+          byViewKey[k] = {
+            tableId: h.tableId,
+            tableName: h.tableName,
+            viewName: v.viewName,
+            viewId: v.viewId,
+            columnKeys: new Set<string>(),
+          };
+        }
+        byViewKey[k].columnKeys.add(h.columnKey);
+      }
+    }
+
     const hideToken = isOriginal ? originalAuth?.accessToken : remoteToken;
     const hideUuid = isOriginal ? originalAuth?.dtableUuid : remoteUuid;
-    if (hideToken && hideUuid) {
-      type HideUpdate = {
-        tableName: string;
-        viewName: string;
-        viewId: string;
-        columnKeys: Set<string>;
-      };
-      const byViewKey: Record<string, HideUpdate> = {};
-      for (const h of remediationHides) {
-        for (const v of h.views) {
-          const k = `${h.tableName}::${v.viewId}`;
-          if (!byViewKey[k]) {
-            byViewKey[k] = {
-              tableName: h.tableName,
-              viewName: v.viewName,
-              viewId: v.viewId,
-              columnKeys: new Set<string>(),
-            };
-          }
-          byViewKey[k].columnKeys.add(h.columnKey);
-        }
-      }
+    const canHttpHide = !useSandboxSDKForViews && !!hideToken && !!hideUuid;
 
-      for (const u of Object.values(byViewKey)) {
-        if (toDeleteSet.has(`${u.tableName}::${u.viewName}`)) continue;
-        // Look up the current view to merge with its existing hidden_columns —
-        // the PUT replaces the field, so we must include the prior keys.
-        const tbl = sdkTables.find((t: any) => t.name === u.tableName);
-        const view = (tbl?.views || []).find((vv: any) => vv._id === u.viewId);
-        const currentHidden: string[] = view?.hidden_columns || [];
-        const mergedSet = new Set<string>(currentHidden);
-        u.columnKeys.forEach((k) => mergedSet.add(k));
-        const merged = Array.from(mergedSet);
-        if (onProgress) {
-          onProgress(`Hiding columns in view "${u.viewName}" of ${u.tableName}...`);
+    for (const u of Object.values(byViewKey)) {
+      if (toDeleteSet.has(`${u.tableName}::${u.viewName}`)) continue;
+      // Look up the current view to merge with its existing hidden_columns —
+      // both HTTP PUT and the modify_hidden_columns op replace the field, so we
+      // must include the prior keys. Read from the appropriate SDK to reflect any
+      // hides applied earlier in this same batch (matters when sandboxSDK is used).
+      const lookupSDK = useSandboxSDKForViews ? sandboxSDK : dtableSDK;
+      const lookupTables: any[] = lookupSDK.getTables();
+      const tbl = lookupTables.find((t: any) => t.name === u.tableName);
+      const view = (tbl?.views || []).find((vv: any) => vv._id === u.viewId);
+      const currentHidden: string[] = view?.hidden_columns || [];
+      const mergedSet = new Set<string>(currentHidden);
+      u.columnKeys.forEach((k) => mergedSet.add(k));
+      const merged = Array.from(mergedSet);
+      if (onProgress) {
+        onProgress(`Hiding columns in view "${u.viewName}" of ${u.tableName}...`);
+      }
+      if (useSandboxSDKForViews) {
+        try {
+          const store = sandboxSDK.dtableStore;
+          store.applyLocalOperation(
+            store.createOperation({
+              type: 'modify_hidden_columns',
+              table_id: u.tableId,
+              view_id: u.viewId,
+              hidden_columns: merged,
+            })
+          );
+          applied += u.columnKeys.size;
+        } catch (e: any) {
+          errors.push(`hide in view "${u.viewName}": ${e?.message || e}`);
+          failed += u.columnKeys.size;
         }
+      } else if (canHttpHide) {
         try {
           const resp = await fetch(
             `${serverUrl}/api-gateway/api/v2/dtables/${hideUuid}/views/${encodeURIComponent(u.viewName)}/?table_name=${encodeURIComponent(u.tableName)}`,
@@ -2185,16 +2524,21 @@ export async function applyRemediationsToBase(
     }
   }
 
-  // -------- 5. Apply column-data cleanups (SDK for original; skipped for remote)
-  if (isOriginal && colDataCleanups.length > 0) {
+  // -------- 5. Apply column-data cleanups
+  // Available whenever an SDK is in play (original or sandboxSDK). Skipped when a
+  // sandbox apply is HTTP-only — link-formula/link-row-filter `data` cleanups have
+  // no HTTP equivalent in the current api-gateway surface.
+  const colDataSDK = isOriginal ? dtableSDK : sandboxSDK;
+  if (colDataSDK && colDataCleanups.length > 0) {
+    const colDataTables: any[] = colDataSDK.getTables();
     for (const c of colDataCleanups) {
       if (onProgress) {
         onProgress(`Updating column "${c.columnName}" in ${c.tableName}...`);
       }
       try {
-        const tableIndex = sdkTables.findIndex((t: any) => t._id === c.tableId);
+        const tableIndex = colDataTables.findIndex((t: any) => t._id === c.tableId);
         if (tableIndex >= 0) {
-          dtableSDK.dtableStore.setColumnData(tableIndex, c.columnKey, c.newData);
+          colDataSDK.dtableStore.setColumnData(tableIndex, c.columnKey, c.newData);
         }
       } catch (e: any) {
         errors.push(`setColumnData ${c.columnName}: ${e?.message || e}`);
@@ -2203,76 +2547,102 @@ export async function applyRemediationsToBase(
   }
 
   // -------- 6. Apply the remediations themselves
+  // Column ops route through SDK whenever one is available (original always; sandbox
+  // when caller provided a sandboxSDK). The SDK path uses the websocket op channel,
+  // which has no nginx timeout — critical for modify_column_type on large tables.
+  const colOpsTables: any[] = colOpsSDK ? colOpsSDK.getTables() : [];
+  // Auth context for freeze pipeline calls (and for inter-freeze settle).
+  // Same auth for every remediation in this batch — hoisted from the loop.
+  const freezeAccessToken = isOriginal ? originalAuth?.accessToken || '' : remoteToken;
+  const freezeUuid = isOriginal ? originalAuth?.dtableUuid || '' : remoteUuid;
+  // Tracks whether a freeze just ran, so we settle the backend before the next.
+  // Without the cooldown, sequential freezes stack pressure on dtable-server
+  // (helper columns, batch-written cells, WS commits) and the second one can
+  // 500 mid-pipeline. See waitForServerSettled in freezeColumn.ts.
+  let priorFreezeAttempted = false;
   for (const r of remediations) {
     if (onProgress) {
       onProgress(
         r.action === 'replace-static'
-          ? `Replacing ${r.columnName} in ${r.tableName}...`
+          ? `Freezing ${r.columnName} in ${r.tableName}...`
           : `Deleting ${r.columnName} in ${r.tableName}...`
       );
     }
 
     try {
       if (r.action === 'replace-static') {
+        // Freeze via self-link indirection (link-formula) or formula-expression
+        // swap (plain formula). Both paths preserve the column key and bypass
+        // the 60s nginx wall on modify_column_type — see freezeColumn.ts.
+        // replacementType is no longer used as a target type (the donor type is
+        // auto-derived from result_type); it still gates "audit approved" so
+        // we don't freeze columns the audit flagged as unsafe.
         if (!r.replacementType) {
           failed++;
+          errors.push(`freeze ${r.columnName}: audit did not mark this column safe to replace`);
           continue;
         }
-        if (isOriginal) {
-          const tableIndex = sdkTables.findIndex((t: any) => t.name === r.tableName);
-          if (tableIndex < 0) {
-            failed++;
-            continue;
-          }
-          dtableSDK.dtableStore.modifyColumnType(
-            tableIndex,
-            r.columnKey,
-            r.replacementType.type,
-            r.replacementType.data
-          );
-        } else {
-          const resp = await fetch(
-            `${serverUrl}/api-gateway/api/v2/dtables/${remoteUuid}/columns/`,
-            {
-              method: 'PUT',
-              headers: {
-                'content-type': 'application/json',
-                authorization: `Bearer ${remoteToken}`,
-              },
-              body: JSON.stringify({
-                op_type: 'modify_column_type',
-                table_name: r.tableName,
-                column: r.columnKey,
-                new_column_type: r.replacementType.type,
-                column_data: r.replacementType.data,
-              }),
-            }
-          );
-          if (!resp.ok) {
-            const bodyText = await resp.text().catch(() => '');
-            const msg = `modify_column_type ${r.columnName}: HTTP ${resp.status} ${bodyText}`;
-            // eslint-disable-next-line no-console
-            console.warn('[performance-audit]', msg);
-            failed++;
-            errors.push(msg);
-            continue;
-          }
+        if (!colOpsSDK) {
+          failed++;
+          errors.push(`freeze ${r.columnName}: SDK required for indirection but unavailable for ${target.kind} apply`);
+          continue;
         }
+        // Give the backend room to settle between sequential freezes — see
+        // the comment near priorFreezeAttempted declaration above.
+        if (priorFreezeAttempted) {
+          await waitForServerSettled(serverUrl, freezeUuid, freezeAccessToken, onProgress);
+        }
+        priorFreezeAttempted = true;
+        const result = await freezeColumnViaIndirection({
+          dtableSDK: colOpsSDK,
+          tableName: r.tableName,
+          columnName: r.columnName,
+          accessToken: freezeAccessToken,
+          dtableUuid: freezeUuid,
+          serverUrl,
+          onProgress: onProgress
+            ? (msg: string) => onProgress(`Freezing ${r.columnName}: ${msg}`)
+            : undefined,
+          confirmMultiArray,
+          // Sandbox apply: show the helper columns so the user can inspect
+          // what the freeze creates. Original-base apply: hide as usual.
+          keepHelpersVisible: target.kind === 'remote',
+        });
+        if (!result.ok) {
+          failed++;
+          errors.push(`freeze ${r.columnName}: ${result.error}`);
+          continue;
+        }
+        // Collect for the caller to persist. Caller decides whether to write
+        // to plugin settings (yes for original-base apply, skip for sandbox).
+        const tableId = sdkTableIdByName[r.tableName] || '';
+        frozenColumns.push({
+          tableId,
+          tableName: r.tableName,
+          columnKey: result.lfColumnKey,
+          columnName: r.columnName,
+          originalData: result.originalData,
+          snapshotColumnKey: result.snapshotColumnKey,
+          selfLinkColumnKey: result.selfLinkColumnKey,
+          selfLinkId: result.selfLinkId,
+          shapeMode: result.shapeMode,
+          frozenAt: new Date().toISOString(),
+        });
       } else {
         // delete
-        if (isOriginal) {
-          const tableIndex = sdkTables.findIndex((t: any) => t.name === r.tableName);
+        if (colOpsSDK) {
+          const tableIndex = colOpsTables.findIndex((t: any) => t.name === r.tableName);
           if (tableIndex < 0) {
             failed++;
             continue;
           }
-          const tbl = sdkTables[tableIndex];
+          const tbl = colOpsTables[tableIndex];
           const col = (tbl.columns || []).find((c: any) => c.key === r.columnKey);
           if (!col) {
             failed++;
             continue;
           }
-          dtableSDK.dtableStore.deleteColumn(tableIndex, col.key, col);
+          colOpsSDK.dtableStore.deleteColumn(tableIndex, col.key, col);
         } else {
           const resp = await fetch(
             `${serverUrl}/api-gateway/api/v2/dtables/${remoteUuid}/columns/`,
@@ -2307,7 +2677,7 @@ export async function applyRemediationsToBase(
     }
   }
 
-  return { applied, failed, errors };
+  return { applied, failed, errors, frozenColumns };
 }
 
 // ---------------------------------------------------------------------------

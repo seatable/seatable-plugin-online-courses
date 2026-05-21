@@ -27,7 +27,16 @@ import {
   PerformanceTest,
   PerformanceTestSandbox,
   AffectedRule,
+  TableAuditResult,
+  FrozenColumnRecord,
 } from '../../../utils/custom-interfaces/AuditTypes';
+import { PLUGIN_NAME } from '../../../utils/template-constants';
+import {
+  unfreezeColumnViaIndirection,
+  freezeColumnViaIndirection,
+} from '../../../utils/custom-utils/freezeColumn';
+import { getAuthContext } from '../../../utils/custom-utils/authHelper';
+import { formatNow, formatTimestamp } from '../../../utils/custom-utils/formatters';
 import {
   runPerformanceAudit,
   benchmarkInMemory,
@@ -40,6 +49,9 @@ import {
   createSandboxCopy,
   getSandboxToken,
   waitForApiGatewayReady,
+  buildSandboxSDK,
+  pollMetadataUntilApplied,
+  ApplyPostCondition,
   renameBase,
   deleteBase,
   createSandboxFullCopy,
@@ -47,6 +59,14 @@ import {
   findNowRulelessViews,
   computeCostPerRowTags,
 } from '../../../utils/custom-utils/performanceAuditRunner';
+// Side-effect imports: expose window.__perfAuditTest{1,1b,2,3,4,7} for
+// console-driven diagnostics. See the respective files.
+import '../../../utils/custom-utils/performanceAuditTest1';
+import '../../../utils/custom-utils/performanceAuditTest1b';
+import '../../../utils/custom-utils/performanceAuditTest2';
+import '../../../utils/custom-utils/performanceAuditTest3';
+import '../../../utils/custom-utils/performanceAuditTest4';
+import '../../../utils/custom-utils/performanceAuditTest7';
 import { DEFAULT_ROW_ARCHIVAL_DAYS } from '../../../utils/custom-interfaces/AuditTypes';
 import { showToast } from '../shared/showToast';
 import { createSnapshot } from '../shared/createSnapshot';
@@ -135,6 +155,20 @@ interface PerformanceAuditProps {
   // Mirrors the local per-view visibility edits so per-table tabs (TableTab)
   // can render the slider state + "(unsaved)" mention reactively.
   onViewEditsChange?: (m: Map<string, Set<string>>) => void;
+  // Per-table audit results from the host's tables audit. When provided, the
+  // top-of-overview key figures (Tables / Rows / Columns / Views) are summed
+  // from this instead of the perf audit's own archival data — so they refresh
+  // on a tables-audit rerun, not only on a perf-test rerun.
+  tablesAuditResults?: TableAuditResult[];
+  // When provided, the perf audit awaits this callback BEFORE starting its own
+  // run. Used by the Tables audit host to rerun the tables audit first so the
+  // two surfaces stay in sync (impact badges, candidate lists, view weights all
+  // come from the same snapshot). The callback receives a progress reporter so
+  // tables-audit messages can flow through the perf-audit's single spinner
+  // (instead of triggering a separate spinner that would unmount the embedded
+  // PerformanceAudit mid-chain). Failures in the callback don't block the perf
+  // audit — it proceeds even if the tables audit had a hiccup.
+  onRequestTablesAuditRerun?: (onProgress: (msg: string) => void) => Promise<void>;
 }
 
 // Imperative handle exposed via ref, used by the Tables audit host to trigger an
@@ -202,15 +236,6 @@ export interface PerformanceAuditHandle {
 
 const perfResultCache: Record<string, SavedPerformanceAudit> = {};
 
-function formatNow(): string {
-  const d = new Date();
-  return (
-    d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-    ' ' +
-    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -235,6 +260,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       onStagedViewsChange,
       onStagedHidesChange,
       onViewEditsChange,
+      tablesAuditResults,
+      onRequestTablesAuditRerun,
     },
     ref
   ) => {
@@ -322,6 +349,239 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // deleted via "Delete column now" since the last audit run. Rendered with
     // strikethrough; cleared when a fresh audit completes.
     const [deletedCandidateKeys, setDeletedCandidateKeys] = useState<Set<string>>(new Set());
+
+    // Multi-array warning gate. The freeze function calls confirmMultiArray
+    // when it detects a column will reshape from typed-array to long-text.
+    // We park the resolve handle in state, render a modal that calls it on
+    // Confirm/Cancel. Promise-based pause inside the apply flow — no other
+    // remediations proceed until the user has answered.
+    const [multiArrayModalState, setMultiArrayModalState] = useState<{
+      info: { tableName: string; columnName: string; rowCount: number; arrayType?: string };
+      resolve: (confirmed: boolean) => void;
+    } | null>(null);
+
+    // Frozen-columns state (Phase B). Records persisted in plugin settings —
+    // refreshCounter bumps after unfreeze to force the useMemo re-read.
+    const [frozenRefreshCounter, setFrozenRefreshCounter] = useState(0);
+    const [unfreezingKey, setUnfreezingKey] = useState<string | null>(null);
+    // Rows whose Unfreeze just succeeded but the audit hasn't been rerun yet.
+    // We keep these visible (strikethrough) instead of forcing an auto-rerun —
+    // batching multiple unfreezes into one rerun is much faster on big bases.
+    // Cleared when status transitions from running → done (audit completes).
+    const [pendingUnfrozen, setPendingUnfrozen] = useState<Map<string, FrozenColumnRecord>>(
+      new Map()
+    );
+    // Column full-keys (`${tableId}:${columnKey}`) of columns frozen via the
+    // direct "Freeze column now" action since the last audit completion. Used
+    // only as an "audit is stale" signal — the columns themselves are already
+    // in `frozenColumns`. Cleared when status transitions to done.
+    const [pendingFrozenNow, setPendingFrozenNow] = useState<Set<string>>(new Set());
+    const frozenColumns = useMemo<Record<string, FrozenColumnRecord>>(() => {
+      try {
+        const settings = (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME);
+        return settings?.frozenColumns || {};
+      } catch {
+        return {};
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [frozenRefreshCounter]);
+
+    // Orphans = freeze-mechanism artifacts no longer paired with a healthy
+    // FrozenColumnRecord ↔ live-column relationship. Two patterns:
+    //   • `stale`: settings record points at a column that no longer exists
+    //              (user deleted the frozen column via the SeaTable UI).
+    //   • `stranded`: a `_frozen_*` / `_frozenLink_*` helper column exists in
+    //                 the base but no settings record references it.
+    // Each gets a one-click cleanup; pendingCleanupOrphan stores the row
+    // currently being worked on so we can dim it + serialise the action.
+    const [pendingCleanupOrphan, setPendingCleanupOrphan] = useState<string | null>(null);
+    const [pendingDeletedOrphans, setPendingDeletedOrphans] = useState<Set<string>>(
+      new Set()
+    );
+    type Orphan =
+      | {
+          kind: 'stale';
+          key: string;
+          record: FrozenColumnRecord;
+        }
+      | {
+          kind: 'stranded';
+          key: string;
+          tableId: string;
+          tableName: string;
+          columnKey: string;
+          columnName: string;
+        };
+    const orphans = useMemo<Orphan[]>(() => {
+      const out: Orphan[] = [];
+      try {
+        const tables: any[] = (window as any).dtableSDK?.getTables?.() || [];
+        const tableById: Record<string, any> = {};
+        for (const t of tables) tableById[t._id] = t;
+
+        // Stale settings entries: settings has a record whose column key isn't
+        // present in the base anymore (manual delete bypassing our Unfreeze).
+        for (const [key, record] of Object.entries(frozenColumns)) {
+          if (pendingDeletedOrphans.has(`stale:${key}`)) continue;
+          const tbl = tableById[record.tableId];
+          if (!tbl) {
+            out.push({ kind: 'stale', key, record });
+            continue;
+          }
+          const col = (tbl.columns || []).find((c: any) => c.key === record.columnKey);
+          if (!col) out.push({ kind: 'stale', key, record });
+        }
+
+        // Stranded helpers: columns whose name marks them as freeze artifacts
+        // but no settings record references their key.
+        const referencedKeys = new Set<string>();
+        for (const record of Object.values(frozenColumns)) {
+          if (record.snapshotColumnKey) {
+            referencedKeys.add(`${record.tableId}:${record.snapshotColumnKey}`);
+          }
+          if (record.selfLinkColumnKey) {
+            referencedKeys.add(`${record.tableId}:${record.selfLinkColumnKey}`);
+          }
+        }
+        for (const tbl of tables) {
+          for (const col of tbl.columns || []) {
+            const name: string = col.name || '';
+            const looksLikeHelper =
+              name.startsWith('_frozen_') || name.startsWith('_frozenLink_');
+            if (!looksLikeHelper) continue;
+            const fullKey = `${tbl._id}:${col.key}`;
+            if (referencedKeys.has(fullKey)) continue;
+            const dedupKey = `stranded:${fullKey}`;
+            if (pendingDeletedOrphans.has(dedupKey)) continue;
+            out.push({
+              kind: 'stranded',
+              key: dedupKey,
+              tableId: tbl._id,
+              tableName: tbl.name,
+              columnKey: col.key,
+              columnName: name,
+            });
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return out;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [frozenColumns, frozenRefreshCounter, pendingDeletedOrphans, result]);
+
+    const handleCleanupOrphan = async (orphan: Orphan) => {
+      if (pendingCleanupOrphan) return;
+      setPendingCleanupOrphan(orphan.key);
+      try {
+        const auth = await getAuthContext();
+        if (!auth) {
+          showToast('Cleanup failed: missing auth context');
+          return;
+        }
+        const { httpDeleteColumn } = await import(
+          '../../../utils/custom-utils/freezeColumn'
+        );
+        if (orphan.kind === 'stale') {
+          // Best-effort delete of the helper columns the stale record references —
+          // they may already be gone, in which case the 404 is just noise.
+          const { record } = orphan;
+          if (record.snapshotColumnKey) {
+            await httpDeleteColumn(
+              auth.serverUrl,
+              auth.dtableUuid,
+              auth.accessToken,
+              record.tableName,
+              record.snapshotColumnKey,
+              90 * 1000
+            );
+          }
+          // Only delete the self-link if no other settings entry shares it.
+          if (record.selfLinkColumnKey) {
+            const otherRefs = Object.entries(frozenColumns).filter(
+              ([k, fc]) =>
+                k !== orphan.key &&
+                fc.tableId === record.tableId &&
+                fc.selfLinkColumnKey === record.selfLinkColumnKey
+            ).length;
+            if (otherRefs === 0) {
+              await httpDeleteColumn(
+                auth.serverUrl,
+                auth.dtableUuid,
+                auth.accessToken,
+                record.tableName,
+                record.selfLinkColumnKey,
+                90 * 1000
+              );
+            }
+          }
+          // Clear the settings entry.
+          try {
+            const current =
+              (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+            const existing: Record<string, FrozenColumnRecord> =
+              current.frozenColumns || {};
+            const updated = { ...existing };
+            delete updated[orphan.key];
+            (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
+              ...current,
+              frozenColumns: updated,
+            });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('[performance-audit] failed to clear stale entry:', e);
+          }
+          showToast(
+            intl
+              .get('performance.orphan_cleaned', { name: orphan.record.columnName })
+              .d(`Cleaned up stale entry for ${orphan.record.columnName}`)
+          );
+        } else {
+          // stranded helper: just delete the column.
+          const res = await httpDeleteColumn(
+            auth.serverUrl,
+            auth.dtableUuid,
+            auth.accessToken,
+            orphan.tableName,
+            orphan.columnKey,
+            90 * 1000
+          );
+          if (!res.ok && res.status !== 404) {
+            showToast(`Cleanup failed: HTTP ${res.status}`);
+            return;
+          }
+          showToast(
+            intl
+              .get('performance.orphan_helper_deleted', { name: orphan.columnName })
+              .d(`Deleted helper column ${orphan.columnName}`)
+          );
+        }
+        setPendingDeletedOrphans((prev) => {
+          const next = new Set(prev);
+          next.add(orphan.key);
+          return next;
+        });
+        setFrozenRefreshCounter((c) => c + 1);
+      } catch (e: any) {
+        showToast(`Cleanup failed: ${e?.message || e}`);
+      } finally {
+        setPendingCleanupOrphan(null);
+      }
+    };
+    // When the audit finishes, drop the pending-unfrozen rows — the rerun has
+    // picked up the unfrozen columns into the live candidate list, so the
+    // strikethrough placeholder is no longer needed.
+    const prevStatusRef = useRef(status);
+    useEffect(() => {
+      if (prevStatusRef.current === 'running' && status === 'done') {
+        setPendingUnfrozen(new Map());
+        setPendingFrozenNow(new Set());
+        // Orphan deletions land in the audit's fresh SDK snapshot — drop the
+        // optimistic "already gone" set so we recompute against live state.
+        setPendingDeletedOrphans(new Set());
+      }
+      prevStatusRef.current = status;
+    }, [status]);
 
     // Refs for persistence access without triggering dep cycles
     const remediationsRef = useRef(remediations);
@@ -428,6 +688,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // Run initial audit (benchmark + detect candidates)
     // -------------------------------------------------------------------------
 
+    // Stable reference so we don't re-create doAudit when the host's callback
+    // identity changes (which it would on every parent render otherwise).
+    const onRequestTablesAuditRerunRef = useRef(onRequestTablesAuditRerun);
+    useEffect(() => {
+      onRequestTablesAuditRerunRef.current = onRequestTablesAuditRerun;
+    }, [onRequestTablesAuditRerun]);
+
     const doAudit = useCallback(
       (silent = false) => {
         if (!silent) {
@@ -438,6 +705,39 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         setTimeout(
           async () => {
             try {
+              // When the host (TablesAudit) provides a tables-audit rerun hook,
+              // run it first so both audits share the same data snapshot — keeps
+              // the perf audit's candidate list, badges, and view weights in
+              // sync with the tables audit. Tables-audit progress messages flow
+              // through this component's setProgressMsg (prefixed for clarity)
+              // so a single spinner stays visible across the whole chain.
+              // Errors don't block the perf flow.
+              if (onRequestTablesAuditRerunRef.current) {
+                if (!silent) {
+                  setProgressMsg(
+                    intl
+                      .get('performance.rerunning_tables_audit_first')
+                      .d('Rerunning tables audit first...')
+                  );
+                }
+                try {
+                  await onRequestTablesAuditRerunRef.current((msg) => {
+                    if (!silent) {
+                      setProgressMsg(
+                        intl
+                          .get('performance.tables_audit_progress', { msg })
+                          .d(`Tables audit: ${msg}`)
+                      );
+                    }
+                  });
+                } catch (e: any) {
+                  // eslint-disable-next-line no-console
+                  console.warn(
+                    '[performance-audit] tables-audit rerun threw; proceeding anyway:',
+                    e
+                  );
+                }
+              }
               // Read threshold via the ref so a rerun-from-settings flow sees the
               // value the user just changed, not the value captured when doAudit
               // was first memoized.
@@ -810,6 +1110,103 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       });
     };
 
+    // Direct one-column freeze. Skips the test/sandbox workflow — goes straight
+    // to freezeColumnViaIndirection against the original base, persists the
+    // record to plugin settings, and bumps the refresh counter so the Currently
+    // frozen section reflects the change immediately. Same audit-staleness
+    // pattern as unfreeze: doesn't auto-rerun, the "rerun needed" link below
+    // the Currently frozen section handles it.
+    const handleFreezeNow = async (
+      tableId: string,
+      tableName: string,
+      columnKey: string,
+      columnName: string
+    ) => {
+      setProgressMsg(`Freezing ${columnName}...`);
+      try {
+        const auth = await getAuthContext();
+        if (!auth) {
+          showToast('Freeze failed: missing auth context');
+          return;
+        }
+        const dtableSDK = (window as any).dtableSDK;
+        const result = await freezeColumnViaIndirection({
+          dtableSDK,
+          tableName,
+          columnName,
+          accessToken: auth.accessToken,
+          dtableUuid: auth.dtableUuid,
+          serverUrl: auth.serverUrl,
+          onProgress: (msg) => setProgressMsg(`Freezing ${columnName}: ${msg}`),
+          confirmMultiArray: (info) =>
+            new Promise<boolean>((resolve) => {
+              setMultiArrayModalState({ info, resolve });
+            }),
+        });
+        if (!result.ok) {
+          showToast(
+            intl
+              .get('performance.freeze_now_failed', { error: result.error || 'unknown' })
+              .d(`Freeze failed: ${result.error || 'unknown'}`)
+          );
+          return;
+        }
+        // Persist to plugin settings.
+        try {
+          const current =
+            (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+          const existing: Record<string, FrozenColumnRecord> =
+            current.frozenColumns || {};
+          const updated = {
+            ...existing,
+            [`${tableId}.${result.lfColumnKey}`]: {
+              tableId,
+              tableName,
+              columnKey: result.lfColumnKey,
+              columnName,
+              originalData: result.originalData,
+              snapshotColumnKey: result.snapshotColumnKey,
+              selfLinkColumnKey: result.selfLinkColumnKey,
+              selfLinkId: result.selfLinkId,
+              shapeMode: result.shapeMode,
+              frozenAt: new Date().toISOString(),
+            },
+          };
+          (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
+            ...current,
+            frozenColumns: updated,
+          });
+          setFrozenRefreshCounter((c) => c + 1);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error('[performance-audit] failed to persist frozen entry:', e);
+        }
+        // Clear any staged remediation for this column (now redundant).
+        const fullKey = `${tableId}:${columnKey}`;
+        setRemediations((prev) => {
+          if (!prev.has(fullKey)) return prev;
+          const next = new Map(prev);
+          next.delete(fullKey);
+          return next;
+        });
+        // Mark audit stale until the user reruns.
+        setPendingFrozenNow((prev) => {
+          const next = new Set(prev);
+          next.add(fullKey);
+          return next;
+        });
+        showToast(
+          intl
+            .get('performance.frozen_now', { name: columnName })
+            .d(`Frozen ${columnName}`)
+        );
+      } catch (e: any) {
+        showToast(`Freeze failed: ${e?.message || e}`);
+      } finally {
+        setProgressMsg('');
+      }
+    };
+
 
     // -------------------------------------------------------------------------
     // Test lifecycle
@@ -821,6 +1218,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       sandbox.status === 'benchmarking' ||
       sandbox.status === 'cleaning' ||
       applyingTestId !== null;
+
 
     // Snapshot the current remediations draft into a new pending Test; reset the draft.
     const handleCreateTestCase = () => {
@@ -1154,13 +1552,99 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         // — without this poll the next PUT/DELETE 404s with "Dtable not found".
         await waitForApiGatewayReady(copyUuid, sandboxToken, (msg) => setProgressMsg(msg));
 
+        // Decide the route per-batch:
+        //   - At least one `replace-static` → build sandbox SDK and route every op
+        //     through it (modify_column_type via HTTP 504s on large tables).
+        //   - Otherwise → pure HTTP (faster end-to-end; skips the 5-30s syncWithServer).
+        const hasReplaceStatic = test.remediations.some((r) => r.action === 'replace-static');
+        let sandboxSDK: any = null;
+        if (hasReplaceStatic) {
+          try {
+            sandboxSDK = await buildSandboxSDK(
+              copyUuid,
+              copyWorkspaceId,
+              finalName,
+              sandboxToken,
+              (msg) => setProgressMsg(msg)
+            );
+          } catch (err: any) {
+            // Per the design decision: fail loudly when SDK init fails — no silent
+            // fallback to HTTP for the replace-static remediations (would 504 anyway).
+            throw new Error(
+              `Sandbox SDK initialization failed: ${err?.message || err}. Replace-static remediations require it.`
+            );
+          }
+        }
+
         const { applied, failed, errors } = await applyRemediationsToBase(
-          { kind: 'remote', accessToken: sandboxToken, dtableUuid: copyUuid },
+          {
+            kind: 'remote',
+            accessToken: sandboxToken,
+            dtableUuid: copyUuid,
+            sandboxSDK,
+          },
           test.remediations,
           (msg) => setProgressMsg(msg),
           viewsToDelete,
-          test.remediationHides
+          test.remediationHides,
+          (info) =>
+            new Promise<boolean>((resolve) => {
+              setMultiArrayModalState({ info, resolve });
+            })
         );
+
+        // When ops went via SDK websocket, the server processes them asynchronously.
+        // Poll metadata until the changes are observable, otherwise the user opens
+        // the sandbox and sees stale state. Only poll for the slow ops — fast ones
+        // (view cleanups, hidden_columns) complete within seconds server-side.
+        //
+        // replace-static is NOT polled here: the new indirection mechanism keeps
+        // the column type unchanged (stays formula / link-formula) and only mutates
+        // data + adds helper columns. Polling /metadata/ for a type transition
+        // would never resolve. The freeze function itself verifies via SQL sample
+        // before returning, so by the time we reach this code the change has
+        // committed; /metadata/ may still serve stale column data for a window
+        // (cache lag known issue), but SQL is ground truth and the user can
+        // hard-refresh the sandbox tab if the UI looks stale.
+        if (sandboxSDK) {
+          const conditions: ApplyPostCondition[] = [];
+          for (const r of test.remediations) {
+            if (r.action === 'delete') {
+              conditions.push({
+                kind: 'columnAbsent',
+                tableName: r.tableName,
+                columnKey: r.columnKey,
+              });
+            }
+          }
+          for (const v of viewsToDelete) {
+            conditions.push({
+              kind: 'viewAbsent',
+              tableName: v.tableName,
+              viewName: v.viewName,
+            });
+          }
+          if (conditions.length > 0) {
+            const { done, unmet } = await pollMetadataUntilApplied(
+              copyUuid,
+              sandboxToken,
+              conditions,
+              (msg) => setProgressMsg(msg)
+            );
+            if (!done) {
+              // eslint-disable-next-line no-console
+              console.warn('[performance-audit] sandbox poll timed out — unmet:', unmet);
+              showToast(
+                intl
+                  .get('performance.sandbox_poll_timeout', { count: unmet.length })
+                  .d(
+                    `${unmet.length} change(s) didn't commit within the polling window. The sandbox may still be processing — refresh it to verify.`
+                  )
+              );
+            }
+          }
+        }
+
         if (failed > 0) {
           // eslint-disable-next-line no-console
           console.warn('[performance-audit] sandbox apply errors:', errors);
@@ -1172,25 +1656,35 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         }
 
         // Record sandbox info on the test itself so the TestBlock can render a link to it.
-        let updated = false;
-        setTests((prev) => {
-          const next = prev.map((t) => {
-            if (t.id !== testId) return t;
-            updated = true;
-            return {
-              ...t,
-              lastSandbox: {
-                name: finalName,
-                workspaceId: copyWorkspaceId,
-                appliedCount: applied,
-                failedCount: failed > 0 ? failed : undefined,
-                createdAt: formatNow(),
-              },
-            };
-          });
-          return next;
-        });
-        if (!updated) {
+        // Check existence synchronously via the ref — a setState updater's side effects
+        // run during React's render phase, so a `let updated = false` flag set inside
+        // the updater would always read false at the synchronous check below.
+        const testStillExists = testsRef.current.some((t) => t.id === testId);
+        if (testStillExists) {
+          setTests((prev) =>
+            prev.map((t) =>
+              t.id === testId
+                ? {
+                    ...t,
+                    lastSandbox: {
+                      name: finalName,
+                      workspaceId: copyWorkspaceId,
+                      appliedCount: applied,
+                      failedCount: failed > 0 ? failed : undefined,
+                      createdAt: formatNow(),
+                    },
+                  }
+                : t
+            )
+          );
+          if (failed === 0) {
+            showToast(
+              intl
+                .get('performance.sandbox_ready', { name: finalName })
+                .d(`Sandbox "${finalName}" ready.`)
+            );
+          }
+        } else {
           // The test was removed from state mid-flight (e.g., audit rerun cleared
           // tests). The sandbox base IS in the user's workspace; surface that fact
           // so they can find it manually.
@@ -1224,16 +1718,50 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       setApplyingTestId(testId);
       setApplyModalTestId(null);
 
-      const { applied, failed, errors } = await applyRemediationsToBase(
+      const { applied, failed, errors, frozenColumns } = await applyRemediationsToBase(
         { kind: 'original' },
         test.remediations,
         (msg) => setProgressMsg(msg),
         viewsToDelete,
-        test.remediationHides
+        test.remediationHides,
+        (info) =>
+          new Promise<boolean>((resolve) => {
+            setMultiArrayModalState({ info, resolve });
+          })
       );
       if (failed > 0) {
         // eslint-disable-next-line no-console
         console.warn('[performance-audit] apply-to-original errors:', errors);
+      }
+
+      // Persist freeze records so Unfreeze can restore the original formula
+      // later (survives page reload + cross-session). Sandbox path skips this —
+      // the sandbox is discarded so its frozen state doesn't need persistence.
+      if (frozenColumns.length > 0) {
+        try {
+          const current =
+            (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+          const existing: Record<string, FrozenColumnRecord> =
+            current.frozenColumns || {};
+          const updated = { ...existing };
+          for (const fc of frozenColumns) {
+            updated[`${fc.tableId}.${fc.columnKey}`] = fc;
+          }
+          (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
+            ...current,
+            frozenColumns: updated,
+          });
+          // Bump so the useMemo re-reads — the "Currently frozen" section
+          // is otherwise stale until the next render that happens to recompute.
+          setFrozenRefreshCounter((c) => c + 1);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error(
+            '[performance-audit] failed to persist frozenColumns — unfreeze will need manual recovery via the original formula in console:',
+            err,
+            frozenColumns
+          );
+        }
       }
 
       // Wipe all tests — base structure changed, old tests are stale
@@ -1257,6 +1785,101 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       }
 
       doAudit();
+    };
+
+    // -------------------------------------------------------------------------
+    // Unfreeze a previously-frozen column (Phase B). Restores original formula
+    // via applyLocalOperation, refcounts shared self-link before deleting, and
+    // clears the plugin-settings entry. Refresh counter bumps so the UI reflects
+    // the change.
+    // -------------------------------------------------------------------------
+    const handleUnfreeze = async (key: string) => {
+      const record = frozenColumns[key];
+      if (!record) return;
+      if (unfreezingKey) return; // serialize — one at a time
+      setUnfreezingKey(key);
+      setProgressMsg(`Unfreezing ${record.tableName} › ${record.columnName}...`);
+      try {
+        const auth = await getAuthContext();
+        if (!auth) {
+          showToast('Unfreeze failed: missing auth context');
+          return;
+        }
+        // Refcount: any other frozen records on this same table that share the
+        // self-link key? If yes, leave the self-link in place; otherwise delete it.
+        const otherUsersOfSelfLink = Object.entries(frozenColumns).filter(
+          ([k, fc]) =>
+            k !== key &&
+            !!record.selfLinkColumnKey &&
+            fc.tableId === record.tableId &&
+            fc.selfLinkColumnKey === record.selfLinkColumnKey
+        ).length;
+        const deleteSelfLink =
+          !!record.selfLinkColumnKey && otherUsersOfSelfLink === 0;
+
+        const result = await unfreezeColumnViaIndirection({
+          dtableSDK: (window as any).dtableSDK,
+          tableName: record.tableName,
+          columnKey: record.columnKey,
+          originalData: record.originalData,
+          snapshotColumnKey: record.snapshotColumnKey,
+          selfLinkColumnKey: record.selfLinkColumnKey,
+          deleteSelfLink,
+          accessToken: auth.accessToken,
+          dtableUuid: auth.dtableUuid,
+          serverUrl: auth.serverUrl,
+          onProgress: (msg) => setProgressMsg(msg),
+        });
+
+        // Clear the settings entry whenever the column itself was restored —
+        // helper-column cleanup failures are warnings, not blockers.
+        let restoredOk = false;
+        if (result.ok || result.restored) {
+          try {
+            const current =
+              (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+            const existing: Record<string, FrozenColumnRecord> =
+              current.frozenColumns || {};
+            const updated = { ...existing };
+            delete updated[key];
+            (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
+              ...current,
+              frozenColumns: updated,
+            });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('[performance-audit] failed to clear frozen entry:', e);
+          }
+          showToast(
+            intl
+              .get('performance.unfrozen', { name: record.columnName })
+              .d(`Unfrozen ${record.columnName}`)
+          );
+          restoredOk = true;
+        } else {
+          showToast(
+            intl
+              .get('performance.unfreeze_failed', { error: result.error || 'unknown' })
+              .d(`Unfreeze failed: ${result.error || 'unknown'}`)
+          );
+        }
+        // Keep the row visible (strikethrough) until the user runs a rerun.
+        // Batching multiple unfreezes into one audit pass is much faster than
+        // auto-rerunning after each one on big bases.
+        if (restoredOk) {
+          setPendingUnfrozen((prev) => {
+            const next = new Map(prev);
+            next.set(key, record);
+            return next;
+          });
+        }
+      } catch (e: any) {
+        showToast(`Unfreeze failed: ${e?.message || e}`);
+      } finally {
+        setUnfreezingKey(null);
+        setProgressMsg('');
+        setFrozenRefreshCounter((c) => c + 1);
+      }
     };
 
     // -------------------------------------------------------------------------
@@ -1368,7 +1991,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // Collapsible state for the Columns section in the Overview. Default open
     // so users see everything after the first run. Archival has its own umbrella
     // section without a toggle. Views moved to TableTab — no longer shown here.
-    const [columnsSectionOpen, setColumnsSectionOpen] = useState(true);
 
     const handleDeleteView = (tableName: string, viewName: string, keyStr: string) => {
       try {
@@ -2104,7 +2726,11 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           .audit-table th { font-weight: normal; }
         `}</style>
 
-        {auditDate && (
+        {/* Standalone mode shows its own "Last audit" line. When embedded inside
+            Tables audit, the host's page header already shows both the structural
+            audit date and the perf-test date with the gauge icon — suppress this
+            one to avoid the confusing duplicate label. */}
+        {auditDate && !embedded && (
           <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
             {intl.get('performance.last_audit', { date: auditDate }).d(`Last audit: ${auditDate}`)}
           </div>
@@ -2134,18 +2760,31 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
 
         {status === 'done' && result && (
           <div style={embedded ? {} : { flex: 1, overflow: 'auto', paddingRight: 16 }}>
-            {/* ---- Base-wide key figures ---- */}
+            {/* ---- Base-wide key figures ----
+                Source of truth, in order of preference:
+                  1. tablesAuditResults (host-provided) — refreshes on tables-audit rerun.
+                  2. result.archival + live SDK — fallback for standalone mode and the
+                     pre-tables-audit case where the host hasn't passed results yet. */}
             {(() => {
-              const totalTables = result.archival?.length ?? 0;
-              const totalRows = (result.archival || []).reduce((s, a) => s + (a.totalRows || 0), 0);
-              const totalViews = result.views?.length ?? 0;
-              // Column count isn't in the result; pulled live from the SDK. Cheap.
-              let totalColumns = 0;
-              try {
-                const sdkTables: any[] = (window as any).dtableSDK?.getTables() || [];
-                totalColumns = sdkTables.reduce((s, t) => s + ((t.columns || []).length || 0), 0);
-              } catch {
-                totalColumns = 0;
+              let totalTables: number;
+              let totalRows: number;
+              let totalColumns: number;
+              let totalViews: number;
+              if (tablesAuditResults && tablesAuditResults.length > 0) {
+                totalTables = tablesAuditResults.length;
+                totalRows = tablesAuditResults.reduce((s, t) => s + (t.rowCount || 0), 0);
+                totalColumns = tablesAuditResults.reduce((s, t) => s + (t.columnCount || 0), 0);
+                totalViews = tablesAuditResults.reduce((s, t) => s + (t.viewCount || 0), 0);
+              } else {
+                totalTables = result.archival?.length ?? 0;
+                totalRows = (result.archival || []).reduce((s, a) => s + (a.totalRows || 0), 0);
+                totalViews = result.views?.length ?? 0;
+                try {
+                  const sdkTables: any[] = (window as any).dtableSDK?.getTables() || [];
+                  totalColumns = sdkTables.reduce((s, t) => s + ((t.columns || []).length || 0), 0);
+                } catch {
+                  totalColumns = 0;
+                }
               }
               return (
                 <div style={{ marginBottom: 16, fontSize: 14, lineHeight: 1.8 }}>
@@ -2227,9 +2866,287 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
               </div>
             )}
 
-            {/* ---- Performance candidates umbrella ----
-                Schema-level changes (view deletions, column replacements) staged
-                through the test-case workflow. */}
+            {/* ---- Currently frozen columns (Phase B) ----
+                Active frozen rows + recently-unfrozen rows shown with
+                strikethrough until the next audit rerun picks them back up. */}
+            {(Object.keys(frozenColumns).length > 0 ||
+              pendingUnfrozen.size > 0 ||
+              orphans.length > 0) && (() => {
+              // Pending unfrozen rows are guaranteed to NOT overlap frozenColumns
+              // (the settings entry is cleared before we add to pendingUnfrozen),
+              // so a flat concat with a per-row `pending` flag is enough.
+              const rows: Array<{ key: string; fc: FrozenColumnRecord; pending: boolean }> = [
+                ...Object.entries(frozenColumns).map(([key, fc]) => ({ key, fc, pending: false })),
+                ...Array.from(pendingUnfrozen.entries()).map(([key, fc]) => ({
+                  key,
+                  fc,
+                  pending: true,
+                })),
+              ];
+              const activeCount = Object.keys(frozenColumns).length;
+              return (
+                <div style={{ marginTop: 16, marginBottom: 24 }}>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      color: '#212529',
+                      marginBottom: 12,
+                      paddingBottom: 6,
+                      borderBottom: '1px solid #dee2e6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}>
+                    <PerfIcon size={16} />
+                    {intl
+                      .get('performance.frozen_section_title', { count: activeCount })
+                      .d(`Currently frozen (${activeCount})`)}
+                  </div>
+                  {rows.length > 0 && (
+                  <table
+                    className="audit-table"
+                    style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <colgroup>
+                      <col />
+                      <col style={{ width: 140 }} />
+                      <col style={{ width: 120 }} />
+                    </colgroup>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                        <th style={{ padding: '8px 12px', color: '#666' }}>
+                          {intl.get('performance.frozen_col_column').d('Column')}
+                        </th>
+                        <th style={{ padding: '8px 12px', color: '#666' }}>
+                          {intl.get('performance.frozen_col_when').d('Frozen at')}
+                        </th>
+                        <th style={{ padding: '8px 12px', color: '#666' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(({ key, fc, pending }, i) => (
+                        <tr
+                          key={key}
+                          className="audit-row"
+                          style={{
+                            backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
+                            borderBottom: '1px solid #eee',
+                          }}>
+                          <td
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: 14,
+                              textDecoration: pending ? 'line-through' : 'none',
+                              color: pending ? '#999' : 'inherit',
+                            }}>
+                            <span style={{ fontWeight: 700 }}>{fc.tableName}</span>
+                            <span style={{ color: '#999' }}> &rsaquo; </span>
+                            {fc.columnName}
+                          </td>
+                          <td
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: 14,
+                              color: pending ? '#bbb' : '#666',
+                              textDecoration: pending ? 'line-through' : 'none',
+                            }}>
+                            {(() => {
+                              try {
+                                return formatTimestamp(new Date(fc.frozenAt));
+                              } catch {
+                                return fc.frozenAt;
+                              }
+                            })()}
+                          </td>
+                          <td style={{ padding: '6px 4px', fontSize: 14, textAlign: 'right' }}>
+                            {pending ? null : (
+                              <button
+                                type="button"
+                                onClick={() => handleUnfreeze(key)}
+                                disabled={!!unfreezingKey}
+                                style={{
+                                  background: 'none',
+                                  border: '1px solid #ced4da',
+                                  borderRadius: 4,
+                                  padding: '4px 10px',
+                                  fontSize: 13,
+                                  color: unfreezingKey === key ? '#999' : '#212529',
+                                  cursor: unfreezingKey ? 'not-allowed' : 'pointer',
+                                }}>
+                                {unfreezingKey === key
+                                  ? intl.get('performance.unfreezing').d('Unfreezing...')
+                                  : intl.get('performance.unfreeze').d('Unfreeze')}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  )}
+                  {(pendingUnfrozen.size > 0 || pendingFrozenNow.size > 0) && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 13,
+                        color: unfreezingKey ? '#999' : '#ff8000',
+                        cursor: unfreezingKey ? 'default' : 'pointer',
+                        userSelect: 'none',
+                      }}
+                      onClick={() => {
+                        if (unfreezingKey) return;
+                        setTests([]);
+                        setSandbox({ status: 'idle' });
+                        doAudit();
+                      }}>
+                      {intl
+                        .get('performance.freeze_audit_stale')
+                        .d(
+                          'Performance analysis is outdated — recent freeze/unfreeze changes haven\'t been measured. Click to rerun now.'
+                        )}
+                    </div>
+                  )}
+                  {/* Orphan freeze helpers — stale settings entries or stranded
+                      helper columns. Rendered as a sibling sub-block within the
+                      Currently frozen umbrella so the related state stays
+                      grouped, but with a distinct title + cleanup affordance. */}
+                  {orphans.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: '#555',
+                          fontWeight: 500,
+                          marginBottom: 6,
+                        }}>
+                        {intl
+                          .get('performance.orphan_helpers_title', {
+                            count: orphans.length,
+                          })
+                          .d(`Orphan freeze helpers (${orphans.length})`)}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: '#888',
+                          marginBottom: 8,
+                          fontStyle: 'italic',
+                        }}>
+                        {intl
+                          .get('performance.orphan_helpers_hint')
+                          .d(
+                            'Freeze-mechanism artifacts whose linked column or settings record is missing. Safe to clean up.'
+                          )}
+                      </div>
+                      <table
+                        className="audit-table"
+                        style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <colgroup>
+                          <col />
+                          <col style={{ width: 200 }} />
+                          <col style={{ width: 120 }} />
+                        </colgroup>
+                        <thead>
+                          <tr
+                            style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                            <th style={{ padding: '8px 12px', color: '#666' }}>
+                              {intl.get('performance.orphan_col_what').d('Orphan')}
+                            </th>
+                            <th style={{ padding: '8px 12px', color: '#666' }}>
+                              {intl.get('performance.orphan_col_reason').d('Reason')}
+                            </th>
+                            <th style={{ padding: '8px 12px', color: '#666' }} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orphans.map((o, i) => {
+                            const isWorking = pendingCleanupOrphan === o.key;
+                            const display =
+                              o.kind === 'stale'
+                                ? {
+                                    tableName: o.record.tableName,
+                                    columnName: o.record.columnName,
+                                    reason: intl
+                                      .get('performance.orphan_reason_stale')
+                                      .d('Frozen column missing — manually deleted?'),
+                                  }
+                                : {
+                                    tableName: o.tableName,
+                                    columnName: o.columnName,
+                                    reason: intl
+                                      .get('performance.orphan_reason_stranded')
+                                      .d('Helper column with no owning frozen entry'),
+                                  };
+                            return (
+                              <tr
+                                key={o.key}
+                                className="audit-row"
+                                style={{
+                                  backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
+                                  borderBottom: '1px solid #eee',
+                                }}>
+                                <td style={{ padding: '6px 12px', fontSize: 14 }}>
+                                  <span style={{ fontWeight: 700 }}>
+                                    {display.tableName}
+                                  </span>
+                                  <span style={{ color: '#999' }}> &rsaquo; </span>
+                                  {display.columnName}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '6px 12px',
+                                    fontSize: 12,
+                                    color: '#666',
+                                    fontStyle: 'italic',
+                                  }}>
+                                  {display.reason}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '6px 4px',
+                                    fontSize: 14,
+                                    textAlign: 'right',
+                                  }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCleanupOrphan(o)}
+                                    disabled={!!pendingCleanupOrphan}
+                                    style={{
+                                      background: 'none',
+                                      border: '1px solid #ced4da',
+                                      borderRadius: 4,
+                                      padding: '4px 10px',
+                                      fontSize: 13,
+                                      color: isWorking ? '#999' : '#212529',
+                                      cursor: pendingCleanupOrphan
+                                        ? 'not-allowed'
+                                        : 'pointer',
+                                    }}>
+                                    {isWorking
+                                      ? intl
+                                          .get('performance.orphan_cleaning_up')
+                                          .d('Cleaning up...')
+                                      : intl
+                                          .get('performance.orphan_cleanup')
+                                          .d('Clean up')}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ---- Performance candidate columns umbrella ----
+                Schema-level remediations (delete / freeze) staged through the
+                test workflow or applied directly via "Freeze column now". The
+                section used to have a subsection labeled "Columns" with its
+                own chevron, but views are no longer surfaced here so the
+                redundant header was dropped. */}
             <div
               style={{
                 fontSize: 18,
@@ -2243,55 +3160,33 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                 gap: 8,
               }}>
               <PerfIcon size={16} />
-              {intl
-                .get('performance.section_title_main')
-                .d('Performance candidates')}
+              <span style={{ flex: 1 }}>
+                {intl
+                  .get('performance.section_title_main')
+                  .d('Performance candidate columns')}
+              </span>
+              {result.candidates.length > 0 && (
+                <ViewModeToggle
+                  mode={candidatesViewMode}
+                  onChange={setCandidatesViewMode}
+                  flatLabel={intl
+                    .get('performance.view_banded')
+                    .d('Grouped by impact')}
+                />
+              )}
             </div>
 
-            {/* ---- Performance candidate columns — grouped by table or by impact ---- */}
             <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 16,
-                  color: '#333',
-                  marginBottom: 8,
-                }}>
-                <i
-                  onClick={() => setColumnsSectionOpen(!columnsSectionOpen)}
-                  className={`dtable-font ${columnsSectionOpen ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-                  style={{ fontSize: 12, color: '#666', cursor: 'pointer' }}
-                />
-                <span
-                  style={{ flex: 1, cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => setColumnsSectionOpen(!columnsSectionOpen)}>
-                  {intl.get('performance.columns_short_title').d('Columns')}
-                </span>
-                {columnsSectionOpen && result.candidates.length > 0 && (
-                  <ViewModeToggle
-                    mode={candidatesViewMode}
-                    onChange={setCandidatesViewMode}
-                    flatLabel={intl
-                      .get('performance.view_banded')
-                      .d('Grouped by impact')}
-                  />
-                )}
-              </div>
-
-              {columnsSectionOpen && (
-                <>
-                  {result.candidates.length === 0 && (
-                    <div style={{ color: '#28a745', fontSize: 13, padding: '4px 0' }}>
-                      {intl
+              {result.candidates.length === 0 && (
+              <div style={{ color: '#28a745', fontSize: 13, padding: '4px 0' }}>
+                {intl
                         .get('performance.no_candidates')
                         .d('No performance candidates detected — base looks clean.')}
-                    </div>
+              </div>
                   )}
 
-                  {top5SharePct !== null && (
-                    <div
+              {top5SharePct !== null && (
+              <div
                       style={{
                         fontSize: 12,
                         color: '#555',
@@ -2299,7 +3194,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                         marginBottom: 8,
                         padding: '4px 0',
                       }}>
-                      {top5SharePct >= 50
+                {top5SharePct >= 50
                         ? intl
                             .get('performance.concentration_high')
                             .d('A few columns drive most of the load — focus on those first.')
@@ -2308,11 +3203,11 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                             .d(
                               'Load is spread across many columns — no silver bullet, broader cleanup needed.'
                             )}
-                    </div>
+              </div>
                   )}
 
-                  {displayedCandidates.length > 0 && (
-                    <table
+              {displayedCandidates.length > 0 && (
+              <table
                       className="audit-table"
                       style={{
                         width: '100%',
@@ -2320,17 +3215,17 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                         borderCollapse: 'collapse',
                         fontSize: 14,
                       }}>
-                      <colgroup>
-                        <col />
-                        <col style={{ width: 280 }} />
-                        <col style={{ width: 32 }} />
-                      </colgroup>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-                          <th style={{ padding: '8px 12px' }}>
-                            {intl.get('common.column').d('Column')}
-                          </th>
-                          <th
+                <colgroup>
+                  <col />
+                  <col style={{ width: 280 }} />
+                  <col style={{ width: 32 }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                    <th style={{ padding: '8px 12px' }}>
+                      {intl.get('common.column').d('Column')}
+                    </th>
+                    <th
                             style={{
                               padding: '8px 12px',
                               cursor: 'pointer',
@@ -2343,13 +3238,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 'How much this column weighs on the base. Higher impact = more time spent computing this column when something is loaded.'
                               )}
                             onClick={toggleCandidatesSort}>
-                            {intl.get('performance.impact_header').d('Impact')}
-                            {sortIndicator(candidatesSortDir !== null, candidatesSortDir ?? 'asc')}
-                          </th>
-                          <th />
-                        </tr>
-                      </thead>
-                      {candidatesViewMode === 'grouped'
+                      {intl.get('performance.impact_header').d('Impact')}
+                      {sortIndicator(candidatesSortDir !== null, candidatesSortDir ?? 'asc')}
+                    </th>
+                    <th />
+                  </tr>
+                </thead>
+                {candidatesViewMode === 'grouped'
                         ? tableNames.map((tName) => {
                             const tableCandidates = sortCandidates(
                               displayedCandidates.filter((c) => c.tableName === tName)
@@ -2363,6 +3258,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 onToggleAction={toggleColumnAction}
                                 onDeleteNow={handleDeleteCandidateNow}
                                 deletedCandidateKeys={deletedCandidateKeys}
+                                frozenNowKeys={pendingFrozenNow}
                                 totalCostMs={totalCostMs}
                                 costPerRowTags={costPerRowTags}
                                 liveValue={liveValue}
@@ -2381,6 +3277,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 stagedHides={hideRemediations}
                                 onStageColumnVisibility={handleStageColumnVisibility}
                                 onApplyColumnVisibility={handleApplyColumnVisibility}
+                                onFreezeNow={handleFreezeNow}
                               />
                             );
                           })
@@ -2406,6 +3303,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 onToggleAction={toggleColumnAction}
                                 onDeleteNow={handleDeleteCandidateNow}
                                 deletedCandidateKeys={deletedCandidateKeys}
+                                frozenNowKeys={pendingFrozenNow}
                                 totalCostMs={totalCostMs}
                                 costPerRowTags={costPerRowTags}
                                 liveValue={liveValue}
@@ -2424,31 +3322,30 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                                 stagedHides={hideRemediations}
                                 onStageColumnVisibility={handleStageColumnVisibility}
                                 onApplyColumnVisibility={handleApplyColumnVisibility}
+                                onFreezeNow={handleFreezeNow}
                               />
                             );
                           })}
-                    </table>
+              </table>
                   )}
 
-                  {hiddenCandidatesCount > 0 && (
-                    <div
+              {hiddenCandidatesCount > 0 && (
+              <div
                       style={{
                         fontSize: 12,
                         color: '#888',
                         fontStyle: 'italic',
                         padding: '6px 8px',
                       }}>
-                      {intl
+                {intl
                         .get('performance.minor_candidates_hidden', {
                           count: hiddenCandidatesCount,
                         })
                         .d(
                           `+${hiddenCandidatesCount} negligible-impact column(s) hidden — see the per-table tab to inspect them.`
                         )}
-                    </div>
+              </div>
                   )}
-                </>
-              )}
             </div>
 
             {/* ---- Create test case ---- */}
@@ -2542,6 +3439,91 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
               </div>
             )}
           </div>
+        )}
+
+        {/* ---- Multi-array freeze confirmation ----
+            Fires from inside an apply flow when a column's freeze would
+            reshape its array result into long-text. Resolve/reject the
+            pending Promise depending on the user's choice. */}
+        {multiArrayModalState && (
+          <ConfirmModal
+            title={intl
+              .get('performance.multi_array_modal_title')
+              .d('Freeze will change column shape')}
+            warning={intl
+              .get('performance.multi_array_modal_warning', {
+                tableName: multiArrayModalState.info.tableName,
+                columnName: multiArrayModalState.info.columnName,
+              })
+              .d(
+                `${multiArrayModalState.info.tableName} › ${multiArrayModalState.info.columnName} currently returns an array of values. Freezing will store the values joined as a comma-separated string in a long-text column.`
+              )}
+            body={
+              <div style={{ fontSize: 13, color: '#555' }}>
+                {intl
+                  .get('performance.multi_array_modal_body')
+                  .d(
+                    'Downstream consumers (forms, automations, scripts, integrations) reading this column will receive a string instead of an array. Anything that calls .length or accesses individual elements will break.'
+                  )}
+                {/* Static "before / after" illustration. Concrete enough to ground
+                    the user's mental model without piping actual row samples
+                    through the callback. Upgrade to live data later if anyone
+                    finds the abstraction unclear. */}
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: '8px 10px',
+                    background: '#f8f9fa',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    color: '#333',
+                  }}>
+                  <span style={{ color: '#888' }}>
+                    {intl.get('performance.multi_array_example_label').d('Example:')}
+                  </span>{' '}
+                  <span style={{ display: 'inline-flex', gap: 4, verticalAlign: 'middle' }}>
+                    {['apple', 'banana', 'cherry'].map((s) => (
+                      <span
+                        key={s}
+                        style={{
+                          padding: '1px 8px',
+                          borderRadius: 10,
+                          background: '#e9ecef',
+                          color: '#495057',
+                          fontSize: 11,
+                        }}>
+                        {s}
+                      </span>
+                    ))}
+                  </span>
+                  <span style={{ color: '#888', margin: '0 6px' }}>→</span>
+                  <span style={{ fontFamily: 'monospace', color: '#212529' }}>
+                    &quot;apple, banana, cherry&quot;
+                  </span>
+                </div>
+                <div style={{ marginTop: 8, color: '#888' }}>
+                  {intl
+                    .get('performance.multi_array_modal_rows', {
+                      count: multiArrayModalState.info.rowCount,
+                      arrayType: multiArrayModalState.info.arrayType || 'value',
+                    })
+                    .d(
+                      `${multiArrayModalState.info.rowCount} rows · element type: ${multiArrayModalState.info.arrayType || 'unknown'}`
+                    )}
+                </div>
+              </div>
+            }
+            confirmLabel={intl.get('performance.multi_array_freeze_anyway').d('Freeze anyway')}
+            confirmColor="#dc3545"
+            onCancel={() => {
+              multiArrayModalState.resolve(false);
+              setMultiArrayModalState(null);
+            }}
+            onConfirm={() => {
+              multiArrayModalState.resolve(true);
+              setMultiArrayModalState(null);
+            }}
+          />
         )}
 
         {/* ---- Apply confirmation modal ---- */}
@@ -3543,6 +4525,11 @@ const CandidateRow: React.FC<{
     columnKey: string
   ) => void;
   deletedCandidateKeys: Set<string>;
+  // Column full-keys frozen via "Freeze column now" since the last audit.
+  // Rendered grayed-out + strikethrough + "frozen" mention — same visual
+  // shorthand as deletedCandidateKeys, but reversible (live in Currently
+  // frozen, can be unfrozen). Cleared on next audit completion.
+  frozenNowKeys: Set<string>;
   totalCostMs: number;
   costPerRowTag?: 'structural' | 'volume';
   showTableName?: boolean;
@@ -3573,12 +4560,19 @@ const CandidateRow: React.FC<{
     columnKey: string,
     columnName: string
   ) => void;
+  onFreezeNow: (
+    tableId: string,
+    tableName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
 }> = ({
   c,
   remediations,
   onToggleAction,
   onDeleteNow,
   deletedCandidateKeys,
+  frozenNowKeys,
   totalCostMs,
   costPerRowTag,
   showTableName,
@@ -3591,6 +4585,7 @@ const CandidateRow: React.FC<{
   viewEdits,
   onSetViewEdit,
   stagedHides,
+  onFreezeNow,
   onStageColumnVisibility,
   onApplyColumnVisibility,
 }) => {
@@ -3602,6 +4597,7 @@ const CandidateRow: React.FC<{
   const action = remediations.get(key);
   const isSelected = !!action;
   const isDeletedNow = deletedCandidateKeys.has(key);
+  const isFrozenNow = frozenNowKeys.has(key);
 
   // The (col, view) pairs currently staged-hidden for this column. Used by
   // the dirty check below to know whether viewEdits' state matches the
@@ -3616,6 +4612,7 @@ const CandidateRow: React.FC<{
   const expandable =
     !isSelected &&
     !isDeletedNow &&
+    !isFrozenNow &&
     hasCandidateExpansionContent(c, liveValue);
 
   // True iff this column has uncommitted visibility edits in any view.
@@ -3639,31 +4636,31 @@ const CandidateRow: React.FC<{
     return false;
   })();
 
-  const canReplace = !!c.replacementType && !c.isMultiValue;
-  const disabledTooltip = c.isMultiValue
-    ? intl
-        .get('performance.replace_disabled_multi')
-        .d('Cannot replace — some rows return multiple values')
-    : !c.replacementType
-      ? intl.get('performance.replace_disabled_type').d('Cannot determine a safe replacement type')
-      : undefined;
+  // Multi-value LFs are no longer hard-blocked: the freeze mechanism handles
+  // multi-array via long-text snapshot, and the apply-time modal warns about
+  // the resulting shape change for downstream consumers.
+  const canReplace = !!c.replacementType;
+  const disabledTooltip = !c.replacementType
+    ? intl.get('performance.replace_disabled_type').d('Cannot freeze this column type')
+    : undefined;
 
   const replaceLabel =
     action === 'replace-static'
-      ? intl.get('performance.unselect_replace').d('Cancel replacement')
-      : intl.get('performance.select_replace').d('Replace by static data');
+      ? intl.get('performance.unselect_replace').d('Unstage freeze column')
+      : intl.get('performance.select_replace').d('Stage freeze column');
   const stageDeleteLabel =
     action === 'delete'
       ? intl.get('performance.unstage_delete_column').d('Unstage delete column')
       : intl.get('performance.stage_delete_column').d('Stage delete column');
 
-  const actionLabel =
-    action === 'delete'
+  // Frozen-now takes precedence over staged-action labels — the freeze has
+  // already happened, so any prior staging is irrelevant.
+  const actionLabel = isFrozenNow
+    ? intl.get('performance.candidate_frozen').d('frozen')
+    : action === 'delete'
       ? intl.get('performance.marked_delete').d('marked for deletion')
       : action === 'replace-static'
-        ? intl
-            .get('performance.marked_replace', { type: c.replacementType?.type || '' })
-            .d('marked for replacement ({type})')
+        ? intl.get('performance.marked_replace').d('marked for freeze')
         : '';
 
   // Share of total formula compute. Drives the dedicated "Compute cost" column
@@ -3765,9 +4762,10 @@ const CandidateRow: React.FC<{
           <i className={`dtable-font ${icon}`} style={{ fontSize: 14, color: '#aaa' }} />
           <span
             style={{
-              textDecoration: action === 'delete' || isDeletedNow ? 'line-through' : 'none',
+              textDecoration:
+                action === 'delete' || isDeletedNow || isFrozenNow ? 'line-through' : 'none',
               fontStyle: action === 'replace-static' ? 'italic' : undefined,
-              color: isSelected || isDeletedNow ? '#777' : undefined,
+              color: isSelected || isDeletedNow || isFrozenNow ? '#777' : undefined,
             }}>
             {c.columnName}
           </span>
@@ -3776,7 +4774,11 @@ const CandidateRow: React.FC<{
             <span
               style={{
                 fontSize: 11,
-                color: action === 'delete' ? '#dc3545' : '#e6a117',
+                color: isFrozenNow
+                  ? '#777'
+                  : action === 'delete'
+                    ? '#dc3545'
+                    : '#e6a117',
                 fontStyle: 'italic',
               }}>
               · {actionLabel}
@@ -3884,13 +4886,14 @@ const CandidateRow: React.FC<{
       <td
         style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}
         onClick={(e) => e.stopPropagation()}>
-        {!isDeletedNow && (() => {
+        {!isDeletedNow && !isFrozenNow && (() => {
           const extras = buildCandidateMenuExtras({
             candidate: c,
             remediations,
             isColumnDirty,
             onToggleAction,
             onApplyColumnVisibility,
+            onFreezeNow,
           });
           return (
             <ContextMenu
@@ -3924,6 +4927,7 @@ const CandidateTableGroup: React.FC<{
     columnKey: string
   ) => void;
   deletedCandidateKeys: Set<string>;
+  frozenNowKeys: Set<string>;
   totalCostMs: number;
   costPerRowTags: Map<string, 'structural' | 'volume'>;
   liveValue: any;
@@ -3946,6 +4950,12 @@ const CandidateTableGroup: React.FC<{
     columnKey: string,
     columnName: string
   ) => void;
+  onFreezeNow: (
+    tableId: string,
+    tableName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
 }> = ({
   tableName,
   candidates,
@@ -3953,6 +4963,7 @@ const CandidateTableGroup: React.FC<{
   onToggleAction,
   onDeleteNow,
   deletedCandidateKeys,
+  frozenNowKeys,
   totalCostMs,
   costPerRowTags,
   liveValue,
@@ -3965,6 +4976,7 @@ const CandidateTableGroup: React.FC<{
   stagedHides,
   onStageColumnVisibility,
   onApplyColumnVisibility,
+  onFreezeNow,
 }) => {
   const [open, setOpen] = useState(true);
 
@@ -4025,6 +5037,7 @@ const CandidateTableGroup: React.FC<{
             onToggleAction={onToggleAction}
             onDeleteNow={onDeleteNow}
             deletedCandidateKeys={deletedCandidateKeys}
+            frozenNowKeys={frozenNowKeys}
             totalCostMs={totalCostMs}
             costPerRowTag={costPerRowTags.get(`${c.tableId}:${c.columnKey}`)}
             rowIdx={i}
@@ -4038,6 +5051,7 @@ const CandidateTableGroup: React.FC<{
             stagedHides={stagedHides}
             onStageColumnVisibility={onStageColumnVisibility}
             onApplyColumnVisibility={onApplyColumnVisibility}
+            onFreezeNow={onFreezeNow}
           />
         ))}
     </tbody>
@@ -4061,6 +5075,7 @@ const CandidateBandGroup: React.FC<{
     columnKey: string
   ) => void;
   deletedCandidateKeys: Set<string>;
+  frozenNowKeys: Set<string>;
   totalCostMs: number;
   costPerRowTags: Map<string, 'structural' | 'volume'>;
   liveValue: any;
@@ -4083,6 +5098,12 @@ const CandidateBandGroup: React.FC<{
     columnKey: string,
     columnName: string
   ) => void;
+  onFreezeNow: (
+    tableId: string,
+    tableName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
 }> = ({
   band,
   candidates,
@@ -4090,6 +5111,7 @@ const CandidateBandGroup: React.FC<{
   onToggleAction,
   onDeleteNow,
   deletedCandidateKeys,
+  frozenNowKeys,
   totalCostMs,
   costPerRowTags,
   liveValue,
@@ -4102,6 +5124,7 @@ const CandidateBandGroup: React.FC<{
   stagedHides,
   onStageColumnVisibility,
   onApplyColumnVisibility,
+  onFreezeNow,
 }) => {
   const [open, setOpen] = useState(true);
 
@@ -4166,6 +5189,7 @@ const CandidateBandGroup: React.FC<{
             onToggleAction={onToggleAction}
             onDeleteNow={onDeleteNow}
             deletedCandidateKeys={deletedCandidateKeys}
+            frozenNowKeys={frozenNowKeys}
             totalCostMs={totalCostMs}
             costPerRowTag={costPerRowTags.get(`${c.tableId}:${c.columnKey}`)}
             showTableName
@@ -4180,6 +5204,7 @@ const CandidateBandGroup: React.FC<{
             stagedHides={stagedHides}
             onStageColumnVisibility={onStageColumnVisibility}
             onApplyColumnVisibility={onApplyColumnVisibility}
+            onFreezeNow={onFreezeNow}
           />
         ))}
     </tbody>
@@ -4205,17 +5230,40 @@ const DeltaDisplay: React.FC<{ before: BenchmarkTimings; after: BenchmarkTimings
   before,
   after,
 }) => {
-  const afterByView = new Map((after.viewLoads || []).map((v) => [v.viewId, v]));
+  // Composite key `${tableId}:${viewId}` because SeaTable view _ids are only
+  // unique WITHIN a table — every table's "Default View" shares _id "0000".
+  // Keying by viewId alone collapses cross-table default views into a single
+  // Map entry, causing every lookup to return the wrong match.
+  const afterByView = new Map(
+    (after.viewLoads || []).map((v) => [`${v.tableId}:${v.viewId}`, v])
+  );
   let weightedBefore = 0;
   let weightedDiff = 0;
+  // Weighted-sum-of-savings, with each view's saving weighted by its own ms
+  // share. Divided by weightedBefore below to give the expected ms saved per
+  // typical view-open (probability ≈ view weight in the cost model).
+  let weightedSavedSum = 0;
   for (const b of before.viewLoads || []) {
     weightedBefore += b.ms;
-    const a = afterByView.get(b.viewId);
+    const a = afterByView.get(`${b.tableId}:${b.viewId}`);
     const aMs = a ? a.ms : 0;
     weightedDiff += aMs - b.ms;
+    weightedSavedSum += b.ms * (b.ms - aMs);
   }
   const pct = weightedBefore > 0 ? (weightedDiff / weightedBefore) * 100 : 0;
-  return <DeltaBadge pct={pct} />;
+  // Weighted-average absolute ms saved per typical view-open. Heavy views
+  // dominate (they're opened more / felt more strongly) so a localized win on
+  // a heavy view DOES raise the headline, but a localized win on a light view
+  // (drowned out by unchanged heavy views) doesn't — matches user intuition
+  // for "broad improvement" vs "best-case improvement".
+  //
+  // Why not max-per-view: 1 view saving 500ms on a base of 10 otherwise-
+  // unchanged views shouldn't headline "Significant" — 90% of view-opens feel
+  // identical. Why not sum: 10 views each saving 100ms shouldn't headline
+  // "Major" — none individually feel any different.
+  const absSavedMs =
+    weightedBefore > 0 ? Math.max(0, weightedSavedSum / weightedBefore) : 0;
+  return <DeltaBadge pct={pct} absSavedMs={absSavedMs} />;
 };
 
 /**
@@ -4231,11 +5279,14 @@ const TestResultDisplay: React.FC<{
   // weightPct >= MIN_RELEVANT_PCT filter inside PerViewDeltaTable; if zero rows
   // pass it, the button is dead weight.
   const hasRelevantBreakdownRows = (() => {
-    const beforeByView = new Map((before.viewLoads || []).map((v) => [v.viewId, v]));
+    // Composite key — view _ids aren't globally unique. See DeltaDisplay.
+    const beforeByView = new Map(
+      (before.viewLoads || []).map((v) => [`${v.tableId}:${v.viewId}`, v])
+    );
     const totalBeforeWeighted = (before.viewLoads || []).reduce((s, v) => s + v.ms, 0);
     if (totalBeforeWeighted <= 0) return false;
     for (const a of after.viewLoads || []) {
-      const b = beforeByView.get(a.viewId);
+      const b = beforeByView.get(`${a.tableId}:${a.viewId}`);
       if (!b) continue;
       const weightPct = (b.ms / totalBeforeWeighted) * 100;
       if (weightPct >= MIN_RELEVANT_PCT) return true;
@@ -4307,21 +5358,27 @@ const PerViewDeltaTable: React.FC<{
   before: BenchmarkTimings;
   after: BenchmarkTimings;
 }> = ({ before, after }) => {
-  const beforeByView = new Map((before.viewLoads || []).map((v) => [v.viewId, v]));
+  // Composite key — see DeltaDisplay for the why (view _ids aren't globally unique).
+  const beforeByView = new Map(
+    (before.viewLoads || []).map((v) => [`${v.tableId}:${v.viewId}`, v])
+  );
   // `ms` is already total theoretical cost for the view (Σ per-cell × visibleRows),
   // so it doubles as both the "weight" and the comparison value — no rowCount multiplier.
   const totalBeforeWeighted = (before.viewLoads || []).reduce((s, v) => s + v.ms, 0);
   const allRows = (after.viewLoads || [])
     .map((a) => {
-      const b = beforeByView.get(a.viewId);
+      const b = beforeByView.get(`${a.tableId}:${a.viewId}`);
       if (!b) return null;
       const deltaPct = b.ms > 0 ? ((a.ms - b.ms) / b.ms) * 100 : 0;
       const weightPct = totalBeforeWeighted > 0 ? (b.ms / totalBeforeWeighted) * 100 : 0;
+      // Positive when improved (after < before); used by DeltaBadge's absolute floor.
+      const absSavedMs = Math.max(0, b.ms - a.ms);
       return {
         tableName: a.tableName,
         viewName: a.viewName,
         rowCount: a.rowCount,
         deltaPct,
+        absSavedMs,
         weightPct,
       };
     })
@@ -4384,7 +5441,7 @@ const PerViewDeltaTable: React.FC<{
                 <ImpactBadge pct={r.weightPct} surface="view" />
               </td>
               <td style={{ padding: '4px 8px', textAlign: 'left' }}>
-                <DeltaBadge pct={r.deltaPct} />
+                <DeltaBadge pct={r.deltaPct} absSavedMs={r.absSavedMs} />
               </td>
             </tr>
           ))}

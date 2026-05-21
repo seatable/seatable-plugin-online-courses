@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import intl from 'react-intl-universal';
 import { ChainNode } from '../../../utils/custom-interfaces/AuditTypes';
-import { colorForTable } from './tablePalette';
+import { colorForTable, TableColorContext, TableColorMap } from './tablePalette';
 
 export const COL_ICONS: Record<string, string> = {
   text: 'dtable-icon-single-line-text',
@@ -78,7 +78,18 @@ interface TableLabelRow {
 
 type DisplayRow = ColRow | TableLabelRow;
 
-function buildRows(chain: ChainNode[], root: ChainGraphRoot): DisplayRow[] {
+function buildRows(
+  chain: ChainNode[],
+  root: ChainGraphRoot,
+  colorMap: TableColorMap | null
+): DisplayRow[] {
+  const resolveColor = (name: string): string => {
+    if (colorMap) {
+      const c = colorMap.get(name);
+      if (c) return c;
+    }
+    return colorForTable(name);
+  };
   const rows: DisplayRow[] = [];
 
   // No head row: the chain is always rendered under the consumer's column
@@ -104,7 +115,7 @@ function buildRows(chain: ChainNode[], root: ChainGraphRoot): DisplayRow[] {
 
   function walk(nodes: ChainNode[], parentIdx: number | null, parentDepth: number): void {
     for (const node of nodes) {
-      const tableColor = colorForTable(node.tableName);
+      const tableColor = resolveColor(node.tableName);
       const labelDepth = parentDepth + 1;
       rows.push({
         kind: 'tableLabel',
@@ -148,7 +159,8 @@ function buildRows(chain: ChainNode[], root: ChainGraphRoot): DisplayRow[] {
 const dotX = (depth: number): number => depth * INDENT + INDENT;
 
 export const ChainGraph: React.FC<ChainGraphProps> = ({ chain, rootColumn }) => {
-  const rows = buildRows(chain, rootColumn);
+  const colorMap = useContext(TableColorContext);
+  const rows = buildRows(chain, rootColumn, colorMap);
   if (rows.length === 0) return null;
 
   // Layout pass — assign y per row, dotY for col rows.

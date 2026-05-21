@@ -366,21 +366,28 @@ const TableGroup: React.FC<TableGroupProps> = ({
                     total={lc.totalRowCount}
                     consumers={consumers.length}
                   />
-                  {lc.fillRate === 0 && (
+                  {lc.isFreezeHelper && (
+                    <Badge
+                      label={intl.get('links.freeze_helper').d('freeze helper')}
+                      color="#0c5460"
+                      bg="#d1ecf1"
+                    />
+                  )}
+                  {!lc.isFreezeHelper && lc.fillRate === 0 && (
                     <Badge
                       label={intl.get('links.unused').d('unused')}
                       color="#856404"
                       bg="#fff3cd"
                     />
                   )}
-                  {!lc.hasMirror && (
+                  {!lc.isFreezeHelper && !lc.hasMirror && (
                     <Badge
                       label={intl.get('links.no_mirror').d('no mirror')}
                       color="#721c24"
                       bg="#f8d7da"
                     />
                   )}
-                  {isRedundant(lc, redundantLinks) && (
+                  {!lc.isFreezeHelper && isRedundant(lc, redundantLinks) && (
                     <Badge
                       label={intl.get('links.redundant').d('redundant')}
                       color="#856404"

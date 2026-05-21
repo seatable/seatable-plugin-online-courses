@@ -127,6 +127,12 @@ export interface LinkColumnInfo {
   totalRowCount: number;
   fillRate: number;
   outboundChain?: ChainNode[];
+  // True when this self-link column was created by the performance-audit
+  // freeze mechanism (referenced as `selfLinkColumnKey` in plugin settings'
+  // frozenColumns). Surfaced as a badge in the Links audit; excluded from
+  // redundancy and missing-mirror detection so a freeze artifact doesn't
+  // pollute structural findings.
+  isFreezeHelper?: boolean;
 }
 
 export interface LinkFormulaInfo {
@@ -261,6 +267,33 @@ export interface RemediatedColumn {
   // Rules across the base that reference this column — populated at test-creation time
   // so the Test block + Apply modal can show the blast radius and, later, adapt them.
   affectedRules?: AffectedRule[];
+}
+
+// One frozen column's restoration record. Persisted in plugin settings so an
+// "Unfreeze" can restore the original formula via applyLocalOperation later,
+// even after a page reload or across sessions. Keyed in the store by
+// `${tableId}.${columnKey}` — see [[reference_seatable_view_id_not_globally_unique]]
+// for why composite identifiers matter on this platform.
+export interface FrozenColumnRecord {
+  tableId: string;
+  tableName: string;
+  columnKey: string;
+  columnName: string;
+  /** Original `data` block on the LF / formula column at freeze time. Restore via
+   * `applyLocalOperation` with type:'modify_column_data'. */
+  originalData: any;
+  /** Helper column keys created (or reused) by the freeze pipeline. */
+  snapshotColumnKey: string;
+  /** Empty for plain-formula candidates — only link-formula uses a self-link. */
+  selfLinkColumnKey: string;
+  /** Empty for plain-formula candidates. */
+  selfLinkId: string;
+  /** Whether the snapshot was scalar, collapsed from an array, or a multi-array
+   * joined to long-text. Affects what shape the column returns post-freeze and
+   * how the UI should warn about downstream consumer impact. */
+  shapeMode: 'scalar' | 'collapsed-array' | 'multi-array';
+  /** ISO timestamp of when the freeze applied successfully. */
+  frozenAt: string;
 }
 
 // Staged view-deletion. Views only have one possible action (delete), so no

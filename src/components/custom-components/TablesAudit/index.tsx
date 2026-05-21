@@ -10,6 +10,7 @@ import {
   RemediatedColumnHide,
 } from '../../../utils/custom-interfaces/AuditTypes';
 import { auditAllTables } from '../../../utils/custom-utils/tableAuditor';
+import { formatNow } from '../../../utils/custom-utils/formatters';
 import TableTab from './TableTab';
 import PerformanceAudit, {
   PerformanceAuditHandle,
@@ -38,14 +39,6 @@ interface TablesAuditProps {
 // Module-level cache to survive preset switches
 const resultCache: Record<string, { results: TableAuditResult[]; date: string }> = {};
 
-function formatNow(): string {
-  const d = new Date();
-  return (
-    d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-    ' ' +
-    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
-  );
-}
 
 const TablesAudit: React.FC<TablesAuditProps> = ({
   presetId,
@@ -166,50 +159,77 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
   };
 
   const runAudit = useCallback(
-    (silent = false) => {
-      if (!silent) {
+    (
+      silent = false,
+      // When provided, tables-audit progress messages route through this
+      // callback INSTEAD of TablesAudit's own setProgressMsg. Used by the
+      // chained perf-audit flow so progress shows in the perf-audit spinner
+      // (single visible spinner during the chain) rather than triggering
+      // TablesAudit's own status='running' UI — which would unmount the
+      // embedded PerformanceAudit mid-chain and break the chained run.
+      progressOverride?: (msg: string) => void
+    ): Promise<void> => {
+      const chained = !!progressOverride;
+      if (!silent && !chained) {
         setStatus('running');
         setProgressMsg(intl.get('tables.starting').d('Starting tables audit...'));
       }
+      const reportProgress = (msg: string) => {
+        if (progressOverride) progressOverride(msg);
+        else if (!silent) setProgressMsg(msg);
+      };
 
-      setTimeout(
-        async () => {
-          try {
-            const tableResults = await auditAllTables(
-              [],
-              (msg) => setProgressMsg(msg),
-              auditDisplayRef.current
-            );
-            const now = formatNow();
-            const auditData = { results: tableResults, date: now };
-            resultCache[presetId] = auditData;
-            if (onSaveAudit) onSaveAudit(auditData);
-            setResults(tableResults);
-            setAuditDate(now);
+      return new Promise<void>((resolve) => {
+        setTimeout(
+          async () => {
+            try {
+              const tableResults = await auditAllTables(
+                [],
+                reportProgress,
+                auditDisplayRef.current
+              );
+              const now = formatNow();
+              const auditData = { results: tableResults, date: now };
+              resultCache[presetId] = auditData;
+              if (onSaveAudit) onSaveAudit(auditData);
+              setResults(tableResults);
+              setAuditDate(now);
 
-            const prevName = activeTabNameRef.current;
-            if (prevName) {
-              const idx = tableResults.findIndex((r) => r.tableName === prevName);
-              if (idx !== -1) {
-                // +1 offset: Overview tab occupies index 0, table tabs start at 1.
-                setActiveTab(idx + 1);
-              } else if (activeTab > tableResults.length) {
-                // Active table was removed; fall back to last available table tab
-                // (or Overview if there are no tables left).
-                setActiveTab(Math.max(0, tableResults.length));
+              const prevName = activeTabNameRef.current;
+              if (prevName) {
+                const idx = tableResults.findIndex((r) => r.tableName === prevName);
+                if (idx !== -1) {
+                  // +1 offset: Overview tab occupies index 0, table tabs start at 1.
+                  setActiveTab(idx + 1);
+                } else if (activeTab > tableResults.length) {
+                  // Active table was removed; fall back to last available table tab
+                  // (or Overview if there are no tables left).
+                  setActiveTab(Math.max(0, tableResults.length));
+                }
               }
-            }
 
-            setStatus('done');
-          } catch (err: any) {
-            if (!silent) {
-              setProgressMsg(`Error: ${err.message}`);
-              setStatus('error');
+              // In chained mode, leave TablesAudit's status alone — flipping it
+              // would unmount/remount the embedded PerformanceAudit and break
+              // the in-flight chained run.
+              if (!chained) setStatus('done');
+            } catch (err: any) {
+              if (chained) {
+                reportProgress(`Tables audit error: ${err.message}`);
+              } else if (!silent) {
+                setProgressMsg(`Error: ${err.message}`);
+                setStatus('error');
+              }
+            } finally {
+              // Always resolve — callers chaining off this (e.g. perf audit
+              // wanting fresh tables data first) should proceed even if the
+              // tables audit failed, so a transient failure here doesn't block
+              // the whole perf flow.
+              resolve();
             }
-          }
-        },
-        silent ? 0 : 50
-      );
+          },
+          silent || chained ? 0 : 50
+        );
+      });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [presetId]
@@ -466,11 +486,21 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
             <div className="audit-tabs-scroll" ref={scrollRef}>
               <div className="audit-tabs-inner">
                 {/* Overview tab first — cross-table flat view of performance data.
-                    activeTab === 0 is Overview; table tabs start at activeTab === 1. */}
+                    activeTab === 0 is Overview; table tabs start at activeTab === 1.
+                    During a perf-audit run, tabs are non-clickable: the content
+                    won't update until the perf audit finishes, so switching tabs
+                    would just show stale data and confuse the user. */}
                 <div
                   key="__overview__"
                   className={`audit-tab ${activeTab === 0 ? 'audit-tab-active' : ''}`}
-                  onClick={() => setActiveTab(0)}
+                  onClick={() => {
+                    if (perfStatus !== 'running') setActiveTab(0);
+                  }}
+                  style={
+                    perfStatus === 'running'
+                      ? { cursor: 'not-allowed', opacity: 0.5 }
+                      : undefined
+                  }
                   title={intl.get('tables.overview_tab').d('Overview')}>
                   <span style={{ fontWeight: 500 }}>
                     {intl.get('tables.overview_tab').d('Overview')}
@@ -480,7 +510,14 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                   <div
                     key={r.tableName}
                     className={`audit-tab ${activeTab === i + 1 ? 'audit-tab-active' : ''}`}
-                    onClick={() => setActiveTab(i + 1)}
+                    onClick={() => {
+                      if (perfStatus !== 'running') setActiveTab(i + 1);
+                    }}
+                    style={
+                      perfStatus === 'running'
+                        ? { cursor: 'not-allowed', opacity: 0.5 }
+                        : undefined
+                    }
                     title={r.tableName}>
                     <span>{r.tableName}</span>
                   </div>
@@ -516,6 +553,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 onSaveAudit={onSavePerformanceAudit}
                 rowArchivalThresholdDays={auditTableDisplay?.rowArchivalThresholdDays}
                 selectedTableIds={auditTableDisplay?.selectedTables}
+                tablesAuditResults={results}
                 onResultChange={(r, d) => {
                   setPerfResult(r);
                   setPerfAuditDate(d);
@@ -527,6 +565,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 onStagedViewsChange={setStagedViews}
                 onStagedHidesChange={setStagedHides}
                 onViewEditsChange={setViewEditsState}
+                onRequestTablesAuditRerun={(onProgress) => runAudit(false, onProgress)}
               />
             </div>
             {activeTab > 0 && results[activeTab - 1] && (

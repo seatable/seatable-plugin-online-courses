@@ -1,7 +1,12 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useCallback } from 'react';
 import intl from 'react-intl-universal';
 import { IPluginTRProps } from '../../utils/custom-interfaces/PluginTR';
 import { AssetsAuditResult } from '../../utils/custom-interfaces/AuditTypes';
+import {
+  TableColorContext,
+  buildTableColorMap,
+  extractLinkAdjacency,
+} from './shared/tablePalette';
 import {
   PRESET_ASSETS_AUDIT,
   PRESET_TABLES_AUDIT,
@@ -27,6 +32,15 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({
 }) => {
   const initialized = useRef(false);
   const snapshotDone = useRef(false);
+
+  // Color assignment for chain-graph table labels — built once from the full
+  // base link structure so directly link-adjacent tables get distinct colors
+  // (Welsh-Powell greedy graph coloring up to the 8-color palette).
+  const tableColorMap = useMemo(() => {
+    const adjacency = extractLinkAdjacency(allTables);
+    const names = allTables.map((t: any) => t.name).filter(Boolean);
+    return buildTableColorMap(adjacency, names);
+  }, [allTables]);
 
   // Create a snapshot as backup each time the plugin is opened
   useEffect(() => {
@@ -158,9 +172,10 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({
   );
 
   return (
-    <div className={styles.custom}>
-      {isLinksAudit ? (
-        <LinksAudit
+    <TableColorContext.Provider value={tableColorMap}>
+      <div className={styles.custom}>
+        {isLinksAudit ? (
+          <LinksAudit
           presetId={presetId}
           rerunAt={rerunAt}
           autoRerun={autoRerun}
@@ -191,8 +206,9 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({
           savedAudit={savedAudit}
           onSaveAudit={handleSaveAudit}
         />
-      )}
-    </div>
+        )}
+      </div>
+    </TableColorContext.Provider>
   );
 };
 

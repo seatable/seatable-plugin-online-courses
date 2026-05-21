@@ -20,3 +20,25 @@ export function folderDepth(path: string, depth: number = 2): string {
   const parts = path.replace(/^\/|\/$/g, '').split('/');
   return '/' + parts.slice(0, depth).join('/');
 }
+
+/**
+ * Shared "audit timestamp" formatter — used by every audit's "Last audit",
+ * "Performance test: ..." headers and the "Frozen at" column. Renders in the
+ * user's browser locale (so French users see "21/05/2026", US users see
+ * "5/21/2026") while always showing 24-hour time for unambiguous timestamps.
+ *
+ * Pass `undefined` for the locale and the runtime uses the browser's default
+ * (navigator.language equivalent). Format parts stay explicit so the layout is
+ * stable: 2-digit day/month, numeric year, 2-digit hour and minute, no seconds.
+ */
+export function formatTimestamp(d: Date): string {
+  return (
+    d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+    ' ' +
+    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+  );
+}
+
+export function formatNow(): string {
+  return formatTimestamp(new Date());
+}

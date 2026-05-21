@@ -6,7 +6,7 @@ import {
   BAND_COLORS,
   DELTA_COLORS,
   impactBandFromPct,
-  deltaBandFromPct,
+  deltaBand,
 } from './impactBands';
 
 // Single visual vocabulary for ranking items in the performance audit. Replaces
@@ -32,7 +32,12 @@ interface ImpactBadgeProps {
 }
 
 interface DeltaBadgeProps {
+  // Provide (pct + absSavedMs) for full dual-floor classification, or `band`
+  // when pre-computed. Passing pct without absSavedMs degrades to the legacy
+  // pct-only path (treats absolute as effectively infinite — only used in
+  // contexts where we don't have ms baseline data).
   pct?: number | undefined;
+  absSavedMs?: number | undefined;
   band?: DeltaBand;
 }
 
@@ -94,8 +99,12 @@ const ImpactBadge: React.FC<ImpactBadgeProps> = ({ pct, band, surface }) => {
   );
 };
 
-export const DeltaBadge: React.FC<DeltaBadgeProps> = ({ pct, band }) => {
-  const resolved: DeltaBand = band ?? (pct !== undefined ? deltaBandFromPct(pct) : 'no-change');
+export const DeltaBadge: React.FC<DeltaBadgeProps> = ({ pct, absSavedMs, band }) => {
+  const resolved: DeltaBand =
+    band ??
+    (pct !== undefined
+      ? deltaBand(pct, absSavedMs ?? Number.POSITIVE_INFINITY)
+      : 'no-change');
   return (
     <span style={{ ...PILL_STYLE, backgroundColor: DELTA_COLORS[resolved] }}>
       {deltaLabel(resolved)}

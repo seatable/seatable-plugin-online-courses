@@ -20,6 +20,16 @@ interface BuildCandidateMenuExtrasParams {
     columnKey: string,
     columnName: string
   ) => void;
+  // Direct freeze on the original base — skips the test/sandbox workflow.
+  // Same indirection mechanism as the apply path, just invoked one column at
+  // a time. Omit to hide the menu entry (e.g. in contexts where the host
+  // doesn't wire a handler).
+  onFreezeNow?: (
+    tableId: string,
+    tableName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
 }
 
 /**
@@ -46,27 +56,26 @@ export function buildCandidateMenuExtras({
   notRelevant = false,
   onToggleAction,
   onApplyColumnVisibility,
+  onFreezeNow,
 }: BuildCandidateMenuExtrasParams): MenuAction[] {
   const key = `${c.tableId}:${c.columnKey}`;
   const action = remediations.get(key);
-  const canReplace = !!c.replacementType && !c.isMultiValue;
-  const replaceDisabledTooltip = c.isMultiValue
-    ? intl
-        .get('performance.replace_disabled_multi')
-        .d('Cannot replace — some rows return multiple values')
-    : !c.replacementType
-      ? intl
-          .get('performance.replace_disabled_type')
-          .d('Cannot determine a safe replacement type')
-      : undefined;
+  // Multi-value columns are no longer blocked at stage time: the freeze
+  // mechanism can serialize multi-array values into a long-text snapshot,
+  // and the apply-time modal warns the user about the resulting shape change
+  // (array → joined string for downstream consumers).
+  const canReplace = !!c.replacementType;
+  const replaceDisabledTooltip = !c.replacementType
+    ? intl.get('performance.replace_disabled_type').d('Cannot freeze this column type')
+    : undefined;
   const stageDeleteLabel =
     action === 'delete'
       ? intl.get('performance.unstage_delete_column').d('Unstage delete column')
       : intl.get('performance.stage_delete_column').d('Stage delete column');
   const replaceLabel =
     action === 'replace-static'
-      ? intl.get('performance.unselect_replace').d('Cancel replacement')
-      : intl.get('performance.select_replace').d('Replace by static data');
+      ? intl.get('performance.unselect_replace').d('Unstage freeze column')
+      : intl.get('performance.select_replace').d('Stage freeze column');
   const noUnsavedTooltip = intl
     .get('performance.no_unsaved_visibility')
     .d('Toggle the column sliders first.');
@@ -118,7 +127,7 @@ export function buildCandidateMenuExtras({
     {
       label: intl
         .get('performance.apply_views_changes_now')
-        .d('Apply views changes now'),
+        .d('Update views now'),
       icon: 'dtable-icon-eye',
       color: isColumnDirty ? '#0066cc' : '#999',
       disabled: !isColumnDirty,
@@ -126,5 +135,41 @@ export function buildCandidateMenuExtras({
       onClick: () =>
         onApplyColumnVisibility(c.tableId, c.tableName, c.columnKey, c.columnName),
     },
+    // Direct freeze on the original base — single column, no staging. Two-click
+    // confirm (needsConfirm) since it's a real mutation. Disabled when the
+    // column is staged for delete (mutually exclusive) or staged for freeze
+    // (redundant — user should commit via Apply).
+    ...(onFreezeNow
+      ? [
+          {
+            label: intl
+              .get('performance.freeze_column_now')
+              .d('Freeze column now'),
+            icon: 'dtable-icon-pin',
+            color: '#e6a117',
+            needsConfirm: true,
+            disabled:
+              !canReplace ||
+              action === 'replace-static' ||
+              action === 'delete' ||
+              notRelevant,
+            disabledTooltip: !canReplace
+              ? replaceDisabledTooltip
+              : action === 'replace-static'
+                ? intl
+                    .get('performance.freeze_now_disabled_staged')
+                    .d('Already staged for freeze — apply via the test workflow')
+                : action === 'delete'
+                  ? intl
+                      .get('performance.freeze_now_disabled_delete_staged')
+                      .d('Staged for deletion — unstage first to freeze instead')
+                  : notRelevant
+                    ? notRelevantTooltip
+                    : undefined,
+            onClick: () =>
+              onFreezeNow(c.tableId, c.tableName, c.columnKey, c.columnName),
+          } as MenuAction,
+        ]
+      : []),
   ];
 }

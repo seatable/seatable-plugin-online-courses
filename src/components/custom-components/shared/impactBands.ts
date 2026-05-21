@@ -54,11 +54,25 @@ export const BAND_SORT_ORDER: Record<ImpactBand, number> = {
 //
 // Negative = improvement (after < before, lower compute cost).
 // Positive = regression.
-//   ≤ -30 %        → major-improvement
-//   -30 % to -15 % → significant-improvement
-//   -15 % to -5 %  → moderate-improvement
-//   -5 %  to  +5 % → no-change
-//   >  +5 %        → regression
+//
+// **Dual-floor design**: relative % alone is misleading at small baselines
+// (a -50% Δ on a 200ms baseline is 100ms saved — imperceptible). So the
+// classification also requires absolute savings to clear a perception floor.
+// Without this, a small base where formula compute is dominated by overhead
+// can show "Major improvement" labels for changes the user can't feel.
+//
+// Thresholds:
+//   pct >  +5 %                                  → regression
+//   pct in [-5 %, +5 %]                          → no-change
+//   absSavedMs < 200                             → no-change (imperceptible)
+//   pct ≤ -30 % AND absSavedMs ≥ 1000            → major-improvement
+//   pct ≤ -15 % AND absSavedMs ≥ 500             → significant-improvement
+//   else (pct ≤ -5 AND absSavedMs ≥ 200)         → moderate-improvement
+//
+// Floors operate on theoretical-compute-cost ms (the model's `BenchmarkTimings.ms`
+// summed across views). Per the 2026-05-06 validation (R² = 0.90, slope ≈ 1),
+// theoretical ms tracks measured load-time ms within ~5%, so a 200ms theoretical
+// floor maps to ~190ms real and stays at the perception edge.
 // ---------------------------------------------------------------------------
 
 export type DeltaBand =
@@ -76,10 +90,21 @@ export const DELTA_COLORS: Record<DeltaBand, string> = {
   regression: '#dc3545', // red
 };
 
-export function deltaBandFromPct(pct: number): DeltaBand {
-  if (pct <= -30) return 'major-improvement';
-  if (pct <= -15) return 'significant-improvement';
-  if (pct <= -5) return 'moderate-improvement';
-  if (pct <= 5) return 'no-change';
-  return 'regression';
+/** Absolute thresholds expressed in (theoretical) ms saved. */
+export const DELTA_ABS_FLOOR_MS = {
+  perception: 200, // anything less feels like no change
+  significant: 500,
+  major: 1000,
+};
+
+export function deltaBand(pct: number, absSavedMs: number): DeltaBand {
+  if (pct > 5) return 'regression';
+  if (pct > -5) return 'no-change';
+  // Improvement zone (pct ≤ -5). Apply absolute floors so sub-perceptual
+  // changes don't masquerade as wins.
+  if (absSavedMs < DELTA_ABS_FLOOR_MS.perception) return 'no-change';
+  if (pct <= -30 && absSavedMs >= DELTA_ABS_FLOOR_MS.major) return 'major-improvement';
+  if (pct <= -15 && absSavedMs >= DELTA_ABS_FLOOR_MS.significant)
+    return 'significant-improvement';
+  return 'moderate-improvement';
 }

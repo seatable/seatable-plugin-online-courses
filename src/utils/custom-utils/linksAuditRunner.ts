@@ -7,6 +7,7 @@ import {
 } from '../custom-interfaces/AuditTypes';
 import { buildChainForLinkFormula } from './performanceAuditRunner';
 import { getAuthContext } from './authHelper';
+import { PLUGIN_NAME } from '../template-constants';
 
 function isEmpty(val: any): boolean {
   if (val === null || val === undefined) return true;
@@ -158,6 +159,25 @@ export async function runLinksAudit(
   const linkColumns: LinkColumnInfo[] = [];
   const linkFormulas: LinkFormulaInfo[] = [];
 
+  // Read the performance-audit's frozenColumns settings so we can flag any
+  // self-link columns that were created by the freeze mechanism. They show
+  // up in the Links audit with a "freeze helper" badge and are excluded from
+  // redundancy / missing-mirror detection — they're an internal artifact, not
+  // a structural finding.
+  const freezeHelperKeys = new Set<string>();
+  try {
+    const settings = (window as any).dtableSDK?.getPluginSettings?.(PLUGIN_NAME) || {};
+    const frozen = settings.frozenColumns || {};
+    for (const k of Object.keys(frozen)) {
+      const rec = frozen[k];
+      if (rec?.selfLinkColumnKey && rec?.tableId) {
+        freezeHelperKeys.add(`${rec.tableId}:${rec.selfLinkColumnKey}`);
+      }
+    }
+  } catch {
+    // Best-effort — if settings can't be read, fall through with no helpers flagged.
+  }
+
   // Pre-scan all link columns across all tables (for mirror detection)
   const allLinkCols: { tableId: string; linkId: string; columnKey: string }[] = [];
   for (const table of tables) {
@@ -234,6 +254,7 @@ export async function runLinksAudit(
           totalRowCount: rowCount,
           fillRate: rowCount > 0 ? linkedRowCount / rowCount : 0,
           outboundChain,
+          isFreezeHelper: freezeHelperKeys.has(`${table._id}:${col.key}`),
         });
       }
 
@@ -354,10 +375,13 @@ export async function runLinksAudit(
   }
 
   // Detect redundant relationships: same pair of tables linked by multiple distinct link_ids
-  // Only keep one column per link_id (skip mirrors) so mirrors don't appear as redundant
+  // Only keep one column per link_id (skip mirrors) so mirrors don't appear as redundant.
+  // Freeze-helper self-links are skipped — they're an internal artifact, not a real
+  // user-modelled redundancy.
   const pairMap: Record<string, LinkColumnInfo[]> = {};
   const seenLinkIds = new Set<string>();
   for (const lc of linkColumns) {
+    if (lc.isFreezeHelper) continue;
     if (seenLinkIds.has(lc.linkId)) continue;
     seenLinkIds.add(lc.linkId);
     const ids = [lc.tableId, lc.targetTableId].sort();
@@ -384,8 +408,11 @@ export async function runLinksAudit(
     }
   }
 
-  const unusedLinks = linkColumns.filter((lc) => lc.fillRate === 0);
-  const missingMirrors = linkColumns.filter((lc) => !lc.hasMirror);
+  // Freeze helpers are populated 1:1 (every row → itself) and have no mirror by
+  // design (self-link). Excluding them from both findings keeps the audit
+  // focused on real structural issues.
+  const unusedLinks = linkColumns.filter((lc) => lc.fillRate === 0 && !lc.isFreezeHelper);
+  const missingMirrors = linkColumns.filter((lc) => !lc.hasMirror && !lc.isFreezeHelper);
 
   // Detect columns that could be replaced by a lookup
   const lookupSuggestions: LookupSuggestion[] = [];

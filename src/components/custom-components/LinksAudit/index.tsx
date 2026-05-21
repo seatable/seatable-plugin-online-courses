@@ -7,6 +7,7 @@ import {
 } from '../../../utils/custom-interfaces/AuditTypes';
 import { runLinksAudit } from '../../../utils/custom-utils/linksAuditRunner';
 import { getAuthContext } from '../../../utils/custom-utils/authHelper';
+import { formatNow } from '../../../utils/custom-utils/formatters';
 import TableGroup from './TableGroup';
 import ContextMenu from '../shared/ContextMenu';
 import { showToast } from '../shared/showToast';
@@ -58,14 +59,6 @@ const linksResultCache: Record<
   { result: LinksAuditResult; date: string; lookupsChecked: boolean }
 > = {};
 
-function formatNow(): string {
-  const d = new Date();
-  return (
-    d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-    ' ' +
-    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
-  );
-}
 
 const LinksAudit: React.FC<LinksAuditProps> = ({
   presetId,
@@ -80,6 +73,9 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
   const [progressMsg, setProgressMsg] = useState('');
   const [sectionOpen, setSectionOpen] = useState(true);
   const [allExpanded, setAllExpanded] = useState(true);
+  // Content filter for the Links umbrella. Default off (Show all) so existing
+  // users land on the familiar view; opt-in to focus on actionable issues.
+  const [showIssuesOnly, setShowIssuesOnly] = useState(false);
   const [expandKey, setExpandKey] = useState(0);
   const [lookupsChecked, setLookupsChecked] = useState(cached?.lookupsChecked || false);
   const [auditDate, setAuditDate] = useState<string>(cached?.date || '');
@@ -301,6 +297,49 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
                 {intl.get('links.links_section_title').d('Links')}
               </div>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Content filter (Show all vs Show issues only) sits to the left
+                    of Expand/Collapse (which is a visual control). Same segmented
+                    style as PerformanceAudit's "Grouped by table / Grouped by impact". */}
+                <div style={{ display: 'inline-flex' }}>
+                  {(
+                    [
+                      {
+                        value: false,
+                        label: intl.get('links.show_all').d('Show all'),
+                      },
+                      {
+                        value: true,
+                        label: intl.get('links.show_issues_only').d('Show issues only'),
+                      },
+                    ] as Array<{ value: boolean; label: string }>
+                  ).map((opt, i, arr) => {
+                    const active = showIssuesOnly === opt.value;
+                    const isFirst = i === 0;
+                    const isLast = i === arr.length - 1;
+                    return (
+                      <button
+                        key={String(opt.value)}
+                        onClick={() => setShowIssuesOnly(opt.value)}
+                        style={{
+                          padding: '3px 10px',
+                          fontSize: 12,
+                          fontWeight: active ? 600 : 400,
+                          border: '1px solid #ccc',
+                          borderLeft: isFirst ? '1px solid #ccc' : 'none',
+                          borderRadius: isFirst
+                            ? '4px 0 0 4px'
+                            : isLast
+                              ? '0 4px 4px 0'
+                              : '0',
+                          backgroundColor: active ? '#ff8000' : '#fff',
+                          color: active ? '#fff' : '#555',
+                          cursor: 'pointer',
+                        }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <span
                   onClick={toggleAll}
                   style={{ fontSize: 12, color: '#ff8000', cursor: 'pointer', userSelect: 'none' }}>
@@ -313,18 +352,67 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
 
             {sectionOpen && (
               <div style={{ fontSize: 14 }}>
-                {tableNames.map((name) => (
-                  <TableGroup
-                    key={`${name}-${expandKey}`}
-                    tableName={name}
-                    linkColumns={result.linkColumns.filter((lc) => lc.tableName === name)}
-                    linkFormulas={result.linkFormulas.filter((lf) => lf.tableName === name)}
-                    redundantLinks={result.redundantLinks}
-                    defaultOpen={allExpanded}
-                    defaultExpandAll={allExpanded}
-                    onRefresh={debouncedRefresh}
-                  />
-                ))}
+                {(() => {
+                  // Filter applied when "Show issues only" is on. A link column
+                  // counts as an issue when it's NOT a freeze helper and has
+                  // either zero fill, no mirror, or a redundancy hit.
+                  const redundantSet = new Set<string>();
+                  for (const r of result.redundantLinks) {
+                    for (const c of r.columns) {
+                      redundantSet.add(`${c.tableName}::${c.columnName}::${c.linkId}`);
+                    }
+                  }
+                  const isIssue = (lc: typeof result.linkColumns[number]): boolean => {
+                    if (lc.isFreezeHelper) return false;
+                    if (lc.fillRate === 0) return true;
+                    if (!lc.hasMirror) return true;
+                    if (redundantSet.has(`${lc.tableName}::${lc.columnName}::${lc.linkId}`))
+                      return true;
+                    return false;
+                  };
+                  const filteredCols = showIssuesOnly
+                    ? result.linkColumns.filter(isIssue)
+                    : result.linkColumns;
+                  // Skip rendering a TableGroup when nothing remains for it.
+                  // Link-formulas whose parent column was filtered out land in
+                  // TableGroup's `orphanedFormulas` bucket; in "issues only" we
+                  // hide them too by filtering formulas to the visible-column set.
+                  const visibleCols = new Set(filteredCols.map((lc) => lc.columnKey));
+                  const visibleNames = tableNames.filter((name) => {
+                    const tableCols = filteredCols.filter((lc) => lc.tableName === name);
+                    const tableForms = result.linkFormulas
+                      .filter((lf) => lf.tableName === name)
+                      .filter((lf) =>
+                        showIssuesOnly ? visibleCols.has(lf.dependsOnColumnKey) : true
+                      );
+                    return tableCols.length + tableForms.length > 0;
+                  });
+                  if (showIssuesOnly && visibleNames.length === 0) {
+                    return (
+                      <div style={{ color: '#28a745', fontSize: 13, padding: '8px 0' }}>
+                        {intl
+                          .get('links.no_issues')
+                          .d('No issues detected on the base\'s link columns.')}
+                      </div>
+                    );
+                  }
+                  return visibleNames.map((name) => (
+                    <TableGroup
+                      key={`${name}-${expandKey}`}
+                      tableName={name}
+                      linkColumns={filteredCols.filter((lc) => lc.tableName === name)}
+                      linkFormulas={result.linkFormulas
+                        .filter((lf) => lf.tableName === name)
+                        .filter((lf) =>
+                          showIssuesOnly ? visibleCols.has(lf.dependsOnColumnKey) : true
+                        )}
+                      redundantLinks={result.redundantLinks}
+                      defaultOpen={allExpanded}
+                      defaultExpandAll={allExpanded}
+                      onRefresh={debouncedRefresh}
+                    />
+                  ));
+                })()}
               </div>
             )}
 
