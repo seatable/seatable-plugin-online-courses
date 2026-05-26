@@ -129,13 +129,18 @@ async function preflightServerHealth(
   const t0 = Date.now();
   const { resp, aborted, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/metadata/`,
-    { method: 'GET', headers: { accept: 'application/json', authorization: `Bearer ${accessToken}` }, cache: 'no-store' },
+    {
+      method: 'GET',
+      headers: { accept: 'application/json', authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    },
     budgetMs
   );
   const ms = Date.now() - t0;
   if (aborted) return { ok: false, ms, status: 0, error: `timeout after ${fmt(budgetMs)}` };
   if (error) return { ok: false, ms, status: 0, error };
-  if (!resp || !resp.ok) return { ok: false, ms, status: resp?.status ?? 0, error: `status ${resp?.status ?? 0}` };
+  if (!resp || !resp.ok)
+    return { ok: false, ms, status: resp?.status ?? 0, error: `status ${resp?.status ?? 0}` };
   return { ok: true, ms, status: resp.status };
 }
 
@@ -263,7 +268,11 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
   const dtableUuid: string = opts.dtableUuid || dtableSDK?.config?.dtableUuid || '';
 
   const notes: string[] = [];
-  const abort = (reason: string, verdict: Verdict = 'aborted', partial?: Partial<Test1bResult>): Test1bResult => ({
+  const abort = (
+    reason: string,
+    verdict: Verdict = 'aborted',
+    partial?: Partial<Test1bResult>
+  ): Test1bResult => ({
     column: { tableName, columnName, columnKey: '', columnKeyAfter: '' },
     rowCount: 0,
     resultType: undefined,
@@ -290,7 +299,10 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
   }
 
   // ---- Phase 0: Server-health preflight
-  if (onProgress) onProgress(`Phase 0/4: Server-health preflight (/metadata/ GET, budget ${fmt(preflightMs)})...`);
+  if (onProgress)
+    onProgress(
+      `Phase 0/4: Server-health preflight (/metadata/ GET, budget ${fmt(preflightMs)})...`
+    );
   const preflight = await preflightServerHealth(dtableUuid, accessToken, preflightMs);
   notes.push(
     `Preflight /metadata/: ${preflight.ok ? `ok in ${fmt(preflight.ms)}` : `FAIL in ${fmt(preflight.ms)} (${preflight.error || `status ${preflight.status}`})`}`
@@ -325,12 +337,16 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
   const resultType: string | undefined = originalData.result_type;
   const { formula: neutralFormula, label: neutralLabel } = neutralFormulaFor(resultType);
   if (originalData.formula === neutralFormula) {
-    return abort(`column "${columnName}" already has neutral formula ${neutralLabel} — nothing to neutralize from`);
+    return abort(
+      `column "${columnName}" already has neutral formula ${neutralLabel} — nothing to neutralize from`
+    );
   }
   const rowCount = (tbl.rows || []).length;
   const neutralData = { ...originalData, formula: neutralFormula, operated_columns: [] };
 
-  notes.push(`column: ${tableName} › ${columnName} (key=${columnKey}, rows=${rowCount}, result_type=${resultType})`);
+  notes.push(
+    `column: ${tableName} › ${columnName} (key=${columnKey}, rows=${rowCount}, result_type=${resultType})`
+  );
   notes.push(`original formula: ${JSON.stringify(originalData.formula).slice(0, 200)}`);
   notes.push(`neutral formula chosen for result_type=${resultType}: ${neutralLabel}`);
 
@@ -340,7 +356,8 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
   const restoreData: TrialResult = { ok: false, ms: 0 };
 
   // ---- Phase 1: Neutralize via SDK setColumnData (metadata-only, doesn't iterate rows)
-  if (onProgress) onProgress(`Phase 1/4: Neutralize via SDK setColumnData (formula → ${neutralLabel})...`);
+  if (onProgress)
+    onProgress(`Phase 1/4: Neutralize via SDK setColumnData (formula → ${neutralLabel})...`);
   const t1 = Date.now();
   try {
     dtableSDK.dtableStore.setColumnData(tableIndex, columnKey, neutralData);
@@ -378,7 +395,15 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
   } else {
     // ---- Phase 2: HTTP modify_column_type (formula → text)
     if (onProgress) onProgress(`Phase 2/4: HTTP PUT modify_column_type(formula → text)...`);
-    const p2 = await httpModifyColumnType(dtableUuid, accessToken, tableName, columnKey, 'text', {}, maxFastMs);
+    const p2 = await httpModifyColumnType(
+      dtableUuid,
+      accessToken,
+      tableName,
+      columnKey,
+      'text',
+      {},
+      maxFastMs
+    );
     optimizedTypeChange.ok = p2.ok;
     optimizedTypeChange.ms = p2.ms;
     if (!p2.ok) {
@@ -391,7 +416,8 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
 
     // ---- Phase 3: HTTP modify_column_type (text → formula with trivial data)
     if (optimizedTypeChange.ok) {
-      if (onProgress) onProgress(`Phase 3/4: HTTP PUT modify_column_type(text → formula, trivial)...`);
+      if (onProgress)
+        onProgress(`Phase 3/4: HTTP PUT modify_column_type(text → formula, trivial)...`);
       const p3 = await httpModifyColumnType(
         dtableUuid,
         accessToken,
@@ -428,7 +454,8 @@ export async function runTest1b(opts: Test1bOpts): Promise<Test1bResult> {
     `pre-P4 column state: type=${currentType}, formula=${JSON.stringify(currentFormula ?? null).slice(0, 80)}`
   );
 
-  if (onProgress) onProgress(`Phase 4/4: Restore original formula (slow — re-evaluates ${rowCount} rows)...`);
+  if (onProgress)
+    onProgress(`Phase 4/4: Restore original formula (slow — re-evaluates ${rowCount} rows)...`);
   const t4 = Date.now();
   try {
     if (currentType === 'text') {

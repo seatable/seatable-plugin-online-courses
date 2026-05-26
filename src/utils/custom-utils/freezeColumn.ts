@@ -127,8 +127,7 @@ export function deriveSnapshotColumnData(
   shapeMode: ShapeMode
 ): Record<string, any> | undefined {
   if (shapeMode === 'multi-array') return undefined;
-  const source =
-    shapeMode === 'collapsed-array' ? originalData.array_data || {} : originalData;
+  const source = shapeMode === 'collapsed-array' ? originalData.array_data || {} : originalData;
   switch (snapshotType) {
     case 'number': {
       const d: Record<string, any> = {};
@@ -150,9 +149,7 @@ export function deriveSnapshotColumnData(
     }
     case 'single-select':
     case 'multiple-select':
-      return source.options
-        ? { options: JSON.parse(JSON.stringify(source.options)) }
-        : undefined;
+      return source.options ? { options: JSON.parse(JSON.stringify(source.options)) } : undefined;
     default:
       return undefined;
   }
@@ -212,7 +209,14 @@ export async function httpAddColumn(
     return { ok: false, ms, status: resp?.status ?? 0, body: text };
   }
   const data = await resp.json().catch(() => ({}));
-  return { ok: true, ms, status: resp.status, key: data?.key, linkId: data?.data?.link_id, raw: data };
+  return {
+    ok: true,
+    ms,
+    status: resp.status,
+    key: data?.key,
+    linkId: data?.data?.link_id,
+    raw: data,
+  };
 }
 
 export async function httpDeleteColumn(
@@ -607,10 +611,7 @@ export async function freezeColumnViaIndirection(
   const snapshotColumnName = opts.snapshotColumnName || `_frozen_${columnName}`;
   const selfLinkColumnName = opts.selfLinkColumnName || `_frozenLink_${tableName}`;
 
-  const fail = (
-    error: string,
-    extra?: Partial<FreezeColumnResult>
-  ): FreezeColumnResult => ({
+  const fail = (error: string, extra?: Partial<FreezeColumnResult>): FreezeColumnResult => ({
     ok: false,
     error,
     lfColumnKey: '',
@@ -633,9 +634,7 @@ export async function freezeColumnViaIndirection(
   if (!lfCol) return fail(`column "${columnName}" not found in "${tableName}"`);
   const columnType: string = lfCol.type;
   if (columnType !== 'link-formula' && columnType !== 'formula') {
-    return fail(
-      `"${columnName}" is type "${columnType}", expected "link-formula" or "formula"`
-    );
+    return fail(`"${columnName}" is type "${columnType}", expected "link-formula" or "formula"`);
   }
   const isLinkFormula = columnType === 'link-formula';
 
@@ -665,9 +664,7 @@ export async function freezeColumnViaIndirection(
     );
   }
   // Self-link detection only matters for link-formula columns.
-  let reuseSelfLink:
-    | { key: string; linkId: string }
-    | null = null;
+  let reuseSelfLink: { key: string; linkId: string } | null = null;
   if (isLinkFormula) {
     const existingSelfLink = existingCols.find((c: any) => c.name === selfLinkColumnName);
     if (existingSelfLink) {
@@ -784,8 +781,7 @@ export async function freezeColumnViaIndirection(
       if (Array.isArray(v) && v.length > maxLen) maxLen = v.length;
     });
     const arrayType: string | undefined = originalData.array_type;
-    const collapsible =
-      maxLen <= 1 && arrayType && COLLAPSIBLE_ARRAY_ELEMENT_TYPES.has(arrayType);
+    const collapsible = maxLen <= 1 && arrayType && COLLAPSIBLE_ARRAY_ELEMENT_TYPES.has(arrayType);
     if (collapsible) {
       shapeMode = 'collapsed-array';
       snapshotType = arrayType as string;
@@ -844,7 +840,14 @@ export async function freezeColumnViaIndirection(
   }
   snapshotColumnKey =
     addSnap.key ||
-    (await resolveColumnKey(serverUrl, dtableUuid, accessToken, tableName, snapshotColumnName, httpTimeoutMs));
+    (await resolveColumnKey(
+      serverUrl,
+      dtableUuid,
+      accessToken,
+      tableName,
+      snapshotColumnName,
+      httpTimeoutMs
+    ));
   if (!snapshotColumnKey) {
     return rollback('snapshot column key unresolved after create');
   }
@@ -899,8 +902,7 @@ export async function freezeColumnViaIndirection(
     }
     const slice = allUpdates.slice(i, i + batchUpdateChunkSize);
     const res = await withRetry5xx(
-      () =>
-        httpBatchUpdate(serverUrl, dtableUuid, accessToken, tableName, slice, httpTimeoutMs),
+      () => httpBatchUpdate(serverUrl, dtableUuid, accessToken, tableName, slice, httpTimeoutMs),
       { onProgress, label: `Populate snapshot chunk ${i / batchUpdateChunkSize + 1}` }
     );
     if (!res.ok) {
@@ -1065,9 +1067,7 @@ export async function freezeColumnViaIndirection(
       (c: any) => c.key === lfColumnKey
     );
     if (after?.data?.formula !== expectedFormula) {
-      return rollback(
-        `Swap rejected by SDK (formula=${JSON.stringify(after?.data?.formula)})`
-      );
+      return rollback(`Swap rejected by SDK (formula=${JSON.stringify(after?.data?.formula)})`);
     }
     if (isLinkFormula && after?.data?.link_column_key !== selfLinkColumnKey) {
       return rollback(
@@ -1104,7 +1104,8 @@ export async function freezeColumnViaIndirection(
     lfColumnKey;
   const sKey =
     verify.metadata.find((m: any) => (m.name || m.column_name) === snapshotColumnName)?.key ||
-    verify.metadata.find((m: any) => (m.name || m.column_name) === snapshotColumnName)?.column_key ||
+    verify.metadata.find((m: any) => (m.name || m.column_name) === snapshotColumnName)
+      ?.column_key ||
     snapshotColumnKey;
   let matched = 0;
   let sampled = 0;
@@ -1306,9 +1307,7 @@ export async function unfreezeColumnViaIndirection(
     if (del.ok || del.status === 404) {
       snapshotDeleted = true;
     } else {
-      warnings.push(
-        `snapshot delete HTTP ${del.status}: ${(del.body || '').slice(0, 100)}`
-      );
+      warnings.push(`snapshot delete HTTP ${del.status}: ${(del.body || '').slice(0, 100)}`);
     }
   } else {
     snapshotDeleted = true;
@@ -1327,9 +1326,7 @@ export async function unfreezeColumnViaIndirection(
     if (del.ok || del.status === 404) {
       selfLinkDeleted = true;
     } else {
-      warnings.push(
-        `self-link delete HTTP ${del.status}: ${(del.body || '').slice(0, 100)}`
-      );
+      warnings.push(`self-link delete HTTP ${del.status}: ${(del.body || '').slice(0, 100)}`);
     }
   } else {
     // Either no self-link (plain-formula path) or refcount says other frozen

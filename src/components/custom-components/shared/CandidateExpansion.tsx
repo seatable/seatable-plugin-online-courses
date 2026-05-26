@@ -80,13 +80,14 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
   const drillRows = (() => {
     const tables: any[] = liveValue?.tables || [];
     const t = tables.find((tt: any) => tt._id === c.tableId);
-    if (!t) return [] as Array<{
-      viewId: string;
-      viewName: string;
-      ruleKinds: string[];
-      band: ImpactBand;
-      isHidden: boolean;
-    }>;
+    if (!t)
+      return [] as Array<{
+        viewId: string;
+        viewName: string;
+        ruleKinds: string[];
+        band: ImpactBand;
+        isHidden: boolean;
+      }>;
     const out: Array<{
       viewId: string;
       viewName: string;
@@ -98,9 +99,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
       const baseHidden = new Set<string>(v.hidden_columns || []);
       if (baseHidden.has(c.columnKey)) continue;
       const edits = viewEdits.get(v._id);
-      const isHidden = edits
-        ? edits.has(c.columnKey)
-        : stagedViewIdsForCol.has(v._id);
+      const isHidden = edits ? edits.has(c.columnKey) : stagedViewIdsForCol.has(v._id);
       const ruleKinds = getColumnRuleKindsInView(v, c.columnKey);
       // Show each view's overall loading band — the user picks which views
       // to hide-in based on which views feel slow, not on a derived "% saved"
@@ -183,12 +182,8 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
                         onClick={() => handleToggle(row.viewId)}
                         title={
                           row.isHidden
-                            ? intl
-                                .get('performance.toggle_show_col')
-                                .d('Show in this view')
-                            : intl
-                                .get('performance.toggle_hide_col')
-                                .d('Hide in this view')
+                            ? intl.get('performance.toggle_show_col').d('Show in this view')
+                            : intl.get('performance.toggle_hide_col').d('Hide in this view')
                         }
                         className={
                           !row.isHidden

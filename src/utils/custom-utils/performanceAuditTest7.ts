@@ -86,7 +86,12 @@ export interface Test7Opts {
 }
 
 export interface Test7Result {
-  column: { tableName: string; lfColumnName: string; snapshotColumnName: string; selfLinkColumnName: string };
+  column: {
+    tableName: string;
+    lfColumnName: string;
+    snapshotColumnName: string;
+    selfLinkColumnName: string;
+  };
   lfColumnKey: string;
   snapshotColumnKey: string;
   selfLinkColumnKey: string;
@@ -125,7 +130,6 @@ function fmt(ms: number): string {
   return `${(ms / 60_000).toFixed(1)}min`;
 }
 
-
 export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
   const {
     dtableSDK,
@@ -157,7 +161,10 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
     restore: { ok: false, ms: 0, error: 'not attempted' },
   };
 
-  const finalize = (verdict: Test7Result['verdict'], extra?: Partial<Test7Result>): Test7Result => ({
+  const finalize = (
+    verdict: Test7Result['verdict'],
+    extra?: Partial<Test7Result>
+  ): Test7Result => ({
     column: {
       tableName,
       lfColumnName,
@@ -233,11 +240,15 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
   // Reject if either name collides with an existing column.
   const existing = (tbl.columns || []).map((c: any) => c.name);
   if (existing.includes(snapshotColumnName)) {
-    notes.push(`aborted: column "${snapshotColumnName}" already exists. Pass snapshotColumnName or remove it.`);
+    notes.push(
+      `aborted: column "${snapshotColumnName}" already exists. Pass snapshotColumnName or remove it.`
+    );
     return finalize('aborted', { lfColumnKey, rowCount });
   }
   if (existing.includes(selfLinkColumnName)) {
-    notes.push(`aborted: column "${selfLinkColumnName}" already exists. Pass selfLinkColumnName or remove it.`);
+    notes.push(
+      `aborted: column "${selfLinkColumnName}" already exists. Pass selfLinkColumnName or remove it.`
+    );
     return finalize('aborted', { lfColumnKey, rowCount });
   }
 
@@ -267,25 +278,48 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       }
     }
     if (selfLinkColumnKey) {
-      const del = await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, selfLinkColumnKey, httpTimeoutMs);
-      notes.push(`rollback: delete self-link — ${del.ok ? 'ok' : 'FAILED'} in ${fmt(del.ms)}${del.body ? ` (${(del.body || '').slice(0, 100)})` : ''}`);
+      const del = await httpDeleteColumn(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        tableName,
+        selfLinkColumnKey,
+        httpTimeoutMs
+      );
+      notes.push(
+        `rollback: delete self-link — ${del.ok ? 'ok' : 'FAILED'} in ${fmt(del.ms)}${del.body ? ` (${(del.body || '').slice(0, 100)})` : ''}`
+      );
     }
     if (snapshotColumnKey) {
-      const del = await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, snapshotColumnKey, httpTimeoutMs);
-      notes.push(`rollback: delete snapshot — ${del.ok ? 'ok' : 'FAILED'} in ${fmt(del.ms)}${del.body ? ` (${(del.body || '').slice(0, 100)})` : ''}`);
+      const del = await httpDeleteColumn(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        tableName,
+        snapshotColumnKey,
+        httpTimeoutMs
+      );
+      notes.push(
+        `rollback: delete snapshot — ${del.ok ? 'ok' : 'FAILED'} in ${fmt(del.ms)}${del.body ? ` (${(del.body || '').slice(0, 100)})` : ''}`
+      );
     }
   };
 
   // ---- Phase 1: SQL read LF values + row _ids (must happen before snapshot column
   // creation so we can detect actual array shape and pick a typed snapshot when
   // every row's array is length ≤ 1).
-  if (onProgress) onProgress(`Phase 1/8: Reading ${rowCount} LF values + row _ids via SQL (chunks of ${sqlChunkSize})...`);
+  if (onProgress)
+    onProgress(
+      `Phase 1/8: Reading ${rowCount} LF values + row _ids via SQL (chunks of ${sqlChunkSize})...`
+    );
   const t1 = Date.now();
   const collected: Map<string, any> = new Map(); // _id -> LF value
   let sqlErr: string | undefined;
   for (let offset = 0; offset < rowCount; offset += sqlChunkSize) {
     if (onProgress) {
-      onProgress(`P1 SQL read: rows ${offset}–${Math.min(offset + sqlChunkSize, rowCount)} of ${rowCount}...`);
+      onProgress(
+        `P1 SQL read: rows ${offset}–${Math.min(offset + sqlChunkSize, rowCount)} of ${rowCount}...`
+      );
     }
     const chunk = await httpSqlChunk(
       serverUrl,
@@ -345,10 +379,13 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
   notes.push(`snapshot column (to create): "${snapshotColumnName}" type=${snapshotType}`);
 
   // ---- Phase 2: Add snapshot column
-  if (onProgress) onProgress(`Phase 2/8: Adding snapshot column "${snapshotColumnName}" (${snapshotType})...`);
+  if (onProgress)
+    onProgress(`Phase 2/8: Adding snapshot column "${snapshotColumnName}" (${snapshotType})...`);
   const snapshotColumnData = deriveSnapshotColumnData(originalData, snapshotType, shapeMode);
   if (snapshotColumnData) {
-    notes.push(`snapshot column_data (propagated from original): ${JSON.stringify(snapshotColumnData)}`);
+    notes.push(
+      `snapshot column_data (propagated from original): ${JSON.stringify(snapshotColumnData)}`
+    );
   }
   const addColumnBody: Record<string, any> = {
     table_name: tableName,
@@ -388,14 +425,20 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       return col?.key || col?.column_key || '';
     })());
   if (!snapshotColumnKey) {
-    notes.push('WARNING: couldn\'t resolve snapshot column key — subsequent ops will fail');
+    notes.push("WARNING: couldn't resolve snapshot column key — subsequent ops will fail");
     await rollback('snapshot key unresolved');
-    return finalize('restored-after-failure', { lfColumnKey, snapshotType, rowCount, rowsRead: collected.size });
+    return finalize('restored-after-failure', {
+      lfColumnKey,
+      snapshotType,
+      rowCount,
+      rowsRead: collected.size,
+    });
   }
   notes.push(`snapshot column_key: ${snapshotColumnKey}`);
 
   // ---- Phase 3: Populate snapshot via batch_update_rows
-  if (onProgress) onProgress(`Phase 3/8: Populating snapshot in chunks of ${batchUpdateChunkSize}...`);
+  if (onProgress)
+    onProgress(`Phase 3/8: Populating snapshot in chunks of ${batchUpdateChunkSize}...`);
   const t3 = Date.now();
   const allUpdates = Array.from(collected.entries()).map(([row_id, value]) => {
     let serialized: any;
@@ -406,7 +449,12 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       serialized = Array.isArray(value) ? (value.length > 0 ? value[0] : null) : value;
     } else {
       // multi-array: serialize to the long-text snapshot.
-      serialized = serializeForSnapshot(value, arraySeparator, originalData.array_type, originalData.array_data);
+      serialized = serializeForSnapshot(
+        value,
+        arraySeparator,
+        originalData.array_type,
+        originalData.array_data
+      );
     }
     return { row_id, row: { [snapshotColumnName]: serialized } };
   });
@@ -419,7 +467,14 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       );
     }
     const slice = allUpdates.slice(i, i + batchUpdateChunkSize);
-    const res = await httpBatchUpdate(serverUrl, dtableUuid, accessToken, tableName, slice, httpTimeoutMs);
+    const res = await httpBatchUpdate(
+      serverUrl,
+      dtableUuid,
+      accessToken,
+      tableName,
+      slice,
+      httpTimeoutMs
+    );
     if (!res.ok) {
       batchErr = `HTTP ${res.status}: ${(res.body || '').slice(0, 200)}`;
       break;
@@ -514,7 +569,7 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
     }
   }
   if (!selfLinkColumnKey || !selfLinkId) {
-    notes.push('WARNING: couldn\'t resolve self-link column key/link_id — populate will fail');
+    notes.push("WARNING: couldn't resolve self-link column key/link_id — populate will fail");
     await rollback('self-link metadata unresolved');
     return finalize('restored-after-failure', {
       lfColumnKey,
@@ -528,7 +583,8 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
   notes.push(`self-link column_key: ${selfLinkColumnKey}, link_id: ${selfLinkId}`);
 
   // ---- Phase 5: Populate self-link (every row → itself) via PUT /links/ batched
-  if (onProgress) onProgress(`Phase 5/8: Populating self-link in chunks of ${linksBatchChunkSize}...`);
+  if (onProgress)
+    onProgress(`Phase 5/8: Populating self-link in chunks of ${linksBatchChunkSize}...`);
   const t5 = Date.now();
   const allRowIds = Array.from(collected.keys());
   let linked = 0;
@@ -587,7 +643,10 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
   // `setColumnData` silently no-ops when the column's `edit_metadata_permission_type`
   // is set (e.g. "admins") and `window.dtable.isAdmin` isn't true in the plugin host.
   // We construct the op via the SDK's own helpers and call applyLocalOperation directly.
-  if (onProgress) onProgress('Phase 6/8: Mutating LF data to lookup-through-self-link via applyLocalOperation...');
+  if (onProgress)
+    onProgress(
+      'Phase 6/8: Mutating LF data to lookup-through-self-link via applyLocalOperation...'
+    );
   const t6 = Date.now();
   // Build minimal valid lookup config. Keep fields irrelevant to lookup omitted
   // to avoid server-side validation rejecting stale count_links/findmax/rollup fields.
@@ -605,7 +664,8 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
     // collapsed-array: keep original array_type so the LF still appears as the same
     // typed-array (e.g. array of date) — preserves color rules, filters, etc.
     // multi-array: snapshot is long-text, so array_type follows it.
-    mutatedData.array_type = shapeMode === 'collapsed-array' ? originalData.array_type : 'long-text';
+    mutatedData.array_type =
+      shapeMode === 'collapsed-array' ? originalData.array_type : 'long-text';
     if (shapeMode === 'collapsed-array' && originalData.array_data) {
       mutatedData.array_data = JSON.parse(JSON.stringify(originalData.array_data));
     }
@@ -628,7 +688,9 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
     });
     store.applyLocalOperation(op);
     // Read back local state to confirm apply.
-    const after = (dtableSDK.getTables()?.[tableIndex]?.columns || []).find((c: any) => c.key === lfColumnKey);
+    const after = (dtableSDK.getTables()?.[tableIndex]?.columns || []).find(
+      (c: any) => c.key === lfColumnKey
+    );
     if (after?.data?.formula !== 'lookup' || after?.data?.link_column_key !== selfLinkColumnKey) {
       throw new Error(
         `SDK local state didn't accept the op (got formula=${JSON.stringify(after?.data?.formula)}, link_column_key=${JSON.stringify(after?.data?.link_column_key)})`
@@ -678,7 +740,8 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       lfColumnKey;
     const sKey =
       verify.metadata.find((m: any) => (m.name || m.column_name) === snapshotColumnName)?.key ||
-      verify.metadata.find((m: any) => (m.name || m.column_name) === snapshotColumnName)?.column_key ||
+      verify.metadata.find((m: any) => (m.name || m.column_name) === snapshotColumnName)
+        ?.column_key ||
       snapshotColumnKey;
     let matched = 0;
     for (const r of verify.rows) {
@@ -697,7 +760,9 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
     valuesMatched = matched;
     phases.verify.ok = matched === verify.rows.length;
     phases.verify.detail = `${matched}/${verify.rows.length} sampled rows match`;
-    notes.push(`P7 verify sample (first 3): ${JSON.stringify(verify.rows.slice(0, 3))}`.slice(0, 600));
+    notes.push(
+      `P7 verify sample (first 3): ${JSON.stringify(verify.rows.slice(0, 3))}`.slice(0, 600)
+    );
   }
   notes.push(
     `P7 verify: ${phases.verify.ok ? 'ok' : 'FAIL'} in ${fmt(phases.verify.ms)} — ${phases.verify.detail || phases.verify.error}`
@@ -729,7 +794,9 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
           serverData.formula === mutatedData.formula &&
           serverData.link_column_key === mutatedData.link_column_key &&
           serverData.column_key_in_linked_record === mutatedData.column_key_in_linked_record;
-        notes.push(`metadata persistence check: ${opPersisted ? 'YES' : 'NO (stale or rejected — trust SQL verify above)'}`);
+        notes.push(
+          `metadata persistence check: ${opPersisted ? 'YES' : 'NO (stale or rejected — trust SQL verify above)'}`
+        );
         if (!opPersisted) {
           notes.push(`server-side data: ${JSON.stringify(serverData)}`.slice(0, 500));
         }
@@ -759,12 +826,28 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       restoreErr = `applyLocalOperation restore: ${e?.message || e}`;
     }
     if (!restoreErr) {
-      const delLink = await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, selfLinkColumnKey, httpTimeoutMs);
-      if (!delLink.ok) restoreErr = `delete self-link: HTTP ${delLink.status}: ${(delLink.body || '').slice(0, 200)}`;
+      const delLink = await httpDeleteColumn(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        tableName,
+        selfLinkColumnKey,
+        httpTimeoutMs
+      );
+      if (!delLink.ok)
+        restoreErr = `delete self-link: HTTP ${delLink.status}: ${(delLink.body || '').slice(0, 200)}`;
     }
     if (!restoreErr) {
-      const delSnap = await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, snapshotColumnKey, httpTimeoutMs);
-      if (!delSnap.ok) restoreErr = `delete snapshot: HTTP ${delSnap.status}: ${(delSnap.body || '').slice(0, 200)}`;
+      const delSnap = await httpDeleteColumn(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        tableName,
+        snapshotColumnKey,
+        httpTimeoutMs
+      );
+      if (!delSnap.ok)
+        restoreErr = `delete snapshot: HTTP ${delSnap.status}: ${(delSnap.body || '').slice(0, 200)}`;
     }
     phases.restore.ms = Date.now() - t8;
     phases.restore.ok = !restoreErr;
@@ -773,7 +856,11 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
       `P8 restore: ${phases.restore.ok ? 'ok' : 'FAIL'} in ${fmt(phases.restore.ms)}${restoreErr ? ` — ${restoreErr}` : ''}`
     );
   } else {
-    phases.restore = { ok: true, ms: 0, detail: 'skipped (autoRestore=false) — left frozen for UI inspection' };
+    phases.restore = {
+      ok: true,
+      ms: 0,
+      detail: 'skipped (autoRestore=false) — left frozen for UI inspection',
+    };
     notes.push('P8 restore SKIPPED — LF is currently frozen. Run cleanup snippet to revert.');
   }
 
@@ -816,13 +903,13 @@ export async function runTest7(opts: Test7Opts): Promise<Test7Result> {
         'const tableId = sdk.getTables()[ti]._id;\n' +
         'const store = sdk.dtableStore;\n' +
         'const op = store.createOperation({\n' +
-        '  type: \'modify_column_data\',\n' +
+        "  type: 'modify_column_data',\n" +
         '  table_id: tableId,\n' +
         `  column_key: ${JSON.stringify(lfColumnKey)},\n` +
         `  column_data: ${JSON.stringify(originalData)},\n` +
         '});\n' +
         'store.applyLocalOperation(op);\n' +
-        'const headers = { \'content-type\': \'application/json\', authorization: `Bearer ${sdk.config.accessToken}` };\n' +
+        "const headers = { 'content-type': 'application/json', authorization: `Bearer ${sdk.config.accessToken}` };\n" +
         'const url = `${window.dtable.server}/api-gateway/api/v2/dtables/${sdk.config.dtableUuid}/columns/`;\n' +
         (selfLinkColumnKey
           ? `await fetch(url, { method: 'DELETE', headers, body: JSON.stringify({ table_name: ${JSON.stringify(tableName)}, column: ${JSON.stringify(selfLinkColumnKey)} }) });\n`

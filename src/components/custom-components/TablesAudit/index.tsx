@@ -39,7 +39,6 @@ interface TablesAuditProps {
 // Module-level cache to survive preset switches
 const resultCache: Record<string, { results: TableAuditResult[]; date: string }> = {};
 
-
 const TablesAudit: React.FC<TablesAuditProps> = ({
   presetId,
   rerunAt,
@@ -399,7 +398,13 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
               </span>
             )}
             {!perfAuditDate && perfStatus !== 'running' && (
-              <span style={{ fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  fontStyle: 'italic',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
                 <PerfIcon size={13} />
                 {intl.get('tables.no_perf_yet').d('Performance test: not run yet')}
               </span>
@@ -497,9 +502,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                     if (perfStatus !== 'running') setActiveTab(0);
                   }}
                   style={
-                    perfStatus === 'running'
-                      ? { cursor: 'not-allowed', opacity: 0.5 }
-                      : undefined
+                    perfStatus === 'running' ? { cursor: 'not-allowed', opacity: 0.5 } : undefined
                   }
                   title={intl.get('tables.overview_tab').d('Overview')}>
                   <span style={{ fontWeight: 500 }}>
@@ -514,9 +517,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                       if (perfStatus !== 'running') setActiveTab(i + 1);
                     }}
                     style={
-                      perfStatus === 'running'
-                        ? { cursor: 'not-allowed', opacity: 0.5 }
-                        : undefined
+                      perfStatus === 'running' ? { cursor: 'not-allowed', opacity: 0.5 } : undefined
                     }
                     title={r.tableName}>
                     <span>{r.tableName}</span>
@@ -629,9 +630,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 onSetViewEdit={(viewId, hidden) =>
                   perfAuditRef.current?.setViewEdit(viewId, hidden)
                 }
-                onClearViewEdit={(viewId) =>
-                  perfAuditRef.current?.clearViewEdit(viewId)
-                }
+                onClearViewEdit={(viewId) => perfAuditRef.current?.clearViewEdit(viewId)}
                 stagedColumns={stagedColumns}
                 stagedViews={stagedViews}
                 stagedHides={stagedHides}

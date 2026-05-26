@@ -173,7 +173,11 @@ const AssetsAudit: React.FC<AssetsAuditProps> = ({
         if (cached) {
           cached.deletedPaths = Array.from(next);
           if (onSaveAudit)
-            onSaveAudit({ result: cached.result, date: cached.date, deletedPaths: cached.deletedPaths });
+            onSaveAudit({
+              result: cached.result,
+              date: cached.date,
+              deletedPaths: cached.deletedPaths,
+            });
         }
         return next;
       });

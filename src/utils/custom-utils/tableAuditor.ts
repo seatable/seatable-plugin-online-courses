@@ -254,9 +254,7 @@ export async function auditAllTables(
       if (Array.isArray(v)) return '[' + v.map(canonicalStringify).join(',') + ']';
       const keys = Object.keys(v).sort();
       return (
-        '{' +
-        keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(v[k])).join(',') +
-        '}'
+        '{' + keys.map((k) => JSON.stringify(k) + ':' + canonicalStringify(v[k])).join(',') + '}'
       );
     };
     const viewSignatures = views.map((view: any) => {

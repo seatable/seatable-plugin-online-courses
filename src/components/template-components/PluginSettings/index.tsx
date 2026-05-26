@@ -495,7 +495,14 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
               {/* Row archival threshold — rows with _ctime AND _mtime older than this
                   many days are flagged as candidates in the Rows section. */}
               <div className="mb-2">
-                <p style={{ margin: '0 0 4px 0', color: '#808080', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <p
+                  style={{
+                    margin: '0 0 4px 0',
+                    color: '#808080',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}>
                   <PerfIcon size={12} />
                   {intl.get('settings.row_archival_threshold').d('Row archival threshold (days)')}
                 </p>

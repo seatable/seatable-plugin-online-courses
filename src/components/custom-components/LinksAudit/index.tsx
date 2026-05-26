@@ -59,7 +59,6 @@ const linksResultCache: Record<
   { result: LinksAuditResult; date: string; lookupsChecked: boolean }
 > = {};
 
-
 const LinksAudit: React.FC<LinksAuditProps> = ({
   presetId,
   rerunAt,
@@ -326,11 +325,7 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
                           fontWeight: active ? 600 : 400,
                           border: '1px solid #ccc',
                           borderLeft: isFirst ? '1px solid #ccc' : 'none',
-                          borderRadius: isFirst
-                            ? '4px 0 0 4px'
-                            : isLast
-                              ? '0 4px 4px 0'
-                              : '0',
+                          borderRadius: isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0',
                           backgroundColor: active ? '#ff8000' : '#fff',
                           color: active ? '#fff' : '#555',
                           cursor: 'pointer',
@@ -362,7 +357,7 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
                       redundantSet.add(`${c.tableName}::${c.columnName}::${c.linkId}`);
                     }
                   }
-                  const isIssue = (lc: typeof result.linkColumns[number]): boolean => {
+                  const isIssue = (lc: (typeof result.linkColumns)[number]): boolean => {
                     if (lc.isFreezeHelper) return false;
                     if (lc.fillRate === 0) return true;
                     if (!lc.hasMirror) return true;
@@ -392,7 +387,7 @@ const LinksAudit: React.FC<LinksAuditProps> = ({
                       <div style={{ color: '#28a745', fontSize: 13, padding: '8px 0' }}>
                         {intl
                           .get('links.no_issues')
-                          .d('No issues detected on the base\'s link columns.')}
+                          .d("No issues detected on the base's link columns.")}
                       </div>
                     );
                   }

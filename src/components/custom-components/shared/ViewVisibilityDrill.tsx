@@ -84,8 +84,7 @@ const ViewVisibilityDrill: React.FC<ViewVisibilityDrillProps> = ({
         }}>
         <tbody>
           {visibleCols.map((col: any) => {
-            const isComputed =
-              col.type === 'formula' || col.type === 'link-formula';
+            const isComputed = col.type === 'formula' || col.type === 'link-formula';
             const isHidden = effectiveHidden.has(col.key);
             const ruleKinds = getColumnRuleKindsInView(liveView, col.key)
               .map((k) => RULE_KIND_LABEL_SHORT[k] || k)
@@ -100,12 +99,8 @@ const ViewVisibilityDrill: React.FC<ViewVisibilityDrillProps> = ({
                     onClick={() => onToggleColumn(col.key, col.name)}
                     title={
                       isHidden
-                        ? intl
-                            .get('performance.toggle_show_col')
-                            .d('Show in this view')
-                        : intl
-                            .get('performance.toggle_hide_col')
-                            .d('Hide in this view')
+                        ? intl.get('performance.toggle_show_col').d('Show in this view')
+                        : intl.get('performance.toggle_hide_col').d('Hide in this view')
                     }
                     className={
                       !isHidden

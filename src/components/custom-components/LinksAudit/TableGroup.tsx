@@ -140,10 +140,7 @@ const ConsumerRow: React.FC<{
       </div>
       {expanded && hasChain && (
         <div style={{ paddingLeft: 20 }}>
-          <ChainGraph
-            chain={consumer.outboundChain!}
-            rootColumn={consumerRoot(consumer)}
-          />
+          <ChainGraph chain={consumer.outboundChain!} rootColumn={consumerRoot(consumer)} />
         </div>
       )}
     </div>
@@ -182,10 +179,7 @@ const TableGroup: React.FC<TableGroupProps> = ({
         (formulasByLinkKey[lc.columnKey]?.length ?? 0) > 0
     )
     .map((lc) => `${lc.tableId}-${lc.columnKey}`);
-  const expandableFormulaKeys = [
-    ...Object.values(formulasByLinkKey).flat(),
-    ...orphanedFormulas,
-  ]
+  const expandableFormulaKeys = [...Object.values(formulasByLinkKey).flat(), ...orphanedFormulas]
     .filter((c) => c.outboundChain && c.outboundChain.length > 0)
     .map(formulaKey);
 
@@ -269,7 +263,7 @@ const TableGroup: React.FC<TableGroupProps> = ({
               .d(', {count} formula(s)')}
           )
         </span>
-        {open && (expandableLinkKeys.length + expandableFormulaKeys.length) > 0 && (
+        {open && expandableLinkKeys.length + expandableFormulaKeys.length > 0 && (
           <span
             onClick={(e) => {
               e.stopPropagation();
@@ -291,9 +285,7 @@ const TableGroup: React.FC<TableGroupProps> = ({
           <span
             style={{
               marginLeft:
-                open && (expandableLinkKeys.length + expandableFormulaKeys.length) > 0
-                  ? 8
-                  : 'auto',
+                open && expandableLinkKeys.length + expandableFormulaKeys.length > 0 ? 8 : 'auto',
             }}
             onClick={(e) => e.stopPropagation()}>
             <ContextMenu

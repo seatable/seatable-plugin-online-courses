@@ -24,12 +24,7 @@ interface BuildCandidateMenuExtrasParams {
   // Same indirection mechanism as the apply path, just invoked one column at
   // a time. Omit to hide the menu entry (e.g. in contexts where the host
   // doesn't wire a handler).
-  onFreezeNow?: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
+  onFreezeNow?: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }
 
 /**
@@ -81,10 +76,10 @@ export function buildCandidateMenuExtras({
     .d('Toggle the column sliders first.');
   const primaryDisabledTooltip = intl
     .get('performance.delete_disabled_primary')
-    .d('Cannot delete — this is the table\'s first column');
+    .d("Cannot delete — this is the table's first column");
   const notRelevantTooltip = intl
     .get('performance.stage_not_relevant_tooltip')
-    .d('Not significant — staging this won\'t measurably improve performance.');
+    .d("Not significant — staging this won't measurably improve performance.");
 
   // Stage-delete gate: primary column blocks unconditionally; below-threshold
   // blocks only when not already staged (so user can still un-stage).
@@ -118,22 +113,18 @@ export function buildCandidateMenuExtras({
       label: replaceLabel,
       icon: 'dtable-icon-gauge',
       color: action === 'replace-static' ? '#999' : '#e6a117',
-      disabled:
-        (!canReplace || replaceIrrelevantBlock) && action !== 'replace-static',
+      disabled: (!canReplace || replaceIrrelevantBlock) && action !== 'replace-static',
       disabledTooltip: replaceTip,
       onClick: () => onToggleAction(key, 'replace-static'),
     },
     { divider: true, label: '', onClick: () => {} },
     {
-      label: intl
-        .get('performance.apply_views_changes_now')
-        .d('Update views now'),
+      label: intl.get('performance.apply_views_changes_now').d('Update views now'),
       icon: 'dtable-icon-eye',
       color: isColumnDirty ? '#0066cc' : '#999',
       disabled: !isColumnDirty,
       disabledTooltip: noUnsavedTooltip,
-      onClick: () =>
-        onApplyColumnVisibility(c.tableId, c.tableName, c.columnKey, c.columnName),
+      onClick: () => onApplyColumnVisibility(c.tableId, c.tableName, c.columnKey, c.columnName),
     },
     // Direct freeze on the original base — single column, no staging. Two-click
     // confirm (needsConfirm) since it's a real mutation. Disabled when the
@@ -142,17 +133,12 @@ export function buildCandidateMenuExtras({
     ...(onFreezeNow
       ? [
           {
-            label: intl
-              .get('performance.freeze_column_now')
-              .d('Freeze column now'),
+            label: intl.get('performance.freeze_column_now').d('Freeze column now'),
             icon: 'dtable-icon-pin',
             color: '#e6a117',
             needsConfirm: true,
             disabled:
-              !canReplace ||
-              action === 'replace-static' ||
-              action === 'delete' ||
-              notRelevant,
+              !canReplace || action === 'replace-static' || action === 'delete' || notRelevant,
             disabledTooltip: !canReplace
               ? replaceDisabledTooltip
               : action === 'replace-static'
@@ -166,8 +152,7 @@ export function buildCandidateMenuExtras({
                   : notRelevant
                     ? notRelevantTooltip
                     : undefined,
-            onClick: () =>
-              onFreezeNow(c.tableId, c.tableName, c.columnKey, c.columnName),
+            onClick: () => onFreezeNow(c.tableId, c.tableName, c.columnKey, c.columnName),
           } as MenuAction,
         ]
       : []),

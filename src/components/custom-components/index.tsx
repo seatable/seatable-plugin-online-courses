@@ -2,11 +2,7 @@ import React, { useEffect, useMemo, useRef, useCallback } from 'react';
 import intl from 'react-intl-universal';
 import { IPluginTRProps } from '../../utils/custom-interfaces/PluginTR';
 import { AssetsAuditResult } from '../../utils/custom-interfaces/AuditTypes';
-import {
-  TableColorContext,
-  buildTableColorMap,
-  extractLinkAdjacency,
-} from './shared/tablePalette';
+import { TableColorContext, buildTableColorMap, extractLinkAdjacency } from './shared/tablePalette';
 import {
   PRESET_ASSETS_AUDIT,
   PRESET_TABLES_AUDIT,
@@ -176,36 +172,36 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({
       <div className={styles.custom}>
         {isLinksAudit ? (
           <LinksAudit
-          presetId={presetId}
-          rerunAt={rerunAt}
-          autoRerun={autoRerun}
-          savedAudit={!autoRerun ? savedLinksAudit : null}
-          onSaveAudit={!autoRerun ? handleSaveLinksAudit : undefined}
-        />
-      ) : isTablesAudit ? (
-        // Unified Tables audit: fast structural audit on the table tabs,
-        // on-demand Performance analysis as a virtual tab.
-        <TablesAudit
-          presetId={presetId}
-          rerunAt={rerunAt}
-          auditTableDisplay={auditTableDisplay}
-          autoRerun={autoRerun}
-          savedAudit={!autoRerun ? savedTablesAudit : null}
-          onSaveAudit={!autoRerun ? handleSaveTablesAudit : undefined}
-          accountToken={accountToken}
-          savedPerformanceAudit={savedPerformanceAudit}
-          onSavePerformanceAudit={handleSavePerformanceAudit}
-          onPerfRunningChange={onPerfRunningChange}
-        />
-      ) : (
-        <AssetsAudit
-          accountToken={accountToken}
-          presetId={presetId}
-          rerunAt={rerunAt}
-          verifyUrls={verifyUrls}
-          savedAudit={savedAudit}
-          onSaveAudit={handleSaveAudit}
-        />
+            presetId={presetId}
+            rerunAt={rerunAt}
+            autoRerun={autoRerun}
+            savedAudit={!autoRerun ? savedLinksAudit : null}
+            onSaveAudit={!autoRerun ? handleSaveLinksAudit : undefined}
+          />
+        ) : isTablesAudit ? (
+          // Unified Tables audit: fast structural audit on the table tabs,
+          // on-demand Performance analysis as a virtual tab.
+          <TablesAudit
+            presetId={presetId}
+            rerunAt={rerunAt}
+            auditTableDisplay={auditTableDisplay}
+            autoRerun={autoRerun}
+            savedAudit={!autoRerun ? savedTablesAudit : null}
+            onSaveAudit={!autoRerun ? handleSaveTablesAudit : undefined}
+            accountToken={accountToken}
+            savedPerformanceAudit={savedPerformanceAudit}
+            onSavePerformanceAudit={handleSavePerformanceAudit}
+            onPerfRunningChange={onPerfRunningChange}
+          />
+        ) : (
+          <AssetsAudit
+            accountToken={accountToken}
+            presetId={presetId}
+            rerunAt={rerunAt}
+            verifyUrls={verifyUrls}
+            savedAudit={savedAudit}
+            onSaveAudit={handleSaveAudit}
+          />
         )}
       </div>
     </TableColorContext.Provider>

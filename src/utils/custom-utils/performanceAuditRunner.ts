@@ -1383,9 +1383,7 @@ function computeLinkFormulaSignature(c: PerformanceCandidateColumn): string | nu
     return `countlinks|${linkKey}`;
   }
   const level1 =
-    col.data.level1_linked_table_column_key ||
-    col.data.column_key_in_linked_record ||
-    '';
+    col.data.level1_linked_table_column_key || col.data.column_key_in_linked_record || '';
   const level2 = col.data.level2_linked_table_column_key || '';
   const summaryMethod = col.data.summary_method || '';
   const comparisonKey = col.data.column_key_for_comparison || '';
@@ -1888,16 +1886,13 @@ export async function waitForApiGatewayReady(
       );
     }
     try {
-      const resp = await fetch(
-        `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/metadata/`,
-        {
-          method: 'GET',
-          headers: {
-            accept: 'application/json',
-            authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      const resp = await fetch(`${serverUrl}/api-gateway/api/v2/dtables/${uuid}/metadata/`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          authorization: `Bearer ${accessToken}`,
+        },
+      });
       if (resp.ok) return;
       // Anything other than 404 likely means the gateway is reachable but the
       // request was malformed — bail rather than spam the loop.
@@ -2584,7 +2579,9 @@ export async function applyRemediationsToBase(
         }
         if (!colOpsSDK) {
           failed++;
-          errors.push(`freeze ${r.columnName}: SDK required for indirection but unavailable for ${target.kind} apply`);
+          errors.push(
+            `freeze ${r.columnName}: SDK required for indirection but unavailable for ${target.kind} apply`
+          );
           continue;
         }
         // Give the backend room to settle between sequential freezes — see

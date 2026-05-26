@@ -102,9 +102,7 @@ const ImpactBadge: React.FC<ImpactBadgeProps> = ({ pct, band, surface }) => {
 export const DeltaBadge: React.FC<DeltaBadgeProps> = ({ pct, absSavedMs, band }) => {
   const resolved: DeltaBand =
     band ??
-    (pct !== undefined
-      ? deltaBand(pct, absSavedMs ?? Number.POSITIVE_INFINITY)
-      : 'no-change');
+    (pct !== undefined ? deltaBand(pct, absSavedMs ?? Number.POSITIVE_INFINITY) : 'no-change');
   return (
     <span style={{ ...PILL_STYLE, backgroundColor: DELTA_COLORS[resolved] }}>
       {deltaLabel(resolved)}

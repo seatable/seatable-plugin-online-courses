@@ -139,7 +139,13 @@ async function sampleAndCompare(
     });
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
-      return { ok: false, matched: 0, total: 0, sample: [], error: `SQL HTTP ${resp.status}: ${body.slice(0, 200)}` };
+      return {
+        ok: false,
+        matched: 0,
+        total: 0,
+        sample: [],
+        error: `SQL HTTP ${resp.status}: ${body.slice(0, 200)}`,
+      };
     }
     const data = await resp.json();
     const rows: any[] = data?.results || data?.rows || [];
@@ -202,10 +208,14 @@ export async function runTest2(opts: Test2Opts): Promise<Test2Result> {
   });
 
   if (!acknowledgeProduction) {
-    return abort('pass acknowledgeProduction: true to confirm this mutates a real column. Use a test base.');
+    return abort(
+      'pass acknowledgeProduction: true to confirm this mutates a real column. Use a test base.'
+    );
   }
   if (!accessToken || !dtableUuid) {
-    return abort(`missing auth: accessToken ${accessToken ? 'ok' : 'EMPTY'}, dtableUuid ${dtableUuid ? 'ok' : 'EMPTY'}`);
+    return abort(
+      `missing auth: accessToken ${accessToken ? 'ok' : 'EMPTY'}, dtableUuid ${dtableUuid ? 'ok' : 'EMPTY'}`
+    );
   }
 
   // ---- Pre-flight: locate both columns
@@ -215,7 +225,8 @@ export async function runTest2(opts: Test2Opts): Promise<Test2Result> {
   const tbl = tables[tableIndex];
   const formulaCol = (tbl.columns || []).find((c: any) => c.name === formulaColumnName);
   const donorCol = (tbl.columns || []).find((c: any) => c.name === donorColumnName);
-  if (!formulaCol) return abort(`formula column "${formulaColumnName}" not found in "${tableName}"`);
+  if (!formulaCol)
+    return abort(`formula column "${formulaColumnName}" not found in "${tableName}"`);
   if (!donorCol) return abort(`donor column "${donorColumnName}" not found in "${tableName}"`);
   if (formulaCol.type !== 'formula') {
     return abort(`"${formulaColumnName}" is type "${formulaCol.type}", expected "formula"`);
@@ -282,7 +293,9 @@ export async function runTest2(opts: Test2Opts): Promise<Test2Result> {
     swap.error = e?.message || String(e);
   }
   swap.ms = Date.now() - t1;
-  notes.push(`swap: ${swap.ok ? 'ok' : 'FAIL'} in ${fmt(swap.ms)}${swap.error ? ` — ${swap.error}` : ''}`);
+  notes.push(
+    `swap: ${swap.ok ? 'ok' : 'FAIL'} in ${fmt(swap.ms)}${swap.error ? ` — ${swap.error}` : ''}`
+  );
 
   // ---- Phase 2: Sample values via SQL to verify the indirection actually shows donor's values
   if (swap.ok) {
@@ -307,7 +320,9 @@ export async function runTest2(opts: Test2Opts): Promise<Test2Result> {
     );
     if (cmp.rawShape) notes.push(`sample raw shape: ${cmp.rawShape}`);
     if (cmp.ok && cmp.sample.length > 0) {
-      notes.push(`sample preview (first 3 raw rows): ${JSON.stringify(cmp.sample.slice(0, 3)).slice(0, 400)}`);
+      notes.push(
+        `sample preview (first 3 raw rows): ${JSON.stringify(cmp.sample.slice(0, 3)).slice(0, 400)}`
+      );
     }
   } else {
     sample.error = 'skipped — swap failed';
@@ -368,7 +383,14 @@ export async function runTest2(opts: Test2Opts): Promise<Test2Result> {
 
 export async function runTest2Console(opts: Test2Opts): Promise<Test2Result> {
   // eslint-disable-next-line no-console
-  console.log('[Test2] starting', opts.tableName, '›', opts.formulaColumnName, '→', `{${opts.donorColumnName}}`);
+  console.log(
+    '[Test2] starting',
+    opts.tableName,
+    '›',
+    opts.formulaColumnName,
+    '→',
+    `{${opts.donorColumnName}}`
+  );
   const result = await runTest2({
     ...opts,
     // eslint-disable-next-line no-console

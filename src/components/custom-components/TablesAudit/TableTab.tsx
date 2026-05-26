@@ -18,9 +18,7 @@ import ContextMenu from '../shared/ContextMenu';
 import PerfIcon from '../shared/PerfIcon';
 import { deleteColumnDirect, deleteViewDirect } from '../shared/sdkActions';
 import ViewVisibilityDrill from '../shared/ViewVisibilityDrill';
-import CandidateExpansion, {
-  hasCandidateExpansionContent,
-} from '../shared/CandidateExpansion';
+import CandidateExpansion, { hasCandidateExpansionContent } from '../shared/CandidateExpansion';
 import { buildCandidateMenuExtras } from '../shared/candidateMenu';
 import { showToast } from '../shared/showToast';
 import {
@@ -638,9 +636,7 @@ const TableTab: React.FC<TableTabProps> = ({
               <td style={{ paddingRight: 12, color: '#555' }}>
                 {intl.get('common.rows').d('Rows')}
               </td>
-              <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                {result.rowCount}
-              </td>
+              <td style={{ paddingRight: 8, textAlign: 'right' }}>{result.rowCount}</td>
               {archivalForThisTable &&
                 archivalForThisTable.candidateCount > 0 &&
                 (() => {
@@ -717,9 +713,7 @@ const TableTab: React.FC<TableTabProps> = ({
                               cursor: perfRunning ? 'default' : 'pointer',
                               userSelect: 'none',
                             }}>
-                            {intl
-                              .get('performance.rerun_analysis')
-                              .d('Rerun performance analysis')}
+                            {intl.get('performance.rerun_analysis').d('Rerun performance analysis')}
                           </span>
                         </td>
                       ) : archivalDeleted ? null : (
@@ -751,17 +745,13 @@ const TableTab: React.FC<TableTabProps> = ({
               <td style={{ paddingRight: 12, color: '#555' }}>
                 {intl.get('common.columns').d('Columns')}
               </td>
-              <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                {result.totalColumnCount}
-              </td>
+              <td style={{ paddingRight: 8, textAlign: 'right' }}>{result.totalColumnCount}</td>
             </tr>
             <tr>
               <td style={{ paddingRight: 12, color: '#555' }}>
                 {intl.get('common.views').d('Views')}
               </td>
-              <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                {result.viewCount}
-              </td>
+              <td style={{ paddingRight: 8, textAlign: 'right' }}>{result.viewCount}</td>
             </tr>
             {result.lastRowAdded && (
               <tr>
@@ -869,8 +859,7 @@ const TableTab: React.FC<TableTabProps> = ({
           <tbody>
             {sortedViews.map((view, i) => {
               const isDeleted = deletedViews.has(view.name);
-              const isStaged =
-                !isDeleted && !!stagedViews?.has(`${result.tableId}:${view.viewId}`);
+              const isStaged = !isDeleted && !!stagedViews?.has(`${result.tableId}:${view.viewId}`);
               const viewWeightPct = viewWeightPctByName.get(view.name);
               const expandable =
                 !isDeleted &&
@@ -883,31 +872,30 @@ const TableTab: React.FC<TableTabProps> = ({
               return (
                 <React.Fragment key={view.name}>
                   <tr
-                  className="audit-row"
-                  style={{
-                    borderBottom: '1px solid #eee',
-                    backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
-                    opacity: isDeleted ? 0.5 : 1,
-                    color: isDeleted ? '#888' : isStaged ? '#777' : undefined,
-                  }}>
+                    className="audit-row"
+                    style={{
+                      borderBottom: '1px solid #eee',
+                      backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
+                      opacity: isDeleted ? 0.5 : 1,
+                      color: isDeleted ? '#888' : isStaged ? '#777' : undefined,
+                    }}>
                     <td style={{ padding: '6px 12px', wordBreak: 'break-word' }}>
                       {expandable && (
-                      <i
-                        onClick={() => toggleViewExpand(view.viewId)}
-                        className={`dtable-font ${isExpanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-                        style={{
-                          fontSize: 10,
-                          color: '#888',
-                          marginRight: 6,
-                          cursor: 'pointer',
-                        }}
-                      />
-                    )}
+                        <i
+                          onClick={() => toggleViewExpand(view.viewId)}
+                          className={`dtable-font ${isExpanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
+                          style={{
+                            fontSize: 10,
+                            color: '#888',
+                            marginRight: 6,
+                            cursor: 'pointer',
+                          }}
+                        />
+                      )}
                       <span
-                      style={{
-                        textDecoration:
-                          isDeleted || isStaged ? 'line-through' : undefined,
-                      }}>
+                        style={{
+                          textDecoration: isDeleted || isStaged ? 'line-through' : undefined,
+                        }}>
                         {view.name}
                       </span>
                       {isDirty && (
@@ -922,174 +910,168 @@ const TableTab: React.FC<TableTabProps> = ({
                         </span>
                       )}
                       {view.privateFor && (
-                      <span
-                        title={intl
-                          .get('performance.private_view_tooltip', { owner: view.privateFor })
-                          .d(`Private view (owner: ${view.privateFor})`)}
-                        style={{ marginLeft: 6 }}>
-                        <i
-                          className="dtable-font dtable-icon-private-database"
-                          style={{ fontSize: 14, color: '#888' }}
-                        />
-                      </span>
-                    )}
+                        <span
+                          title={intl
+                            .get('performance.private_view_tooltip', { owner: view.privateFor })
+                            .d(`Private view (owner: ${view.privateFor})`)}
+                          style={{ marginLeft: 6 }}>
+                          <i
+                            className="dtable-font dtable-icon-private-database"
+                            style={{ fontSize: 14, color: '#888' }}
+                          />
+                        </span>
+                      )}
                       {view.duplicateOf && view.duplicateOf.length > 0 && (
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          fontSize: 11,
-                          color: '#856404',
-                          backgroundColor: '#fff3cd',
-                          padding: '1px 6px',
-                          borderRadius: 3,
-                          marginLeft: 6,
-                          fontWeight: 400,
-                        }}>
-                        {intl
-                          .get('tables.view_duplicate', { names: view.duplicateOf.join(', ') })
-                          .d(`same rules as: ${view.duplicateOf.join(', ')}`)}
-                      </span>
-                    )}
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            fontSize: 11,
+                            color: '#856404',
+                            backgroundColor: '#fff3cd',
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            marginLeft: 6,
+                            fontWeight: 400,
+                          }}>
+                          {intl
+                            .get('tables.view_duplicate', { names: view.duplicateOf.join(', ') })
+                            .d(`same rules as: ${view.duplicateOf.join(', ')}`)}
+                        </span>
+                      )}
                       {isStaged && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: '#dc3545',
-                          fontStyle: 'italic',
-                          marginLeft: 6,
-                        }}>
-                        · {intl.get('performance.marked_delete').d('marked for deletion')}
-                      </span>
-                    )}
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: '#dc3545',
+                            fontStyle: 'italic',
+                            marginLeft: 6,
+                          }}>
+                          · {intl.get('performance.marked_delete').d('marked for deletion')}
+                        </span>
+                      )}
                     </td>
                     <td
-                    style={{
-                      padding: '6px 12px',
-                      color: view.filterCount > 0 ? '#333' : '#ccc',
-                      fontSize: 13,
-                      wordBreak: 'break-word',
-                    }}>
-                      {view.filterCount > 0 ? view.filterSummary : intl.get('common.none').d('None')}
+                      style={{
+                        padding: '6px 12px',
+                        color: view.filterCount > 0 ? '#333' : '#ccc',
+                        fontSize: 13,
+                        wordBreak: 'break-word',
+                      }}>
+                      {view.filterCount > 0
+                        ? view.filterSummary
+                        : intl.get('common.none').d('None')}
                     </td>
                     <td
-                    style={{
-                      padding: '6px 12px',
-                      color: view.sortCount > 0 ? '#333' : '#ccc',
-                      fontSize: 13,
-                      wordBreak: 'break-word',
-                    }}>
+                      style={{
+                        padding: '6px 12px',
+                        color: view.sortCount > 0 ? '#333' : '#ccc',
+                        fontSize: 13,
+                        wordBreak: 'break-word',
+                      }}>
                       {view.sortCount > 0 ? view.sortSummary : intl.get('common.none').d('None')}
                     </td>
                     <td
-                    style={{
-                      padding: '6px 12px',
-                      color: view.groupbyCount > 0 ? '#333' : '#ccc',
-                      fontSize: 13,
-                      wordBreak: 'break-word',
-                    }}>
+                      style={{
+                        padding: '6px 12px',
+                        color: view.groupbyCount > 0 ? '#333' : '#ccc',
+                        fontSize: 13,
+                        wordBreak: 'break-word',
+                      }}>
                       {view.groupbyCount > 0
-                      ? view.groupbySummary
-                      : intl.get('common.none').d('None')}
+                        ? view.groupbySummary
+                        : intl.get('common.none').d('None')}
                     </td>
                     {perfResult &&
-                    (() => {
-                      const rc = viewRowCountByName.get(view.name);
-                      return (
-                        <td
-                          style={{
-                            padding: '6px 12px',
-                            textAlign: 'left',
-                            color: '#666',
-                          }}>
-                          {rc !== undefined ? (
-                            <>
-                              {rc}
-                              <span style={{ color: '#aaa' }}> / {result.rowCount}</span>
-                            </>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                      );
-                    })()}
+                      (() => {
+                        const rc = viewRowCountByName.get(view.name);
+                        return (
+                          <td
+                            style={{
+                              padding: '6px 12px',
+                              textAlign: 'left',
+                              color: '#666',
+                            }}>
+                            {rc !== undefined ? (
+                              <>
+                                {rc}
+                                <span style={{ color: '#aaa' }}> / {result.rowCount}</span>
+                              </>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        );
+                      })()}
                     {perfResult && (
                       <td style={{ padding: '6px 12px', textAlign: 'left' }}>
-                        <ImpactBadge
-                          pct={viewWeightPctByName.get(view.name)}
-                          surface="view"
-                        />
+                        <ImpactBadge pct={viewWeightPctByName.get(view.name)} surface="view" />
                       </td>
                     )}
                     <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-                      {!isDeleted && (() => {
-                      const directLabel = view.privateFor
-                        ? intl
-                            .get('performance.delete_private_view_now')
-                            .d('Delete private view now')
-                        : intl
-                            .get('performance.delete_view_now')
-                            .d('Delete view now');
-                      // Direct-only menu: views are hygiene cleanup, not a
-                      // staged remediation. "Update view now" applies any
-                      // pending column-slider changes to this view; ContextMenu
-                      // appends "Delete view now" automatically via onDelete.
-                      const extras: any[] = [];
-                      if (expandable) {
-                        extras.push({
-                          label: intl
-                            .get('performance.update_view_now')
-                            .d('Update view now'),
-                          icon: 'dtable-icon-eye',
-                          color: isDirty ? '#0066cc' : '#999',
-                          disabled: !isDirty,
-                          disabledTooltip: intl
-                            .get('performance.no_unsaved_visibility')
-                            .d('Toggle the column sliders first.'),
-                          onClick: () => applyVisibilityChanges(view.viewId, view.name),
-                        });
-                      }
-                      return (
-                        <ContextMenu
-                          onDelete={() => handleDeleteView(view.name, view.viewId)}
-                          label={directLabel}
-                          extraActions={extras.length > 0 ? extras : undefined}
-                        />
-                      );
-                    })()}
+                      {!isDeleted &&
+                        (() => {
+                          const directLabel = view.privateFor
+                            ? intl
+                                .get('performance.delete_private_view_now')
+                                .d('Delete private view now')
+                            : intl.get('performance.delete_view_now').d('Delete view now');
+                          // Direct-only menu: views are hygiene cleanup, not a
+                          // staged remediation. "Update view now" applies any
+                          // pending column-slider changes to this view; ContextMenu
+                          // appends "Delete view now" automatically via onDelete.
+                          const extras: any[] = [];
+                          if (expandable) {
+                            extras.push({
+                              label: intl.get('performance.update_view_now').d('Update view now'),
+                              icon: 'dtable-icon-eye',
+                              color: isDirty ? '#0066cc' : '#999',
+                              disabled: !isDirty,
+                              disabledTooltip: intl
+                                .get('performance.no_unsaved_visibility')
+                                .d('Toggle the column sliders first.'),
+                              onClick: () => applyVisibilityChanges(view.viewId, view.name),
+                            });
+                          }
+                          return (
+                            <ContextMenu
+                              onDelete={() => handleDeleteView(view.name, view.viewId)}
+                              label={directLabel}
+                              extraActions={extras.length > 0 ? extras : undefined}
+                            />
+                          );
+                        })()}
                     </td>
                   </tr>
-                  {isExpanded && (() => {
-                    const liveView = getLiveView(view.viewId);
-                    if (!liveView) return null;
-                    const effectiveHidden = getEffectiveHidden(view.viewId);
-                    const candidateKeys = new Set(
-                      perfResult?.candidates
-                        .filter((c) => c.tableId === result.tableId)
-                        .map((c) => c.columnKey) ?? []
-                    );
-                    const cols = (liveValue?.tables?.find(
-                      (t: any) => t._id === result.tableId
-                    )?.columns ?? []) as any[];
-                    return (
-                      <tr style={{ backgroundColor: '#fafbfc' }}>
-                        <td
-                          colSpan={colSpanForExpand}
-                          style={{ padding: 0, borderBottom: '1px solid #eee' }}>
-                          <ViewVisibilityDrill
-                            tableId={result.tableId}
-                            viewId={view.viewId}
-                            liveView={liveView}
-                            liveColumns={cols}
-                            candidateColumnKeys={candidateKeys}
-                            effectiveHidden={effectiveHidden}
-                            onToggleColumn={(colKey) =>
-                              toggleColumnInView(view.viewId, colKey)
-                            }
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })()}
+                  {isExpanded &&
+                    (() => {
+                      const liveView = getLiveView(view.viewId);
+                      if (!liveView) return null;
+                      const effectiveHidden = getEffectiveHidden(view.viewId);
+                      const candidateKeys = new Set(
+                        perfResult?.candidates
+                          .filter((c) => c.tableId === result.tableId)
+                          .map((c) => c.columnKey) ?? []
+                      );
+                      const cols = (liveValue?.tables?.find((t: any) => t._id === result.tableId)
+                        ?.columns ?? []) as any[];
+                      return (
+                        <tr style={{ backgroundColor: '#fafbfc' }}>
+                          <td
+                            colSpan={colSpanForExpand}
+                            style={{ padding: 0, borderBottom: '1px solid #eee' }}>
+                            <ViewVisibilityDrill
+                              tableId={result.tableId}
+                              viewId={view.viewId}
+                              liveView={liveView}
+                              liveColumns={cols}
+                              candidateColumnKeys={candidateKeys}
+                              effectiveHidden={effectiveHidden}
+                              onToggleColumn={(colKey) => toggleColumnInView(view.viewId, colKey)}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })()}
                 </React.Fragment>
               );
             })}
@@ -1198,9 +1180,7 @@ const TableTab: React.FC<TableTabProps> = ({
               // Available iff the column is a candidate AND has at least one
               // of those — non-candidates don't get any expansion.
               const expandable =
-                !!candidate &&
-                !isDeleted &&
-                hasCandidateExpansionContent(candidate, liveValue);
+                !!candidate && !isDeleted && hasCandidateExpansionContent(candidate, liveValue);
               const isExpanded = expandedColumnChains.has(col.name);
               // structural/volume tags are now surfaced in the labels list (with
               // their tooltips), and "formula on large table" is suppressed when the
@@ -1245,9 +1225,7 @@ const TableTab: React.FC<TableTabProps> = ({
                       text: intl
                         .get('performance.label_near_duplicate', {
                           count: candidate.nearDuplicateGroup.length,
-                          names: candidate.nearDuplicateGroup
-                            .map((p) => p.columnName)
-                            .join(', '),
+                          names: candidate.nearDuplicateGroup.map((p) => p.columnName).join(', '),
                         })
                         .d(
                           `near-duplicate of ${candidate.nearDuplicateGroup.length} other column(s): ${candidate.nearDuplicateGroup.map((p) => p.columnName).join(', ')}`
@@ -1302,8 +1280,7 @@ const TableTab: React.FC<TableTabProps> = ({
                         style={{
                           textDecoration:
                             isDeleted || stagedAction === 'delete' ? 'line-through' : undefined,
-                          fontStyle:
-                            stagedAction === 'replace-static' ? 'italic' : undefined,
+                          fontStyle: stagedAction === 'replace-static' ? 'italic' : undefined,
                         }}>
                         {col.name}
                       </span>
@@ -1468,8 +1445,7 @@ const TableTab: React.FC<TableTabProps> = ({
                         // column's cost share is below the threshold (TableTab
                         // shows below-threshold candidates that Overview filters
                         // out).
-                        const notRelevant =
-                          costPct === undefined || costPct < MIN_RELEVANT_PCT;
+                        const notRelevant = costPct === undefined || costPct < MIN_RELEVANT_PCT;
                         const isColumnDirty = candidate
                           ? hasUnsavedHidesForColumn(candidate)
                           : false;
@@ -1481,37 +1457,24 @@ const TableTab: React.FC<TableTabProps> = ({
                           onToggleAction: (key, action) => {
                             const [tableId, columnKey] = key.split(':');
                             if (action === 'delete') {
-                              if (onToggleColumnDelete)
-                                onToggleColumnDelete(tableId, columnKey);
+                              if (onToggleColumnDelete) onToggleColumnDelete(tableId, columnKey);
                             } else if (onSelectColumnForReplacement) {
                               onSelectColumnForReplacement(tableId, columnKey);
                             }
                           },
-                          onApplyColumnVisibility: (
-                            tableId,
-                            tableName,
-                            columnKey,
-                            columnName
-                          ) => {
+                          onApplyColumnVisibility: (tableId, tableName, columnKey, columnName) => {
                             if (onApplyColumnVisibility)
-                              onApplyColumnVisibility(
-                                tableId,
-                                tableName,
-                                columnKey,
-                                columnName
-                              );
+                              onApplyColumnVisibility(tableId, tableName, columnKey, columnName);
                           },
                         });
                         return (
                           <ContextMenu
                             onDelete={() => handleDeleteColumn(col.name)}
-                            label={intl
-                              .get('performance.delete_column_now')
-                              .d('Delete column now')}
+                            label={intl.get('performance.delete_column_now').d('Delete column now')}
                             deleteDisabled={candidate.isPrimaryColumn}
                             deleteDisabledTooltip={intl
                               .get('performance.delete_disabled_primary')
-                              .d('Cannot delete — this is the table\'s first column')}
+                              .d("Cannot delete — this is the table's first column")}
                             extraActions={extras}
                           />
                         );

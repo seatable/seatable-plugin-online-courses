@@ -78,9 +78,7 @@ import PerfIcon from '../shared/PerfIcon';
 import { deleteColumnDirect, deleteViewDirect } from '../shared/sdkActions';
 import { COLUMN_TYPE_ICONS } from '../shared/columnTypeIcons';
 import ViewVisibilityDrill from '../shared/ViewVisibilityDrill';
-import CandidateExpansion, {
-  hasCandidateExpansionContent,
-} from '../shared/CandidateExpansion';
+import CandidateExpansion, { hasCandidateExpansionContent } from '../shared/CandidateExpansion';
 import { buildCandidateMenuExtras } from '../shared/candidateMenu';
 import stylesPSettings from '../../../styles/template-styles/PluginSettings.module.scss';
 
@@ -395,9 +393,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // Each gets a one-click cleanup; pendingCleanupOrphan stores the row
     // currently being worked on so we can dim it + serialise the action.
     const [pendingCleanupOrphan, setPendingCleanupOrphan] = useState<string | null>(null);
-    const [pendingDeletedOrphans, setPendingDeletedOrphans] = useState<Set<string>>(
-      new Set()
-    );
+    const [pendingDeletedOrphans, setPendingDeletedOrphans] = useState<Set<string>>(new Set());
     type Orphan =
       | {
           kind: 'stale';
@@ -446,8 +442,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         for (const tbl of tables) {
           for (const col of tbl.columns || []) {
             const name: string = col.name || '';
-            const looksLikeHelper =
-              name.startsWith('_frozen_') || name.startsWith('_frozenLink_');
+            const looksLikeHelper = name.startsWith('_frozen_') || name.startsWith('_frozenLink_');
             if (!looksLikeHelper) continue;
             const fullKey = `${tbl._id}:${col.key}`;
             if (referencedKeys.has(fullKey)) continue;
@@ -479,9 +474,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           showToast('Cleanup failed: missing auth context');
           return;
         }
-        const { httpDeleteColumn } = await import(
-          '../../../utils/custom-utils/freezeColumn'
-        );
+        const { httpDeleteColumn } = await import('../../../utils/custom-utils/freezeColumn');
         if (orphan.kind === 'stale') {
           // Best-effort delete of the helper columns the stale record references —
           // they may already be gone, in which case the 404 is just noise.
@@ -517,10 +510,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           }
           // Clear the settings entry.
           try {
-            const current =
-              (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
-            const existing: Record<string, FrozenColumnRecord> =
-              current.frozenColumns || {};
+            const current = (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+            const existing: Record<string, FrozenColumnRecord> = current.frozenColumns || {};
             const updated = { ...existing };
             delete updated[orphan.key];
             (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
@@ -812,15 +803,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
               setViewRemediations(new Map());
               setHideRemediations(new Map());
               setTests([]);
-              persist(
-                auditResult,
-                now,
-                [],
-                new Map(),
-                thresholdNow,
-                new Map(),
-                new Map()
-              );
+              persist(auditResult, now, [], new Map(), thresholdNow, new Map(), new Map());
             } catch (err: any) {
               if (!silent) {
                 setProgressMsg(`Error: ${err.message}`);
@@ -1091,9 +1074,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     ) => {
       const ok = deleteColumnDirect(tableName, columnName);
       if (!ok) {
-        showToast(
-          intl.get('performance.delete_column_failed').d('Failed to delete column.')
-        );
+        showToast(intl.get('performance.delete_column_failed').d('Failed to delete column.'));
         return;
       }
       const fullKey = `${tableId}:${columnKey}`;
@@ -1153,10 +1134,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         }
         // Persist to plugin settings.
         try {
-          const current =
-            (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
-          const existing: Record<string, FrozenColumnRecord> =
-            current.frozenColumns || {};
+          const current = (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+          const existing: Record<string, FrozenColumnRecord> = current.frozenColumns || {};
           const updated = {
             ...existing,
             [`${tableId}.${result.lfColumnKey}`]: {
@@ -1196,9 +1175,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           return next;
         });
         showToast(
-          intl
-            .get('performance.frozen_now', { name: columnName })
-            .d(`Frozen ${columnName}`)
+          intl.get('performance.frozen_now', { name: columnName }).d(`Frozen ${columnName}`)
         );
       } catch (e: any) {
         showToast(`Freeze failed: ${e?.message || e}`);
@@ -1206,7 +1183,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         setProgressMsg('');
       }
     };
-
 
     // -------------------------------------------------------------------------
     // Test lifecycle
@@ -1219,14 +1195,11 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       sandbox.status === 'cleaning' ||
       applyingTestId !== null;
 
-
     // Snapshot the current remediations draft into a new pending Test; reset the draft.
     const handleCreateTestCase = () => {
       if (
         !result ||
-        (remediations.size === 0 &&
-          viewRemediations.size === 0 &&
-          hideRemediations.size === 0) ||
+        (remediations.size === 0 && viewRemediations.size === 0 && hideRemediations.size === 0) ||
         isBusy
       )
         return;
@@ -1739,10 +1712,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       // the sandbox is discarded so its frozen state doesn't need persistence.
       if (frozenColumns.length > 0) {
         try {
-          const current =
-            (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
-          const existing: Record<string, FrozenColumnRecord> =
-            current.frozenColumns || {};
+          const current = (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+          const existing: Record<string, FrozenColumnRecord> = current.frozenColumns || {};
           const updated = { ...existing };
           for (const fc of frozenColumns) {
             updated[`${fc.tableId}.${fc.columnKey}`] = fc;
@@ -1814,8 +1785,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             fc.tableId === record.tableId &&
             fc.selfLinkColumnKey === record.selfLinkColumnKey
         ).length;
-        const deleteSelfLink =
-          !!record.selfLinkColumnKey && otherUsersOfSelfLink === 0;
+        const deleteSelfLink = !!record.selfLinkColumnKey && otherUsersOfSelfLink === 0;
 
         const result = await unfreezeColumnViaIndirection({
           dtableSDK: (window as any).dtableSDK,
@@ -1836,10 +1806,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         let restoredOk = false;
         if (result.ok || result.restored) {
           try {
-            const current =
-              (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
-            const existing: Record<string, FrozenColumnRecord> =
-              current.frozenColumns || {};
+            const current = (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+            const existing: Record<string, FrozenColumnRecord> = current.frozenColumns || {};
             const updated = { ...existing };
             delete updated[key];
             (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
@@ -2017,9 +1985,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
 
     const getBaseHiddenForView = (tableId: string, viewId: string): Set<string> => {
       const dtableSDK = (window as any).dtableSDK;
-      const t = (dtableSDK?.dtableStore?.value?.tables || []).find(
-        (tt: any) => tt._id === tableId
-      );
+      const t = (dtableSDK?.dtableStore?.value?.tables || []).find((tt: any) => tt._id === tableId);
       const v = t?.views?.find((vv: any) => vv._id === viewId);
       return new Set<string>(v?.hidden_columns || []);
     };
@@ -2140,9 +2106,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       editsHas: boolean;
     }> => {
       const dtableSDK = (window as any).dtableSDK;
-      const t = (dtableSDK?.dtableStore?.value?.tables || []).find(
-        (tt: any) => tt._id === tableId
-      );
+      const t = (dtableSDK?.dtableStore?.value?.tables || []).find((tt: any) => tt._id === tableId);
       if (!t) return [];
       const out: Array<{
         viewId: string;
@@ -2174,11 +2138,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // Drop one column from a view's edit set; if the resulting set matches
     // the view's base hidden_columns, drop the entry entirely. Used after
     // column-level Stage / Apply commits the column's portion of the edits.
-    const dropColumnFromViewEdit = (
-      tableId: string,
-      viewId: string,
-      columnKey: string
-    ) => {
+    const dropColumnFromViewEdit = (tableId: string, viewId: string, columnKey: string) => {
       setViewEdits((prev) => {
         const current = prev.get(viewId);
         if (!current) return prev;
@@ -2354,9 +2314,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       );
       // Mutate the live SDK value so subsequent reads reflect the new state.
       const dtableSDK = (window as any).dtableSDK;
-      const t = (dtableSDK?.dtableStore?.value?.tables || []).find(
-        (tt: any) => tt._id === tableId
-      );
+      const t = (dtableSDK?.dtableStore?.value?.tables || []).find((tt: any) => tt._id === tableId);
       const v = t?.views?.find((vv: any) => vv._id === viewId);
       if (v) v.hidden_columns = desired;
       setViewEdits((prev) => {
@@ -2794,33 +2752,25 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                         <td style={{ paddingRight: 12, color: '#555' }}>
                           {intl.get('common.tables').d('Tables')}
                         </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                          {totalTables}
-                        </td>
+                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalTables}</td>
                       </tr>
                       <tr>
                         <td style={{ paddingRight: 12, color: '#555' }}>
                           {intl.get('common.rows').d('Rows')}
                         </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                          {totalRows}
-                        </td>
+                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalRows}</td>
                       </tr>
                       <tr>
                         <td style={{ paddingRight: 12, color: '#555' }}>
                           {intl.get('common.columns').d('Columns')}
                         </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                          {totalColumns}
-                        </td>
+                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalColumns}</td>
                       </tr>
                       <tr>
                         <td style={{ paddingRight: 12, color: '#555' }}>
                           {intl.get('common.views').d('Views')}
                         </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>
-                          {totalViews}
-                        </td>
+                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalViews}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2848,9 +2798,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                     gap: 8,
                   }}>
                   <PerfIcon size={16} />
-                  {intl
-                    .get('performance.section_title_archival')
-                    .d('Archival candidates')}
+                  {intl.get('performance.section_title_archival').d('Archival candidates')}
                 </div>
                 <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
                   {intl
@@ -2871,275 +2819,273 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                 strikethrough until the next audit rerun picks them back up. */}
             {(Object.keys(frozenColumns).length > 0 ||
               pendingUnfrozen.size > 0 ||
-              orphans.length > 0) && (() => {
-              // Pending unfrozen rows are guaranteed to NOT overlap frozenColumns
-              // (the settings entry is cleared before we add to pendingUnfrozen),
-              // so a flat concat with a per-row `pending` flag is enough.
-              const rows: Array<{ key: string; fc: FrozenColumnRecord; pending: boolean }> = [
-                ...Object.entries(frozenColumns).map(([key, fc]) => ({ key, fc, pending: false })),
-                ...Array.from(pendingUnfrozen.entries()).map(([key, fc]) => ({
-                  key,
-                  fc,
-                  pending: true,
-                })),
-              ];
-              const activeCount = Object.keys(frozenColumns).length;
-              return (
-                <div style={{ marginTop: 16, marginBottom: 24 }}>
-                  <div
-                    style={{
-                      fontSize: 18,
-                      color: '#212529',
-                      marginBottom: 12,
-                      paddingBottom: 6,
-                      borderBottom: '1px solid #dee2e6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}>
-                    <PerfIcon size={16} />
-                    {intl
-                      .get('performance.frozen_section_title', { count: activeCount })
-                      .d(`Currently frozen (${activeCount})`)}
-                  </div>
-                  {rows.length > 0 && (
-                  <table
-                    className="audit-table"
-                    style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <colgroup>
-                      <col />
-                      <col style={{ width: 140 }} />
-                      <col style={{ width: 120 }} />
-                    </colgroup>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-                        <th style={{ padding: '8px 12px', color: '#666' }}>
-                          {intl.get('performance.frozen_col_column').d('Column')}
-                        </th>
-                        <th style={{ padding: '8px 12px', color: '#666' }}>
-                          {intl.get('performance.frozen_col_when').d('Frozen at')}
-                        </th>
-                        <th style={{ padding: '8px 12px', color: '#666' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map(({ key, fc, pending }, i) => (
-                        <tr
-                          key={key}
-                          className="audit-row"
-                          style={{
-                            backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
-                            borderBottom: '1px solid #eee',
-                          }}>
-                          <td
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: 14,
-                              textDecoration: pending ? 'line-through' : 'none',
-                              color: pending ? '#999' : 'inherit',
-                            }}>
-                            <span style={{ fontWeight: 700 }}>{fc.tableName}</span>
-                            <span style={{ color: '#999' }}> &rsaquo; </span>
-                            {fc.columnName}
-                          </td>
-                          <td
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: 14,
-                              color: pending ? '#bbb' : '#666',
-                              textDecoration: pending ? 'line-through' : 'none',
-                            }}>
-                            {(() => {
-                              try {
-                                return formatTimestamp(new Date(fc.frozenAt));
-                              } catch {
-                                return fc.frozenAt;
-                              }
-                            })()}
-                          </td>
-                          <td style={{ padding: '6px 4px', fontSize: 14, textAlign: 'right' }}>
-                            {pending ? null : (
-                              <button
-                                type="button"
-                                onClick={() => handleUnfreeze(key)}
-                                disabled={!!unfreezingKey}
-                                style={{
-                                  background: 'none',
-                                  border: '1px solid #ced4da',
-                                  borderRadius: 4,
-                                  padding: '4px 10px',
-                                  fontSize: 13,
-                                  color: unfreezingKey === key ? '#999' : '#212529',
-                                  cursor: unfreezingKey ? 'not-allowed' : 'pointer',
-                                }}>
-                                {unfreezingKey === key
-                                  ? intl.get('performance.unfreezing').d('Unfreezing...')
-                                  : intl.get('performance.unfreeze').d('Unfreeze')}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  )}
-                  {(pendingUnfrozen.size > 0 || pendingFrozenNow.size > 0) && (
+              orphans.length > 0) &&
+              (() => {
+                // Pending unfrozen rows are guaranteed to NOT overlap frozenColumns
+                // (the settings entry is cleared before we add to pendingUnfrozen),
+                // so a flat concat with a per-row `pending` flag is enough.
+                const rows: Array<{ key: string; fc: FrozenColumnRecord; pending: boolean }> = [
+                  ...Object.entries(frozenColumns).map(([key, fc]) => ({
+                    key,
+                    fc,
+                    pending: false,
+                  })),
+                  ...Array.from(pendingUnfrozen.entries()).map(([key, fc]) => ({
+                    key,
+                    fc,
+                    pending: true,
+                  })),
+                ];
+                const activeCount = Object.keys(frozenColumns).length;
+                return (
+                  <div style={{ marginTop: 16, marginBottom: 24 }}>
                     <div
                       style={{
-                        marginTop: 8,
-                        fontSize: 13,
-                        color: unfreezingKey ? '#999' : '#ff8000',
-                        cursor: unfreezingKey ? 'default' : 'pointer',
-                        userSelect: 'none',
-                      }}
-                      onClick={() => {
-                        if (unfreezingKey) return;
-                        setTests([]);
-                        setSandbox({ status: 'idle' });
-                        doAudit();
+                        fontSize: 18,
+                        color: '#212529',
+                        marginBottom: 12,
+                        paddingBottom: 6,
+                        borderBottom: '1px solid #dee2e6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                       }}>
+                      <PerfIcon size={16} />
                       {intl
-                        .get('performance.freeze_audit_stale')
-                        .d(
-                          'Performance analysis is outdated — recent freeze/unfreeze changes haven\'t been measured. Click to rerun now.'
-                        )}
+                        .get('performance.frozen_section_title', { count: activeCount })
+                        .d(`Currently frozen (${activeCount})`)}
                     </div>
-                  )}
-                  {/* Orphan freeze helpers — stale settings entries or stranded
-                      helper columns. Rendered as a sibling sub-block within the
-                      Currently frozen umbrella so the related state stays
-                      grouped, but with a distinct title + cleanup affordance. */}
-                  {orphans.length > 0 && (
-                    <div style={{ marginTop: 16 }}>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: '#555',
-                          fontWeight: 500,
-                          marginBottom: 6,
-                        }}>
-                        {intl
-                          .get('performance.orphan_helpers_title', {
-                            count: orphans.length,
-                          })
-                          .d(`Orphan freeze helpers (${orphans.length})`)}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: '#888',
-                          marginBottom: 8,
-                          fontStyle: 'italic',
-                        }}>
-                        {intl
-                          .get('performance.orphan_helpers_hint')
-                          .d(
-                            'Freeze-mechanism artifacts whose linked column or settings record is missing. Safe to clean up.'
-                          )}
-                      </div>
+                    {rows.length > 0 && (
                       <table
                         className="audit-table"
                         style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <colgroup>
                           <col />
-                          <col style={{ width: 200 }} />
+                          <col style={{ width: 140 }} />
                           <col style={{ width: 120 }} />
                         </colgroup>
                         <thead>
-                          <tr
-                            style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                          <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
                             <th style={{ padding: '8px 12px', color: '#666' }}>
-                              {intl.get('performance.orphan_col_what').d('Orphan')}
+                              {intl.get('performance.frozen_col_column').d('Column')}
                             </th>
                             <th style={{ padding: '8px 12px', color: '#666' }}>
-                              {intl.get('performance.orphan_col_reason').d('Reason')}
+                              {intl.get('performance.frozen_col_when').d('Frozen at')}
                             </th>
                             <th style={{ padding: '8px 12px', color: '#666' }} />
                           </tr>
                         </thead>
                         <tbody>
-                          {orphans.map((o, i) => {
-                            const isWorking = pendingCleanupOrphan === o.key;
-                            const display =
-                              o.kind === 'stale'
-                                ? {
-                                    tableName: o.record.tableName,
-                                    columnName: o.record.columnName,
-                                    reason: intl
-                                      .get('performance.orphan_reason_stale')
-                                      .d('Frozen column missing — manually deleted?'),
-                                  }
-                                : {
-                                    tableName: o.tableName,
-                                    columnName: o.columnName,
-                                    reason: intl
-                                      .get('performance.orphan_reason_stranded')
-                                      .d('Helper column with no owning frozen entry'),
-                                  };
-                            return (
-                              <tr
-                                key={o.key}
-                                className="audit-row"
+                          {rows.map(({ key, fc, pending }, i) => (
+                            <tr
+                              key={key}
+                              className="audit-row"
+                              style={{
+                                backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
+                                borderBottom: '1px solid #eee',
+                              }}>
+                              <td
                                 style={{
-                                  backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
-                                  borderBottom: '1px solid #eee',
+                                  padding: '6px 12px',
+                                  fontSize: 14,
+                                  textDecoration: pending ? 'line-through' : 'none',
+                                  color: pending ? '#999' : 'inherit',
                                 }}>
-                                <td style={{ padding: '6px 12px', fontSize: 14 }}>
-                                  <span style={{ fontWeight: 700 }}>
-                                    {display.tableName}
-                                  </span>
-                                  <span style={{ color: '#999' }}> &rsaquo; </span>
-                                  {display.columnName}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: '6px 12px',
-                                    fontSize: 12,
-                                    color: '#666',
-                                    fontStyle: 'italic',
-                                  }}>
-                                  {display.reason}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: '6px 4px',
-                                    fontSize: 14,
-                                    textAlign: 'right',
-                                  }}>
+                                <span style={{ fontWeight: 700 }}>{fc.tableName}</span>
+                                <span style={{ color: '#999' }}> &rsaquo; </span>
+                                {fc.columnName}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: 14,
+                                  color: pending ? '#bbb' : '#666',
+                                  textDecoration: pending ? 'line-through' : 'none',
+                                }}>
+                                {(() => {
+                                  try {
+                                    return formatTimestamp(new Date(fc.frozenAt));
+                                  } catch {
+                                    return fc.frozenAt;
+                                  }
+                                })()}
+                              </td>
+                              <td style={{ padding: '6px 4px', fontSize: 14, textAlign: 'right' }}>
+                                {pending ? null : (
                                   <button
                                     type="button"
-                                    onClick={() => handleCleanupOrphan(o)}
-                                    disabled={!!pendingCleanupOrphan}
+                                    onClick={() => handleUnfreeze(key)}
+                                    disabled={!!unfreezingKey}
                                     style={{
                                       background: 'none',
                                       border: '1px solid #ced4da',
                                       borderRadius: 4,
                                       padding: '4px 10px',
                                       fontSize: 13,
-                                      color: isWorking ? '#999' : '#212529',
-                                      cursor: pendingCleanupOrphan
-                                        ? 'not-allowed'
-                                        : 'pointer',
+                                      color: unfreezingKey === key ? '#999' : '#212529',
+                                      cursor: unfreezingKey ? 'not-allowed' : 'pointer',
                                     }}>
-                                    {isWorking
-                                      ? intl
-                                          .get('performance.orphan_cleaning_up')
-                                          .d('Cleaning up...')
-                                      : intl
-                                          .get('performance.orphan_cleanup')
-                                          .d('Clean up')}
+                                    {unfreezingKey === key
+                                      ? intl.get('performance.unfreezing').d('Unfreezing...')
+                                      : intl.get('performance.unfreeze').d('Unfreeze')}
                                   </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                                )}
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+                    )}
+                    {(pendingUnfrozen.size > 0 || pendingFrozenNow.size > 0) && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          fontSize: 13,
+                          color: unfreezingKey ? '#999' : '#ff8000',
+                          cursor: unfreezingKey ? 'default' : 'pointer',
+                          userSelect: 'none',
+                        }}
+                        onClick={() => {
+                          if (unfreezingKey) return;
+                          setTests([]);
+                          setSandbox({ status: 'idle' });
+                          doAudit();
+                        }}>
+                        {intl
+                          .get('performance.freeze_audit_stale')
+                          .d(
+                            "Performance analysis is outdated — recent freeze/unfreeze changes haven't been measured. Click to rerun now."
+                          )}
+                      </div>
+                    )}
+                    {/* Orphan freeze helpers — stale settings entries or stranded
+                      helper columns. Rendered as a sibling sub-block within the
+                      Currently frozen umbrella so the related state stays
+                      grouped, but with a distinct title + cleanup affordance. */}
+                    {orphans.length > 0 && (
+                      <div style={{ marginTop: 16 }}>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            color: '#555',
+                            fontWeight: 500,
+                            marginBottom: 6,
+                          }}>
+                          {intl
+                            .get('performance.orphan_helpers_title', {
+                              count: orphans.length,
+                            })
+                            .d(`Orphan freeze helpers (${orphans.length})`)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: '#888',
+                            marginBottom: 8,
+                            fontStyle: 'italic',
+                          }}>
+                          {intl
+                            .get('performance.orphan_helpers_hint')
+                            .d(
+                              'Freeze-mechanism artifacts whose linked column or settings record is missing. Safe to clean up.'
+                            )}
+                        </div>
+                        <table
+                          className="audit-table"
+                          style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <colgroup>
+                            <col />
+                            <col style={{ width: 200 }} />
+                            <col style={{ width: 120 }} />
+                          </colgroup>
+                          <thead>
+                            <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                              <th style={{ padding: '8px 12px', color: '#666' }}>
+                                {intl.get('performance.orphan_col_what').d('Orphan')}
+                              </th>
+                              <th style={{ padding: '8px 12px', color: '#666' }}>
+                                {intl.get('performance.orphan_col_reason').d('Reason')}
+                              </th>
+                              <th style={{ padding: '8px 12px', color: '#666' }} />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {orphans.map((o, i) => {
+                              const isWorking = pendingCleanupOrphan === o.key;
+                              const display =
+                                o.kind === 'stale'
+                                  ? {
+                                      tableName: o.record.tableName,
+                                      columnName: o.record.columnName,
+                                      reason: intl
+                                        .get('performance.orphan_reason_stale')
+                                        .d('Frozen column missing — manually deleted?'),
+                                    }
+                                  : {
+                                      tableName: o.tableName,
+                                      columnName: o.columnName,
+                                      reason: intl
+                                        .get('performance.orphan_reason_stranded')
+                                        .d('Helper column with no owning frozen entry'),
+                                    };
+                              return (
+                                <tr
+                                  key={o.key}
+                                  className="audit-row"
+                                  style={{
+                                    backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
+                                    borderBottom: '1px solid #eee',
+                                  }}>
+                                  <td style={{ padding: '6px 12px', fontSize: 14 }}>
+                                    <span style={{ fontWeight: 700 }}>{display.tableName}</span>
+                                    <span style={{ color: '#999' }}> &rsaquo; </span>
+                                    {display.columnName}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: 12,
+                                      color: '#666',
+                                      fontStyle: 'italic',
+                                    }}>
+                                    {display.reason}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: '6px 4px',
+                                      fontSize: 14,
+                                      textAlign: 'right',
+                                    }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCleanupOrphan(o)}
+                                      disabled={!!pendingCleanupOrphan}
+                                      style={{
+                                        background: 'none',
+                                        border: '1px solid #ced4da',
+                                        borderRadius: 4,
+                                        padding: '4px 10px',
+                                        fontSize: 13,
+                                        color: isWorking ? '#999' : '#212529',
+                                        cursor: pendingCleanupOrphan ? 'not-allowed' : 'pointer',
+                                      }}>
+                                      {isWorking
+                                        ? intl
+                                            .get('performance.orphan_cleaning_up')
+                                            .d('Cleaning up...')
+                                        : intl.get('performance.orphan_cleanup').d('Clean up')}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
             {/* ---- Performance candidate columns umbrella ----
                 Schema-level remediations (delete / freeze) staged through the
@@ -3161,225 +3107,221 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
               }}>
               <PerfIcon size={16} />
               <span style={{ flex: 1 }}>
-                {intl
-                  .get('performance.section_title_main')
-                  .d('Performance candidate columns')}
+                {intl.get('performance.section_title_main').d('Performance candidate columns')}
               </span>
               {result.candidates.length > 0 && (
                 <ViewModeToggle
                   mode={candidatesViewMode}
                   onChange={setCandidatesViewMode}
-                  flatLabel={intl
-                    .get('performance.view_banded')
-                    .d('Grouped by impact')}
+                  flatLabel={intl.get('performance.view_banded').d('Grouped by impact')}
                 />
               )}
             </div>
 
             <div style={{ marginBottom: 24 }}>
               {result.candidates.length === 0 && (
-              <div style={{ color: '#28a745', fontSize: 13, padding: '4px 0' }}>
-                {intl
-                        .get('performance.no_candidates')
-                        .d('No performance candidates detected — base looks clean.')}
-              </div>
-                  )}
+                <div style={{ color: '#28a745', fontSize: 13, padding: '4px 0' }}>
+                  {intl
+                    .get('performance.no_candidates')
+                    .d('No performance candidates detected — base looks clean.')}
+                </div>
+              )}
 
               {top5SharePct !== null && (
-              <div
-                      style={{
-                        fontSize: 12,
-                        color: '#555',
-                        fontStyle: 'italic',
-                        marginBottom: 8,
-                        padding: '4px 0',
-                      }}>
-                {top5SharePct >= 50
-                        ? intl
-                            .get('performance.concentration_high')
-                            .d('A few columns drive most of the load — focus on those first.')
-                        : intl
-                            .get('performance.concentration_low')
-                            .d(
-                              'Load is spread across many columns — no silver bullet, broader cleanup needed.'
-                            )}
-              </div>
-                  )}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#555',
+                    fontStyle: 'italic',
+                    marginBottom: 8,
+                    padding: '4px 0',
+                  }}>
+                  {top5SharePct >= 50
+                    ? intl
+                        .get('performance.concentration_high')
+                        .d('A few columns drive most of the load — focus on those first.')
+                    : intl
+                        .get('performance.concentration_low')
+                        .d(
+                          'Load is spread across many columns — no silver bullet, broader cleanup needed.'
+                        )}
+                </div>
+              )}
 
               {displayedCandidates.length > 0 && (
-              <table
-                      className="audit-table"
-                      style={{
-                        width: '100%',
-                        tableLayout: 'fixed',
-                        borderCollapse: 'collapse',
-                        fontSize: 14,
-                      }}>
-                <colgroup>
-                  <col />
-                  <col style={{ width: 280 }} />
-                  <col style={{ width: 32 }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-                    <th style={{ padding: '8px 12px' }}>
-                      {intl.get('common.column').d('Column')}
-                    </th>
-                    <th
-                            style={{
-                              padding: '8px 12px',
-                              cursor: 'pointer',
-                              userSelect: 'none',
-                              textAlign: 'center',
-                            }}
-                            title={intl
-                              .get('performance.cost_tooltip')
-                              .d(
-                                'How much this column weighs on the base. Higher impact = more time spent computing this column when something is loaded.'
-                              )}
-                            onClick={toggleCandidatesSort}>
-                      {intl.get('performance.impact_header').d('Impact')}
-                      {sortIndicator(candidatesSortDir !== null, candidatesSortDir ?? 'asc')}
-                    </th>
-                    <th />
-                  </tr>
-                </thead>
-                {candidatesViewMode === 'grouped'
-                        ? tableNames.map((tName) => {
-                            const tableCandidates = sortCandidates(
-                              displayedCandidates.filter((c) => c.tableName === tName)
-                            );
-                            return (
-                              <CandidateTableGroup
-                                key={tName}
-                                tableName={tName}
-                                candidates={tableCandidates}
-                                remediations={remediations}
-                                onToggleAction={toggleColumnAction}
-                                onDeleteNow={handleDeleteCandidateNow}
-                                deletedCandidateKeys={deletedCandidateKeys}
-                                frozenNowKeys={pendingFrozenNow}
-                                totalCostMs={totalCostMs}
-                                costPerRowTags={costPerRowTags}
-                                liveValue={liveValue}
-                                costByKey={result.costByKey}
-                                visibleRowsByKey={visibleRowsByKey}
-                                totalViewLoadMs={totalViewLoadMs}
-                                viewLoadMsByKey={viewLoadMsByKey}
-                                viewEdits={viewEdits}
-                                onSetViewEdit={(viewId, hidden) =>
-                                  setViewEdits((prev) => {
-                                    const next = new Map(prev);
-                                    next.set(viewId, hidden);
-                                    return next;
-                                  })
-                                }
-                                stagedHides={hideRemediations}
-                                onStageColumnVisibility={handleStageColumnVisibility}
-                                onApplyColumnVisibility={handleApplyColumnVisibility}
-                                onFreezeNow={handleFreezeNow}
-                              />
-                            );
-                          })
-                        : (['high', 'medium', 'low'] as const).map((band) => {
-                            // Filter candidates whose cost-share lands in this band.
-                            // The runner already orders by cost desc; preserve that
-                            // within each band so the heaviest column always heads
-                            // the High group.
-                            const inBand = displayedCandidates.filter((c) => {
-                              const pct =
-                                c.measuredCostMs !== undefined && totalCostMs > 0
-                                  ? (c.measuredCostMs / totalCostMs) * 100
-                                  : 0;
-                              return impactBandFromPct(pct) === band;
-                            });
-                            if (inBand.length === 0) return null;
-                            return (
-                              <CandidateBandGroup
-                                key={band}
-                                band={band}
-                                candidates={inBand}
-                                remediations={remediations}
-                                onToggleAction={toggleColumnAction}
-                                onDeleteNow={handleDeleteCandidateNow}
-                                deletedCandidateKeys={deletedCandidateKeys}
-                                frozenNowKeys={pendingFrozenNow}
-                                totalCostMs={totalCostMs}
-                                costPerRowTags={costPerRowTags}
-                                liveValue={liveValue}
-                                costByKey={result.costByKey}
-                                visibleRowsByKey={visibleRowsByKey}
-                                totalViewLoadMs={totalViewLoadMs}
-                                viewLoadMsByKey={viewLoadMsByKey}
-                                viewEdits={viewEdits}
-                                onSetViewEdit={(viewId, hidden) =>
-                                  setViewEdits((prev) => {
-                                    const next = new Map(prev);
-                                    next.set(viewId, hidden);
-                                    return next;
-                                  })
-                                }
-                                stagedHides={hideRemediations}
-                                onStageColumnVisibility={handleStageColumnVisibility}
-                                onApplyColumnVisibility={handleApplyColumnVisibility}
-                                onFreezeNow={handleFreezeNow}
-                              />
-                            );
-                          })}
-              </table>
-                  )}
+                <table
+                  className="audit-table"
+                  style={{
+                    width: '100%',
+                    tableLayout: 'fixed',
+                    borderCollapse: 'collapse',
+                    fontSize: 14,
+                  }}>
+                  <colgroup>
+                    <col />
+                    <col style={{ width: 280 }} />
+                    <col style={{ width: 32 }} />
+                  </colgroup>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                      <th style={{ padding: '8px 12px' }}>
+                        {intl.get('common.column').d('Column')}
+                      </th>
+                      <th
+                        style={{
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          textAlign: 'center',
+                        }}
+                        title={intl
+                          .get('performance.cost_tooltip')
+                          .d(
+                            'How much this column weighs on the base. Higher impact = more time spent computing this column when something is loaded.'
+                          )}
+                        onClick={toggleCandidatesSort}>
+                        {intl.get('performance.impact_header').d('Impact')}
+                        {sortIndicator(candidatesSortDir !== null, candidatesSortDir ?? 'asc')}
+                      </th>
+                      <th />
+                    </tr>
+                  </thead>
+                  {candidatesViewMode === 'grouped'
+                    ? tableNames.map((tName) => {
+                        const tableCandidates = sortCandidates(
+                          displayedCandidates.filter((c) => c.tableName === tName)
+                        );
+                        return (
+                          <CandidateTableGroup
+                            key={tName}
+                            tableName={tName}
+                            candidates={tableCandidates}
+                            remediations={remediations}
+                            onToggleAction={toggleColumnAction}
+                            onDeleteNow={handleDeleteCandidateNow}
+                            deletedCandidateKeys={deletedCandidateKeys}
+                            frozenNowKeys={pendingFrozenNow}
+                            totalCostMs={totalCostMs}
+                            costPerRowTags={costPerRowTags}
+                            liveValue={liveValue}
+                            costByKey={result.costByKey}
+                            visibleRowsByKey={visibleRowsByKey}
+                            totalViewLoadMs={totalViewLoadMs}
+                            viewLoadMsByKey={viewLoadMsByKey}
+                            viewEdits={viewEdits}
+                            onSetViewEdit={(viewId, hidden) =>
+                              setViewEdits((prev) => {
+                                const next = new Map(prev);
+                                next.set(viewId, hidden);
+                                return next;
+                              })
+                            }
+                            stagedHides={hideRemediations}
+                            onStageColumnVisibility={handleStageColumnVisibility}
+                            onApplyColumnVisibility={handleApplyColumnVisibility}
+                            onFreezeNow={handleFreezeNow}
+                          />
+                        );
+                      })
+                    : (['high', 'medium', 'low'] as const).map((band) => {
+                        // Filter candidates whose cost-share lands in this band.
+                        // The runner already orders by cost desc; preserve that
+                        // within each band so the heaviest column always heads
+                        // the High group.
+                        const inBand = displayedCandidates.filter((c) => {
+                          const pct =
+                            c.measuredCostMs !== undefined && totalCostMs > 0
+                              ? (c.measuredCostMs / totalCostMs) * 100
+                              : 0;
+                          return impactBandFromPct(pct) === band;
+                        });
+                        if (inBand.length === 0) return null;
+                        return (
+                          <CandidateBandGroup
+                            key={band}
+                            band={band}
+                            candidates={inBand}
+                            remediations={remediations}
+                            onToggleAction={toggleColumnAction}
+                            onDeleteNow={handleDeleteCandidateNow}
+                            deletedCandidateKeys={deletedCandidateKeys}
+                            frozenNowKeys={pendingFrozenNow}
+                            totalCostMs={totalCostMs}
+                            costPerRowTags={costPerRowTags}
+                            liveValue={liveValue}
+                            costByKey={result.costByKey}
+                            visibleRowsByKey={visibleRowsByKey}
+                            totalViewLoadMs={totalViewLoadMs}
+                            viewLoadMsByKey={viewLoadMsByKey}
+                            viewEdits={viewEdits}
+                            onSetViewEdit={(viewId, hidden) =>
+                              setViewEdits((prev) => {
+                                const next = new Map(prev);
+                                next.set(viewId, hidden);
+                                return next;
+                              })
+                            }
+                            stagedHides={hideRemediations}
+                            onStageColumnVisibility={handleStageColumnVisibility}
+                            onApplyColumnVisibility={handleApplyColumnVisibility}
+                            onFreezeNow={handleFreezeNow}
+                          />
+                        );
+                      })}
+                </table>
+              )}
 
               {hiddenCandidatesCount > 0 && (
-              <div
-                      style={{
-                        fontSize: 12,
-                        color: '#888',
-                        fontStyle: 'italic',
-                        padding: '6px 8px',
-                      }}>
-                {intl
-                        .get('performance.minor_candidates_hidden', {
-                          count: hiddenCandidatesCount,
-                        })
-                        .d(
-                          `+${hiddenCandidatesCount} negligible-impact column(s) hidden — see the per-table tab to inspect them.`
-                        )}
-              </div>
-                  )}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#888',
+                    fontStyle: 'italic',
+                    padding: '6px 8px',
+                  }}>
+                  {intl
+                    .get('performance.minor_candidates_hidden', {
+                      count: hiddenCandidatesCount,
+                    })
+                    .d(
+                      `+${hiddenCandidatesCount} negligible-impact column(s) hidden — see the per-table tab to inspect them.`
+                    )}
+                </div>
+              )}
             </div>
 
             {/* ---- Create test case ---- */}
             {(result.candidates.length > 0 ||
               viewRemediations.size > 0 ||
-              hideRemediations.size > 0) && (() => {
-              const stagedHideViewCount = Array.from(hideRemediations.values()).reduce(
-                (s, h) => s + h.views.length,
-                0
-              );
-              const stagedCount =
-                remediations.size + viewRemediations.size + stagedHideViewCount;
-              const enabled = stagedCount > 0 && !isBusy;
-              return (
-                <div style={{ marginBottom: 16 }}>
-                  <button
-                    onClick={handleCreateTestCase}
-                    disabled={!enabled}
-                    style={{
-                      padding: '6px 16px',
-                      fontSize: 13,
-                      border: '1px solid #ff8000',
-                      borderRadius: 4,
-                      backgroundColor: enabled ? '#ff8000' : '#e9ecef',
-                      color: enabled ? '#fff' : '#999',
-                      cursor: enabled ? 'pointer' : 'default',
-                    }}>
-                    {intl
-                      .get('performance.create_test_case', { count: stagedCount })
-                      .d(`Create test case (${stagedCount} change(s))`)}
-                  </button>
-                </div>
-              );
-            })()}
+              hideRemediations.size > 0) &&
+              (() => {
+                const stagedHideViewCount = Array.from(hideRemediations.values()).reduce(
+                  (s, h) => s + h.views.length,
+                  0
+                );
+                const stagedCount = remediations.size + viewRemediations.size + stagedHideViewCount;
+                const enabled = stagedCount > 0 && !isBusy;
+                return (
+                  <div style={{ marginBottom: 16 }}>
+                    <button
+                      onClick={handleCreateTestCase}
+                      disabled={!enabled}
+                      style={{
+                        padding: '6px 16px',
+                        fontSize: 13,
+                        border: '1px solid #ff8000',
+                        borderRadius: 4,
+                        backgroundColor: enabled ? '#ff8000' : '#e9ecef',
+                        color: enabled ? '#fff' : '#999',
+                        cursor: enabled ? 'pointer' : 'default',
+                      }}>
+                      {intl
+                        .get('performance.create_test_case', { count: stagedCount })
+                        .d(`Create test case (${stagedCount} change(s))`)}
+                    </button>
+                  </div>
+                );
+              })()}
 
             {/* ---- Tests ---- */}
             {tests.length > 0 && (
@@ -3390,7 +3332,14 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                     alignItems: 'center',
                     marginBottom: 8,
                   }}>
-                  <div style={{ fontSize: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      fontSize: 16,
+                      color: '#333',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}>
                     <PerfIcon size={14} />
                     {intl.get('performance.results_title').d('Test results')}
                   </div>
@@ -3553,8 +3502,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           (() => {
             const { archival: a, allRowIds, safeRowIds } = archivalDeleteModalRow;
             const showRadio = safeRowIds.length < allRowIds.length;
-            const selectedIds =
-              archivalDeleteScope === 'safe' ? safeRowIds : allRowIds;
+            const selectedIds = archivalDeleteScope === 'safe' ? safeRowIds : allRowIds;
             const count = selectedIds.length;
             return createPortal(
               <ConfirmModal
@@ -3736,18 +3684,8 @@ const ViewsSection: React.FC<{
   hideRemediations: Map<string, RemediatedColumnHide>;
   liveValue: any;
   candidateColumnKeys: Set<string>;
-  onApplyVisibility: (
-    tableId: string,
-    tableName: string,
-    viewId: string,
-    viewName: string
-  ) => void;
-  onStageVisibility: (
-    tableId: string,
-    tableName: string,
-    viewId: string,
-    viewName: string
-  ) => void;
+  onApplyVisibility: (tableId: string, tableName: string, viewId: string, viewName: string) => void;
+  onStageVisibility: (tableId: string, tableName: string, viewId: string, viewName: string) => void;
   onDelete: (tableName: string, viewName: string, keyStr: string) => void;
   onToggleStage: (payload: RemediatedView) => void;
 }> = ({
@@ -3875,195 +3813,191 @@ const ViewsSection: React.FC<{
     return (
       <React.Fragment key={keyStr}>
         <tr
-        className="audit-row"
-        style={{
-          borderBottom: '1px solid #eee',
-          backgroundColor: rowIdx % 2 === 0 ? '#fff' : '#f9f9f9',
-          opacity: isDeleted ? 0.5 : 1,
-          color: isDeleted ? '#888' : isStaged ? '#777' : undefined,
-        }}>
+          className="audit-row"
+          style={{
+            borderBottom: '1px solid #eee',
+            backgroundColor: rowIdx % 2 === 0 ? '#fff' : '#f9f9f9',
+            opacity: isDeleted ? 0.5 : 1,
+            color: isDeleted ? '#888' : isStaged ? '#777' : undefined,
+          }}>
           <td style={{ padding: '6px 12px', wordBreak: 'break-word' }}>
             {expandable && (
-            <i
-              onClick={() => toggleViewExpand(v.viewId)}
-              className={`dtable-font ${isExpanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-              style={{
-                fontSize: 10,
-                color: '#888',
-                marginRight: 6,
-                cursor: 'pointer',
-              }}
-            />
-          )}
+              <i
+                onClick={() => toggleViewExpand(v.viewId)}
+                className={`dtable-font ${isExpanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
+                style={{
+                  fontSize: 10,
+                  color: '#888',
+                  marginRight: 6,
+                  cursor: 'pointer',
+                }}
+              />
+            )}
             {showTableName && (
-            <>
-              <span style={{ fontWeight: 700 }}>{v.tableName}</span>
-              <span style={{ color: '#999', marginLeft: 4, marginRight: 4 }}>&rsaquo;</span>
-            </>
-          )}
+              <>
+                <span style={{ fontWeight: 700 }}>{v.tableName}</span>
+                <span style={{ color: '#999', marginLeft: 4, marginRight: 4 }}>&rsaquo;</span>
+              </>
+            )}
             <span
-            style={{
-              textDecoration: isDeleted || isStaged ? 'line-through' : undefined,
-            }}>
+              style={{
+                textDecoration: isDeleted || isStaged ? 'line-through' : undefined,
+              }}>
               {v.viewName}
             </span>
             {isDirty && (
-            <span
-              style={{
-                marginLeft: 6,
-                fontSize: 11,
-                color: '#e6a117',
-                fontStyle: 'italic',
-              }}>
-              {intl.get('performance.unsaved_visibility').d('(unsaved)')}
-            </span>
-          )}
+              <span
+                style={{
+                  marginLeft: 6,
+                  fontSize: 11,
+                  color: '#e6a117',
+                  fontStyle: 'italic',
+                }}>
+                {intl.get('performance.unsaved_visibility').d('(unsaved)')}
+              </span>
+            )}
             {v.privateFor && (
-            <span
-              title={intl
-                .get('performance.private_view_tooltip', { owner: v.privateFor })
-                .d(`Private view (owner: ${v.privateFor})`)}
-              style={{ marginLeft: 6 }}>
-              <i
-                className="dtable-font dtable-icon-private-database"
-                style={{ fontSize: 14, color: '#888' }}
-              />
-            </span>
-          )}
+              <span
+                title={intl
+                  .get('performance.private_view_tooltip', { owner: v.privateFor })
+                  .d(`Private view (owner: ${v.privateFor})`)}
+                style={{ marginLeft: 6 }}>
+                <i
+                  className="dtable-font dtable-icon-private-database"
+                  style={{ fontSize: 14, color: '#888' }}
+                />
+              </span>
+            )}
             {archivalHint && (
-            <span
-              title={intl
-                .get('performance.archival_hint', {
-                  count: archivalHint.candidateCountNoIncomingLinks,
-                  table: v.tableName,
-                })
-                .d(
-                  `${archivalHint.candidateCountNoIncomingLinks} archivable rows in ${v.tableName} — archiving may reduce this view`
-                )}
-              style={{ marginLeft: 6 }}>
-              <i
-                className="dtable-font dtable-icon-archive-view"
-                style={{ fontSize: 14, color: '#888' }}
-              />
-            </span>
-          )}
+              <span
+                title={intl
+                  .get('performance.archival_hint', {
+                    count: archivalHint.candidateCountNoIncomingLinks,
+                    table: v.tableName,
+                  })
+                  .d(
+                    `${archivalHint.candidateCountNoIncomingLinks} archivable rows in ${v.tableName} — archiving may reduce this view`
+                  )}
+                style={{ marginLeft: 6 }}>
+                <i
+                  className="dtable-font dtable-icon-archive-view"
+                  style={{ fontSize: 14, color: '#888' }}
+                />
+              </span>
+            )}
             {isStaged && (
-            <span
-              style={{
-                fontSize: 11,
-                color: '#dc3545',
-                fontStyle: 'italic',
-                marginLeft: 6,
-              }}>
-              · {intl.get('performance.marked_delete').d('marked for deletion')}
-            </span>
-          )}
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#dc3545',
+                  fontStyle: 'italic',
+                  marginLeft: 6,
+                }}>
+                · {intl.get('performance.marked_delete').d('marked for deletion')}
+              </span>
+            )}
           </td>
           <td
-          title={intl
-            .get('performance.view_rows_tooltip')
-            .d('Rows returned by this view, out of total rows in the table.')}
-          style={{ padding: '6px 12px', color: '#666' }}>
+            title={intl
+              .get('performance.view_rows_tooltip')
+              .d('Rows returned by this view, out of total rows in the table.')}
+            style={{ padding: '6px 12px', color: '#666' }}>
             {v.rowCount}
             {tableRowsByTableId.has(v.tableId) && (
-            <span style={{ color: '#aaa' }}> / {tableRowsByTableId.get(v.tableId)}</span>
-          )}
+              <span style={{ color: '#aaa' }}> / {tableRowsByTableId.get(v.tableId)}</span>
+            )}
           </td>
           <td
-          title={intl
-            .get('performance.view_weight_tooltip')
-            .d('Share of total view-load time (rowCount × ms). Deleting removes this view as a switching destination but doesn\'t reduce overall base compute work.')}
-          style={{ padding: '6px 12px' }}>
+            title={intl
+              .get('performance.view_weight_tooltip')
+              .d(
+                "Share of total view-load time (rowCount × ms). Deleting removes this view as a switching destination but doesn't reduce overall base compute work."
+              )}
+            style={{ padding: '6px 12px' }}>
             <PercentBar pct={weightPct} />
           </td>
           <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-            {!isDeleted && (() => {
-            const isStaged = viewRemediations.has(keyStr);
-            const stageDeleteLabel = isStaged
-              ? intl.get('performance.unstage_delete_view').d('Unstage delete view')
-              : intl.get('performance.stage_delete_view').d('Stage delete view');
-            const directLabel = v.privateFor
-              ? intl
-                  .get('performance.delete_private_view_now')
-                  .d('Delete private view now')
-              : intl.get('performance.delete_view_now').d('Delete view now');
-            const extras: any[] = [];
-            if (expandable) {
-              extras.push({
-                label: intl
-                  .get('performance.stage_update_view')
-                  .d('Stage update view'),
-                icon: 'dtable-icon-gauge',
-                color: isDirty ? '#dc3545' : '#999',
-                disabled: !isDirty,
-                disabledTooltip: intl
-                  .get('performance.no_unsaved_visibility')
-                  .d('Toggle the column sliders first.'),
-                onClick: () =>
-                  onStageVisibility(v.tableId, v.tableName, v.viewId, v.viewName),
-              });
-            }
-            extras.push({
-              label: stageDeleteLabel,
-              icon: 'dtable-icon-gauge',
-              color: isStaged ? '#999' : '#dc3545',
-              onClick: () =>
-                onToggleStage({
-                  tableId: v.tableId,
-                  tableName: v.tableName,
-                  viewId: v.viewId,
-                  viewName: v.viewName,
-                  privateFor: v.privateFor ?? null,
-                }),
-            });
-            extras.push({ divider: true, label: '', onClick: () => {} });
-            if (expandable) {
-              extras.push({
-                label: intl.get('performance.update_view_now').d('Update view now'),
-                icon: 'dtable-icon-eye',
-                color: isDirty ? '#0066cc' : '#999',
-                disabled: !isDirty,
-                disabledTooltip: intl
-                  .get('performance.no_unsaved_visibility')
-                  .d('Toggle the column sliders first.'),
-                onClick: () =>
-                  onApplyVisibility(v.tableId, v.tableName, v.viewId, v.viewName),
-              });
-            }
-            return (
-              <ContextMenu
-                onDelete={() => onDelete(v.tableName, v.viewName, keyStr)}
-                label={directLabel}
-                extraActions={extras}
-              />
-            );
-          })()}
+            {!isDeleted &&
+              (() => {
+                const isStaged = viewRemediations.has(keyStr);
+                const stageDeleteLabel = isStaged
+                  ? intl.get('performance.unstage_delete_view').d('Unstage delete view')
+                  : intl.get('performance.stage_delete_view').d('Stage delete view');
+                const directLabel = v.privateFor
+                  ? intl.get('performance.delete_private_view_now').d('Delete private view now')
+                  : intl.get('performance.delete_view_now').d('Delete view now');
+                const extras: any[] = [];
+                if (expandable) {
+                  extras.push({
+                    label: intl.get('performance.stage_update_view').d('Stage update view'),
+                    icon: 'dtable-icon-gauge',
+                    color: isDirty ? '#dc3545' : '#999',
+                    disabled: !isDirty,
+                    disabledTooltip: intl
+                      .get('performance.no_unsaved_visibility')
+                      .d('Toggle the column sliders first.'),
+                    onClick: () => onStageVisibility(v.tableId, v.tableName, v.viewId, v.viewName),
+                  });
+                }
+                extras.push({
+                  label: stageDeleteLabel,
+                  icon: 'dtable-icon-gauge',
+                  color: isStaged ? '#999' : '#dc3545',
+                  onClick: () =>
+                    onToggleStage({
+                      tableId: v.tableId,
+                      tableName: v.tableName,
+                      viewId: v.viewId,
+                      viewName: v.viewName,
+                      privateFor: v.privateFor ?? null,
+                    }),
+                });
+                extras.push({ divider: true, label: '', onClick: () => {} });
+                if (expandable) {
+                  extras.push({
+                    label: intl.get('performance.update_view_now').d('Update view now'),
+                    icon: 'dtable-icon-eye',
+                    color: isDirty ? '#0066cc' : '#999',
+                    disabled: !isDirty,
+                    disabledTooltip: intl
+                      .get('performance.no_unsaved_visibility')
+                      .d('Toggle the column sliders first.'),
+                    onClick: () => onApplyVisibility(v.tableId, v.tableName, v.viewId, v.viewName),
+                  });
+                }
+                return (
+                  <ContextMenu
+                    onDelete={() => onDelete(v.tableName, v.viewName, keyStr)}
+                    label={directLabel}
+                    extraActions={extras}
+                  />
+                );
+              })()}
           </td>
         </tr>
-        {isExpanded && (() => {
-        const t = liveValue?.tables?.find((tt: any) => tt._id === v.tableId);
-        const liveView = t?.views?.find((vv: any) => vv._id === v.viewId);
-        if (!liveView) return null;
-        const cols = (t?.columns ?? []) as any[];
-        const effectiveHidden = getEffectiveHiddenForView(v.tableId, v.viewId);
-        return (
-          <tr style={{ backgroundColor: '#fafbfc' }}>
-            <td colSpan={4} style={{ padding: 0, borderBottom: '1px solid #eee' }}>
-              <ViewVisibilityDrill
-                tableId={v.tableId}
-                viewId={v.viewId}
-                liveView={liveView}
-                liveColumns={cols}
-                candidateColumnKeys={candidateColumnKeys}
-                effectiveHidden={effectiveHidden}
-                onToggleColumn={(colKey) =>
-                  toggleColumnInView(v.tableId, v.viewId, colKey)
-                }
-              />
-            </td>
-          </tr>
-        );
-      })()}
+        {isExpanded &&
+          (() => {
+            const t = liveValue?.tables?.find((tt: any) => tt._id === v.tableId);
+            const liveView = t?.views?.find((vv: any) => vv._id === v.viewId);
+            if (!liveView) return null;
+            const cols = (t?.columns ?? []) as any[];
+            const effectiveHidden = getEffectiveHiddenForView(v.tableId, v.viewId);
+            return (
+              <tr style={{ backgroundColor: '#fafbfc' }}>
+                <td colSpan={4} style={{ padding: 0, borderBottom: '1px solid #eee' }}>
+                  <ViewVisibilityDrill
+                    tableId={v.tableId}
+                    viewId={v.viewId}
+                    liveView={liveView}
+                    liveColumns={cols}
+                    candidateColumnKeys={candidateColumnKeys}
+                    effectiveHidden={effectiveHidden}
+                    onToggleColumn={(colKey) => toggleColumnInView(v.tableId, v.viewId, colKey)}
+                  />
+                </td>
+              </tr>
+            );
+          })()}
       </React.Fragment>
     );
   };
@@ -4071,9 +4005,7 @@ const ViewsSection: React.FC<{
   const head = (
     <thead>
       <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-        <th
-          style={{ padding: '8px 12px', ...SORTABLE_TH }}
-          onClick={() => toggleSort('view')}>
+        <th style={{ padding: '8px 12px', ...SORTABLE_TH }} onClick={() => toggleSort('view')}>
           {intl.get('common.view').d('View')}
           {sortIndicator(sortKey === 'view', sortDir)}
         </th>
@@ -4090,7 +4022,7 @@ const ViewsSection: React.FC<{
           style={{ padding: '8px 12px', ...SORTABLE_TH }}
           title={intl
             .get('performance.view_weight_tooltip')
-            .d('This view\'s share of total view-load time (rowCount × ms) before the remediation.')}
+            .d("This view's share of total view-load time (rowCount × ms) before the remediation.")}
           onClick={() => toggleSort('weight')}>
           {intl.get('performance.weight').d('Weight')}
           {sortIndicator(sortKey === 'weight', sortDir)}
@@ -4176,8 +4108,7 @@ const ViewsTableGroupBody: React.FC<{
   // staged, "Stage all" becomes "Unstage all"; otherwise it stages every relevant
   // unstaged view in this group. Non-relevant views are skipped both ways.
   const relevantViews = views.filter(isViewRelevant);
-  const allRelevantStaged =
-    relevantViews.length > 0 && relevantViews.every(isViewStaged);
+  const allRelevantStaged = relevantViews.length > 0 && relevantViews.every(isViewStaged);
   const someUnstagedRelevant = relevantViews.some((v) => !isViewStaged(v));
   const handleStageAll = () => {
     if (allRelevantStaged) {
@@ -4238,9 +4169,7 @@ const ViewsTableGroupBody: React.FC<{
             extraActions={[
               {
                 label: allRelevantStaged
-                  ? intl
-                      .get('performance.unstage_all_views')
-                      .d('Unstage all views in this table')
+                  ? intl.get('performance.unstage_all_views').d('Unstage all views in this table')
                   : intl
                       .get('performance.stage_all_views')
                       .d('Stage all relevant views in this table'),
@@ -4362,15 +4291,11 @@ const RowsSection: React.FC<{
         </colgroup>
         <thead>
           <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-            <th
-              style={{ padding: '8px 12px', ...SORTABLE_TH }}
-              onClick={() => toggleSort('table')}>
+            <th style={{ padding: '8px 12px', ...SORTABLE_TH }} onClick={() => toggleSort('table')}>
               {intl.get('common.table').d('Table')}
               {sortIndicator(sortKey === 'table', sortDir)}
             </th>
-            <th
-              style={{ padding: '8px 12px', ...SORTABLE_TH }}
-              onClick={() => toggleSort('rows')}>
+            <th style={{ padding: '8px 12px', ...SORTABLE_TH }} onClick={() => toggleSort('rows')}>
               {intl.get('common.rows').d('Rows')}
               {sortIndicator(sortKey === 'rows', sortDir)}
             </th>
@@ -4387,93 +4312,93 @@ const RowsSection: React.FC<{
           {sorted.map((a, i) => {
             const pct = a.totalRows > 0 ? (a.candidateCount / a.totalRows) * 100 : 0;
             const isDeleted = deletedTableIds?.has(a.tableId) === true;
-          return (
-            <tr
-              key={a.tableId}
-              className="audit-row"
-              style={{
-                borderBottom: '1px solid #eee',
-                backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
-                textDecoration: isDeleted ? 'line-through' : 'none',
-                color: isDeleted ? '#999' : undefined,
-              }}>
-              <td style={{ padding: '6px 12px', fontWeight: 700, wordBreak: 'break-word' }}>
-                {a.tableName}
-              </td>
-              <td style={{ padding: '6px 12px', color: '#888' }}>{a.totalRows}</td>
-              <td
-                style={{ padding: '6px 12px', color: '#555', textAlign: 'center' }}
-                title={intl
-                  .get('performance.rows_archival_tooltip_combined')
-                  .d(
-                    'Rows whose creation and modification times are both older than the archival threshold. "Safe" rows are not referenced by any link column elsewhere — safest to archive first.'
-                  )}>
-                {a.candidateCountNoIncomingLinks === a.candidateCount
-                  ? intl
-                      .get('performance.rows_archival_with_all_safe', {
-                        count: a.candidateCount,
-                        pct: Math.round(pct),
-                      })
-                      .d(`${a.candidateCount} archival (${Math.round(pct)}%) — all safe`)
-                  : intl
-                      .get('performance.rows_archival_with_n_safe', {
-                        count: a.candidateCount,
-                        pct: Math.round(pct),
-                        safe: a.candidateCountNoIncomingLinks,
-                      })
-                      .d(
-                        `${a.candidateCount} archival (${Math.round(pct)}%) — ${a.candidateCountNoIncomingLinks} safe`
-                      )}
-              </td>
-              <td style={{ padding: '6px 4px' }}>
-                <ContextMenu
-                  onDelete={() => onDeleteArchivalRows && onDeleteArchivalRows(a)}
-                  confirmDelete={false}
-                  deleteDisabled={isDeleted}
-                  deleteDisabledTooltip={
-                    isDeleted
-                      ? intl
-                          .get('performance.archival_already_deleted')
-                          .d('Already deleted in this session')
-                      : undefined
-                  }
-                  label={intl
-                    .get('performance.rows_delete_with_snapshot')
-                    .d('Delete with snapshot')}
-                  extraActions={[
-                    {
-                      label: intl
-                        .get('performance.rows_create_archival_view')
-                        .d('Create archival view'),
-                      icon: 'dtable-icon-archive-view',
-                      onClick: () => onCreateArchivalView && onCreateArchivalView(a),
-                    },
-                  ]}
-                />
-              </td>
-            </tr>
-          );
-        })}
+            return (
+              <tr
+                key={a.tableId}
+                className="audit-row"
+                style={{
+                  borderBottom: '1px solid #eee',
+                  backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
+                  textDecoration: isDeleted ? 'line-through' : 'none',
+                  color: isDeleted ? '#999' : undefined,
+                }}>
+                <td style={{ padding: '6px 12px', fontWeight: 700, wordBreak: 'break-word' }}>
+                  {a.tableName}
+                </td>
+                <td style={{ padding: '6px 12px', color: '#888' }}>{a.totalRows}</td>
+                <td
+                  style={{ padding: '6px 12px', color: '#555', textAlign: 'center' }}
+                  title={intl
+                    .get('performance.rows_archival_tooltip_combined')
+                    .d(
+                      'Rows whose creation and modification times are both older than the archival threshold. "Safe" rows are not referenced by any link column elsewhere — safest to archive first.'
+                    )}>
+                  {a.candidateCountNoIncomingLinks === a.candidateCount
+                    ? intl
+                        .get('performance.rows_archival_with_all_safe', {
+                          count: a.candidateCount,
+                          pct: Math.round(pct),
+                        })
+                        .d(`${a.candidateCount} archival (${Math.round(pct)}%) — all safe`)
+                    : intl
+                        .get('performance.rows_archival_with_n_safe', {
+                          count: a.candidateCount,
+                          pct: Math.round(pct),
+                          safe: a.candidateCountNoIncomingLinks,
+                        })
+                        .d(
+                          `${a.candidateCount} archival (${Math.round(pct)}%) — ${a.candidateCountNoIncomingLinks} safe`
+                        )}
+                </td>
+                <td style={{ padding: '6px 4px' }}>
+                  <ContextMenu
+                    onDelete={() => onDeleteArchivalRows && onDeleteArchivalRows(a)}
+                    confirmDelete={false}
+                    deleteDisabled={isDeleted}
+                    deleteDisabledTooltip={
+                      isDeleted
+                        ? intl
+                            .get('performance.archival_already_deleted')
+                            .d('Already deleted in this session')
+                        : undefined
+                    }
+                    label={intl
+                      .get('performance.rows_delete_with_snapshot')
+                      .d('Delete with snapshot')}
+                    extraActions={[
+                      {
+                        label: intl
+                          .get('performance.rows_create_archival_view')
+                          .d('Create archival view'),
+                        icon: 'dtable-icon-archive-view',
+                        onClick: () => onCreateArchivalView && onCreateArchivalView(a),
+                      },
+                    ]}
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {belowThresholdCount > 0 && (
-      <div
-        style={{
-          fontSize: 12,
-          color: '#888',
-          fontStyle: 'italic',
-          padding: '6px 8px',
-        }}>
-        {intl
-          .get('performance.rows_belowthreshold_footer', {
-            count: belowThresholdCount,
-            threshold: ROWS_MIN_CANDIDATES,
-          })
-          .d(
-            `+${belowThresholdCount} table(s) with fewer than ${ROWS_MIN_CANDIDATES} archival candidates — see individual table tabs for details.`
-          )}
-      </div>
-    )}
+        <div
+          style={{
+            fontSize: 12,
+            color: '#888',
+            fontStyle: 'italic',
+            padding: '6px 8px',
+          }}>
+          {intl
+            .get('performance.rows_belowthreshold_footer', {
+              count: belowThresholdCount,
+              threshold: ROWS_MIN_CANDIDATES,
+            })
+            .d(
+              `+${belowThresholdCount} table(s) with fewer than ${ROWS_MIN_CANDIDATES} archival candidates — see individual table tabs for details.`
+            )}
+        </div>
+      )}
     </>
   );
 };
@@ -4518,12 +4443,7 @@ const CandidateRow: React.FC<{
   c: PerformanceAuditResult['candidates'][number];
   remediations: Map<string, RemediationAction>;
   onToggleAction: (key: string, action: RemediationAction) => void;
-  onDeleteNow: (
-    tableName: string,
-    tableId: string,
-    columnName: string,
-    columnKey: string
-  ) => void;
+  onDeleteNow: (tableName: string, tableId: string, columnName: string, columnKey: string) => void;
   deletedCandidateKeys: Set<string>;
   // Column full-keys frozen via "Freeze column now" since the last audit.
   // Rendered grayed-out + strikethrough + "frozen" mention — same visual
@@ -4560,12 +4480,7 @@ const CandidateRow: React.FC<{
     columnKey: string,
     columnName: string
   ) => void;
-  onFreezeNow: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
+  onFreezeNow: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }> = ({
   c,
   remediations,
@@ -4610,10 +4525,7 @@ const CandidateRow: React.FC<{
 
   // Whether the chevron should be available — either chain or drill content.
   const expandable =
-    !isSelected &&
-    !isDeletedNow &&
-    !isFrozenNow &&
-    hasCandidateExpansionContent(c, liveValue);
+    !isSelected && !isDeletedNow && !isFrozenNow && hasCandidateExpansionContent(c, liveValue);
 
   // True iff this column has uncommitted visibility edits in any view.
   // Compares viewEdits against `(base ∪ staged)` — once Stage commits a hide
@@ -4679,9 +4591,7 @@ const CandidateRow: React.FC<{
   const structuralLabel =
     costPerRowTag === 'structural'
       ? {
-          text: intl
-            .get('performance.label_structural')
-            .d('structural cost (high cost per row)'),
+          text: intl.get('performance.label_structural').d('structural cost (high cost per row)'),
           tooltip: intl
             .get('performance.tag_structural_tooltip')
             .d(
@@ -4774,11 +4684,7 @@ const CandidateRow: React.FC<{
             <span
               style={{
                 fontSize: 11,
-                color: isFrozenNow
-                  ? '#777'
-                  : action === 'delete'
-                    ? '#dc3545'
-                    : '#e6a117',
+                color: isFrozenNow ? '#777' : action === 'delete' ? '#dc3545' : '#e6a117',
                 fontStyle: 'italic',
               }}>
               · {actionLabel}
@@ -4886,30 +4792,30 @@ const CandidateRow: React.FC<{
       <td
         style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}
         onClick={(e) => e.stopPropagation()}>
-        {!isDeletedNow && !isFrozenNow && (() => {
-          const extras = buildCandidateMenuExtras({
-            candidate: c,
-            remediations,
-            isColumnDirty,
-            onToggleAction,
-            onApplyColumnVisibility,
-            onFreezeNow,
-          });
-          return (
-            <ContextMenu
-              onDelete={() =>
-                onDeleteNow(c.tableName, c.tableId, c.columnName, c.columnKey)
-              }
-              confirmDelete={true}
-              label={intl.get('performance.delete_column_now').d('Delete column now')}
-              deleteDisabled={c.isPrimaryColumn}
-              deleteDisabledTooltip={intl
-                .get('performance.delete_disabled_primary')
-                .d('Cannot delete — this is the table\'s first column')}
-              extraActions={extras}
-            />
-          );
-        })()}
+        {!isDeletedNow &&
+          !isFrozenNow &&
+          (() => {
+            const extras = buildCandidateMenuExtras({
+              candidate: c,
+              remediations,
+              isColumnDirty,
+              onToggleAction,
+              onApplyColumnVisibility,
+              onFreezeNow,
+            });
+            return (
+              <ContextMenu
+                onDelete={() => onDeleteNow(c.tableName, c.tableId, c.columnName, c.columnKey)}
+                confirmDelete={true}
+                label={intl.get('performance.delete_column_now').d('Delete column now')}
+                deleteDisabled={c.isPrimaryColumn}
+                deleteDisabledTooltip={intl
+                  .get('performance.delete_disabled_primary')
+                  .d("Cannot delete — this is the table's first column")}
+                extraActions={extras}
+              />
+            );
+          })()}
       </td>
     </tr>
   );
@@ -4920,12 +4826,7 @@ const CandidateTableGroup: React.FC<{
   candidates: PerformanceAuditResult['candidates'];
   remediations: Map<string, RemediationAction>;
   onToggleAction: (key: string, action: RemediationAction) => void;
-  onDeleteNow: (
-    tableName: string,
-    tableId: string,
-    columnName: string,
-    columnKey: string
-  ) => void;
+  onDeleteNow: (tableName: string, tableId: string, columnName: string, columnKey: string) => void;
   deletedCandidateKeys: Set<string>;
   frozenNowKeys: Set<string>;
   totalCostMs: number;
@@ -4950,12 +4851,7 @@ const CandidateTableGroup: React.FC<{
     columnKey: string,
     columnName: string
   ) => void;
-  onFreezeNow: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
+  onFreezeNow: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }> = ({
   tableName,
   candidates,
@@ -5068,12 +4964,7 @@ const CandidateBandGroup: React.FC<{
   candidates: PerformanceAuditResult['candidates'];
   remediations: Map<string, RemediationAction>;
   onToggleAction: (key: string, action: RemediationAction) => void;
-  onDeleteNow: (
-    tableName: string,
-    tableId: string,
-    columnName: string,
-    columnKey: string
-  ) => void;
+  onDeleteNow: (tableName: string, tableId: string, columnName: string, columnKey: string) => void;
   deletedCandidateKeys: Set<string>;
   frozenNowKeys: Set<string>;
   totalCostMs: number;
@@ -5098,12 +4989,7 @@ const CandidateBandGroup: React.FC<{
     columnKey: string,
     columnName: string
   ) => void;
-  onFreezeNow: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
+  onFreezeNow: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }> = ({
   band,
   candidates,
@@ -5170,9 +5056,7 @@ const CandidateBandGroup: React.FC<{
             confirmDelete={false}
             label={
               allSelected
-                ? intl
-                    .get('performance.unselect_band')
-                    .d('Unselect all columns in this band')
+                ? intl.get('performance.unselect_band').d('Unselect all columns in this band')
                 : intl
                     .get('performance.select_band')
                     .d('Stage all columns in this band for deletion')
@@ -5234,9 +5118,7 @@ const DeltaDisplay: React.FC<{ before: BenchmarkTimings; after: BenchmarkTimings
   // unique WITHIN a table — every table's "Default View" shares _id "0000".
   // Keying by viewId alone collapses cross-table default views into a single
   // Map entry, causing every lookup to return the wrong match.
-  const afterByView = new Map(
-    (after.viewLoads || []).map((v) => [`${v.tableId}:${v.viewId}`, v])
-  );
+  const afterByView = new Map((after.viewLoads || []).map((v) => [`${v.tableId}:${v.viewId}`, v]));
   let weightedBefore = 0;
   let weightedDiff = 0;
   // Weighted-sum-of-savings, with each view's saving weighted by its own ms
@@ -5261,8 +5143,7 @@ const DeltaDisplay: React.FC<{ before: BenchmarkTimings; after: BenchmarkTimings
   // unchanged views shouldn't headline "Significant" — 90% of view-opens feel
   // identical. Why not sum: 10 views each saving 100ms shouldn't headline
   // "Major" — none individually feel any different.
-  const absSavedMs =
-    weightedBefore > 0 ? Math.max(0, weightedSavedSum / weightedBefore) : 0;
+  const absSavedMs = weightedBefore > 0 ? Math.max(0, weightedSavedSum / weightedBefore) : 0;
   return <DeltaBadge pct={pct} absSavedMs={absSavedMs} />;
 };
 
@@ -5342,7 +5223,7 @@ const TestResultDisplay: React.FC<{
         {intl
           .get('performance.benchmark_caveat')
           .d(
-            'Theoretical compute cost compared before/after, summed across views. Filter/sort/group cost, DOM rendering and network sync aren\'t included — actual editor responsiveness may differ.'
+            "Theoretical compute cost compared before/after, summed across views. Filter/sort/group cost, DOM rendering and network sync aren't included — actual editor responsiveness may differ."
           )}
       </div>
     </>
@@ -5412,12 +5293,12 @@ const PerViewDeltaTable: React.FC<{
               {intl.get('performance.rows').d('Rows')}
             </th>
             <th
-            style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'left' }}
-            title={intl
-              .get('performance.view_loading_tooltip')
-              .d(
-                'How long this view takes to load relative to the rest. Slow-loading views feel sluggish when a user opens them.'
-              )}>
+              style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'left' }}
+              title={intl
+                .get('performance.view_loading_tooltip')
+                .d(
+                  'How long this view takes to load relative to the rest. Slow-loading views feel sluggish when a user opens them.'
+                )}>
               {intl.get('performance.loading_header').d('Loading')}
             </th>
             <th style={{ padding: '4px 8px', fontWeight: 500, textAlign: 'left' }}>
@@ -5448,23 +5329,23 @@ const PerViewDeltaTable: React.FC<{
         </tbody>
       </table>
       {hiddenCount > 0 && (
-      <div
-        style={{
-          fontSize: 12,
-          color: '#888',
-          fontStyle: 'italic',
-          padding: '6px 8px',
-        }}>
-        {intl
-          .get('performance.minor_views_hidden', {
-            count: hiddenCount,
-            threshold: MIN_RELEVANT_PCT,
-          })
-          .d(
-            `+${hiddenCount} view(s) hidden (each <${MIN_RELEVANT_PCT}% of total weight) — their deltas can swing wildly on tiny baselines and rarely affect perceived load.`
-          )}
-      </div>
-    )}
+        <div
+          style={{
+            fontSize: 12,
+            color: '#888',
+            fontStyle: 'italic',
+            padding: '6px 8px',
+          }}>
+          {intl
+            .get('performance.minor_views_hidden', {
+              count: hiddenCount,
+              threshold: MIN_RELEVANT_PCT,
+            })
+            .d(
+              `+${hiddenCount} view(s) hidden (each <${MIN_RELEVANT_PCT}% of total weight) — their deltas can swing wildly on tiny baselines and rarely affect perceived load.`
+            )}
+        </div>
+      )}
     </>
   );
 };
@@ -5719,9 +5600,7 @@ const RemediatedColumnsList: React.FC<{
                     onClick={(e) => e.stopPropagation()}>
                     <ContextMenu
                       onDelete={() => onRemoveView(v.tableId, v.viewId)}
-                      label={intl
-                        .get('performance.remove_from_test')
-                        .d('Remove from test')}
+                      label={intl.get('performance.remove_from_test').d('Remove from test')}
                     />
                   </span>
                 )}
@@ -5765,9 +5644,7 @@ const RemediatedColumnsList: React.FC<{
                       onClick={(e) => e.stopPropagation()}>
                       <ContextMenu
                         onDelete={() => onRemoveHide(h.tableId, h.columnKey, v.viewId)}
-                        label={intl
-                          .get('performance.remove_from_test')
-                          .d('Remove from test')}
+                        label={intl.get('performance.remove_from_test').d('Remove from test')}
                       />
                     </span>
                   )}
@@ -5887,30 +5764,21 @@ const TestBlock: React.FC<{
           {(() => {
             const colCount = test.remediations.length;
             const viewCount = test.remediationViews?.length || 0;
-            const hideCount = (test.remediationHides || []).reduce(
-              (s, h) => s + h.views.length,
-              0
-            );
+            const hideCount = (test.remediationHides || []).reduce((s, h) => s + h.views.length, 0);
             const parts: string[] = [];
             if (colCount > 0) {
               parts.push(
-                intl
-                  .get('performance.cols_part', { count: colCount })
-                  .d(`${colCount} column(s)`)
+                intl.get('performance.cols_part', { count: colCount }).d(`${colCount} column(s)`)
               );
             }
             if (viewCount > 0) {
               parts.push(
-                intl
-                  .get('performance.views_part', { count: viewCount })
-                  .d(`${viewCount} view(s)`)
+                intl.get('performance.views_part', { count: viewCount }).d(`${viewCount} view(s)`)
               );
             }
             if (hideCount > 0) {
               parts.push(
-                intl
-                  .get('performance.hides_part', { count: hideCount })
-                  .d(`${hideCount} hide(s)`)
+                intl.get('performance.hides_part', { count: hideCount }).d(`${hideCount} hide(s)`)
               );
             }
             if (parts.length === 0) {

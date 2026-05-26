@@ -104,7 +104,6 @@ export function deltaBand(pct: number, absSavedMs: number): DeltaBand {
   // changes don't masquerade as wins.
   if (absSavedMs < DELTA_ABS_FLOOR_MS.perception) return 'no-change';
   if (pct <= -30 && absSavedMs >= DELTA_ABS_FLOOR_MS.major) return 'major-improvement';
-  if (pct <= -15 && absSavedMs >= DELTA_ABS_FLOOR_MS.significant)
-    return 'significant-improvement';
+  if (pct <= -15 && absSavedMs >= DELTA_ABS_FLOOR_MS.significant) return 'significant-improvement';
   return 'moderate-improvement';
 }

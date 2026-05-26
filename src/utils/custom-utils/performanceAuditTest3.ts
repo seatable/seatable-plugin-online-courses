@@ -76,7 +76,13 @@ export interface Test3Result {
     restore: TrialResult;
   };
   valuesMatched: number | null;
-  verdict: 'works' | 'works-but-slow' | 'mismatch' | 'restored-after-failure' | 'left-frozen' | 'aborted';
+  verdict:
+    | 'works'
+    | 'works-but-slow'
+    | 'mismatch'
+    | 'restored-after-failure'
+    | 'left-frozen'
+    | 'aborted';
   cleanupSnippet: string; // shown if autoRestore was false
   notes: string[];
 }
@@ -137,7 +143,11 @@ async function httpAddColumn(
     {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ table_name: tableName, column_name: columnName, column_type: columnType }),
+      body: JSON.stringify({
+        table_name: tableName,
+        column_name: columnName,
+        column_type: columnType,
+      }),
     },
     timeoutMs
   );
@@ -271,8 +281,15 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
     restore: { ok: false, ms: 0, error: 'not attempted' },
   };
 
-  const finalize = (verdict: Test3Result['verdict'], extra?: Partial<Test3Result>): Test3Result => ({
-    column: { tableName, formulaColumnName, donorColumnName: extra?.column?.donorColumnName || opts.donorColumnName || '' },
+  const finalize = (
+    verdict: Test3Result['verdict'],
+    extra?: Partial<Test3Result>
+  ): Test3Result => ({
+    column: {
+      tableName,
+      formulaColumnName,
+      donorColumnName: extra?.column?.donorColumnName || opts.donorColumnName || '',
+    },
     formulaColumnKey: extra?.formulaColumnKey || '',
     donorColumnKey: extra?.donorColumnKey || '',
     donorColumnType: extra?.donorColumnType || '',
@@ -292,7 +309,9 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
     return finalize('aborted');
   }
   if (!accessToken || !dtableUuid) {
-    notes.push(`aborted: missing auth — accessToken ${accessToken ? 'ok' : 'EMPTY'}, dtableUuid ${dtableUuid ? 'ok' : 'EMPTY'}`);
+    notes.push(
+      `aborted: missing auth — accessToken ${accessToken ? 'ok' : 'EMPTY'}, dtableUuid ${dtableUuid ? 'ok' : 'EMPTY'}`
+    );
     return finalize('aborted');
   }
 
@@ -329,25 +348,52 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
     return finalize('aborted');
   }
 
-  notes.push(`formula column: ${tableName} › ${formulaColumnName} (key=${formulaColumnKey}, rows=${rowCount}, result_type=${resultType})`);
+  notes.push(
+    `formula column: ${tableName} › ${formulaColumnName} (key=${formulaColumnKey}, rows=${rowCount}, result_type=${resultType})`
+  );
   notes.push(`donor (to create): "${donorColumnName}" type=${donorColumnType}`);
-  notes.push(`autoRestore=${autoRestore}, sqlChunk=${sqlChunkSize}, batchChunk=${batchUpdateChunkSize}`);
+  notes.push(
+    `autoRestore=${autoRestore}, sqlChunk=${sqlChunkSize}, batchChunk=${batchUpdateChunkSize}`
+  );
 
   // ---- Phase 1: Add donor column
-  if (onProgress) onProgress(`Phase 1/6: Adding donor column "${donorColumnName}" (${donorColumnType})...`);
-  const addRes = await httpAddColumn(serverUrl, dtableUuid, accessToken, tableName, donorColumnName, donorColumnType, httpTimeoutMs);
-  phases.addDonor = { ok: addRes.ok, ms: addRes.ms, error: addRes.ok ? undefined : `HTTP ${addRes.status}: ${(addRes.body || '').slice(0, 200)}` };
-  notes.push(`P1 addDonor: ${phases.addDonor.ok ? 'ok' : 'FAIL'} in ${fmt(phases.addDonor.ms)}${!phases.addDonor.ok && phases.addDonor.error ? ` — ${phases.addDonor.error}` : ''}`);
+  if (onProgress)
+    onProgress(`Phase 1/6: Adding donor column "${donorColumnName}" (${donorColumnType})...`);
+  const addRes = await httpAddColumn(
+    serverUrl,
+    dtableUuid,
+    accessToken,
+    tableName,
+    donorColumnName,
+    donorColumnType,
+    httpTimeoutMs
+  );
+  phases.addDonor = {
+    ok: addRes.ok,
+    ms: addRes.ms,
+    error: addRes.ok ? undefined : `HTTP ${addRes.status}: ${(addRes.body || '').slice(0, 200)}`,
+  };
+  notes.push(
+    `P1 addDonor: ${phases.addDonor.ok ? 'ok' : 'FAIL'} in ${fmt(phases.addDonor.ms)}${!phases.addDonor.ok && phases.addDonor.error ? ` — ${phases.addDonor.error}` : ''}`
+  );
   if (!phases.addDonor.ok) {
     return finalize('aborted', { formulaColumnKey, donorColumnType, rowCount });
   }
   // The add-column response may or may not return the new column's key. Re-read
   // metadata to get it reliably.
-  const donorColumnKey: string = addRes.key || (await (async () => {
-    const meta = await httpSqlChunk(serverUrl, dtableUuid, accessToken, `SELECT _id FROM \`${tableName}\` LIMIT 0`, httpTimeoutMs);
-    const col = meta.metadata?.find((m: any) => (m.name || m.column_name) === donorColumnName);
-    return col?.key || col?.column_key || '';
-  })());
+  const donorColumnKey: string =
+    addRes.key ||
+    (await (async () => {
+      const meta = await httpSqlChunk(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        `SELECT _id FROM \`${tableName}\` LIMIT 0`,
+        httpTimeoutMs
+      );
+      const col = meta.metadata?.find((m: any) => (m.name || m.column_name) === donorColumnName);
+      return col?.key || col?.column_key || '';
+    })());
   if (!donorColumnKey) {
     notes.push(`WARNING: couldn't resolve donor column key — operations using key may fail`);
   } else {
@@ -368,7 +414,14 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
     }
     // Delete the donor column.
     if (donorColumnKey) {
-      const del = await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, donorColumnKey, httpTimeoutMs);
+      const del = await httpDeleteColumn(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        tableName,
+        donorColumnKey,
+        httpTimeoutMs
+      );
       notes.push(
         `rollback: delete donor — ${del.ok ? 'ok' : 'FAILED'} in ${fmt(del.ms)}${del.body ? ` (${(del.body || '').slice(0, 100)})` : ''}`
       );
@@ -376,13 +429,16 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
   };
 
   // ---- Phase 2: SQL read in chunks
-  if (onProgress) onProgress(`Phase 2/6: Reading ${rowCount} values via SQL in chunks of ${sqlChunkSize}...`);
+  if (onProgress)
+    onProgress(`Phase 2/6: Reading ${rowCount} values via SQL in chunks of ${sqlChunkSize}...`);
   const t2 = Date.now();
   const collected: Map<string, any> = new Map();
   let sqlErr: string | undefined;
   for (let offset = 0; offset < rowCount; offset += sqlChunkSize) {
     if (onProgress) {
-      onProgress(`P2 SQL read: rows ${offset}–${Math.min(offset + sqlChunkSize, rowCount)} of ${rowCount}...`);
+      onProgress(
+        `P2 SQL read: rows ${offset}–${Math.min(offset + sqlChunkSize, rowCount)} of ${rowCount}...`
+      );
     }
     const chunk = await httpSqlChunk(
       serverUrl,
@@ -398,7 +454,8 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
     // Resolve the value key for the formula column (rows are keyed by key, not name).
     const valKey =
       chunk.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)?.key ||
-      chunk.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)?.column_key ||
+      chunk.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)
+        ?.column_key ||
       formulaColumnKey;
     for (const r of chunk.rows) {
       const id = r._id || r._rowid || r['_id'];
@@ -410,14 +467,23 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
   phases.sqlRead.ok = !sqlErr;
   if (sqlErr) phases.sqlRead.error = sqlErr;
   phases.sqlRead.detail = `read ${collected.size} row values`;
-  notes.push(`P2 sqlRead: ${phases.sqlRead.ok ? 'ok' : 'FAIL'} in ${fmt(phases.sqlRead.ms)} — ${collected.size} rows${sqlErr ? ` (${sqlErr})` : ''}`);
+  notes.push(
+    `P2 sqlRead: ${phases.sqlRead.ok ? 'ok' : 'FAIL'} in ${fmt(phases.sqlRead.ms)} — ${collected.size} rows${sqlErr ? ` (${sqlErr})` : ''}`
+  );
   if (!phases.sqlRead.ok) {
     await rollback('SQL read failed');
-    return finalize('restored-after-failure', { formulaColumnKey, donorColumnKey, donorColumnType, rowCount, rowsRead: collected.size });
+    return finalize('restored-after-failure', {
+      formulaColumnKey,
+      donorColumnKey,
+      donorColumnType,
+      rowCount,
+      rowsRead: collected.size,
+    });
   }
 
   // ---- Phase 3: batch_update_rows to populate donor
-  if (onProgress) onProgress(`Phase 3/6: Populating donor column in chunks of ${batchUpdateChunkSize}...`);
+  if (onProgress)
+    onProgress(`Phase 3/6: Populating donor column in chunks of ${batchUpdateChunkSize}...`);
   const t3 = Date.now();
   const allUpdates = Array.from(collected.entries()).map(([row_id, value]) => ({
     row_id,
@@ -432,7 +498,14 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
       );
     }
     const slice = allUpdates.slice(i, i + batchUpdateChunkSize);
-    const res = await httpBatchUpdate(serverUrl, dtableUuid, accessToken, tableName, slice, httpTimeoutMs);
+    const res = await httpBatchUpdate(
+      serverUrl,
+      dtableUuid,
+      accessToken,
+      tableName,
+      slice,
+      httpTimeoutMs
+    );
     if (!res.ok) {
       batchErr = `HTTP ${res.status}: ${(res.body || '').slice(0, 200)}`;
       break;
@@ -443,14 +516,24 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
   phases.batchPopulate.ok = !batchErr;
   if (batchErr) phases.batchPopulate.error = batchErr;
   phases.batchPopulate.detail = `populated ${written}/${allUpdates.length} rows`;
-  notes.push(`P3 batchPopulate: ${phases.batchPopulate.ok ? 'ok' : 'FAIL'} in ${fmt(phases.batchPopulate.ms)} — ${written} rows${batchErr ? ` (${batchErr})` : ''}`);
+  notes.push(
+    `P3 batchPopulate: ${phases.batchPopulate.ok ? 'ok' : 'FAIL'} in ${fmt(phases.batchPopulate.ms)} — ${written} rows${batchErr ? ` (${batchErr})` : ''}`
+  );
   if (!phases.batchPopulate.ok) {
     await rollback('batch_update_rows failed');
-    return finalize('restored-after-failure', { formulaColumnKey, donorColumnKey, donorColumnType, rowCount, rowsRead: collected.size, rowsWritten: written });
+    return finalize('restored-after-failure', {
+      formulaColumnKey,
+      donorColumnKey,
+      donorColumnType,
+      rowCount,
+      rowsRead: collected.size,
+      rowsWritten: written,
+    });
   }
 
   // ---- Phase 4: setColumnData swap (the part we already validated via Test 2)
-  if (onProgress) onProgress(`Phase 4/6: Swapping formula to {${donorColumnName}} via setColumnData...`);
+  if (onProgress)
+    onProgress(`Phase 4/6: Swapping formula to {${donorColumnName}} via setColumnData...`);
   const t4 = Date.now();
   const donorRefData = {
     ...originalData,
@@ -460,19 +543,32 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
   try {
     dtableSDK.dtableStore.setColumnData(tableIndex, formulaColumnKey, donorRefData);
     // Quick local-state sanity check.
-    const after = (dtableSDK.getTables()?.[tableIndex]?.columns || []).find((c: any) => c.key === formulaColumnKey);
+    const after = (dtableSDK.getTables()?.[tableIndex]?.columns || []).find(
+      (c: any) => c.key === formulaColumnKey
+    );
     if (after?.data?.formula !== donorRefData.formula) {
-      throw new Error(`SDK local state didn't accept the swap (got formula=${JSON.stringify(after?.data?.formula)})`);
+      throw new Error(
+        `SDK local state didn't accept the swap (got formula=${JSON.stringify(after?.data?.formula)})`
+      );
     }
     phases.swap.ok = true;
   } catch (e: any) {
     phases.swap.error = e?.message || String(e);
   }
   phases.swap.ms = Date.now() - t4;
-  notes.push(`P4 swap: ${phases.swap.ok ? 'ok' : 'FAIL'} in ${fmt(phases.swap.ms)}${!phases.swap.ok && phases.swap.error ? ` — ${phases.swap.error}` : ''}`);
+  notes.push(
+    `P4 swap: ${phases.swap.ok ? 'ok' : 'FAIL'} in ${fmt(phases.swap.ms)}${!phases.swap.ok && phases.swap.error ? ` — ${phases.swap.error}` : ''}`
+  );
   if (!phases.swap.ok) {
     await rollback('setColumnData swap failed');
-    return finalize('restored-after-failure', { formulaColumnKey, donorColumnKey, donorColumnType, rowCount, rowsRead: collected.size, rowsWritten: written });
+    return finalize('restored-after-failure', {
+      formulaColumnKey,
+      donorColumnKey,
+      donorColumnType,
+      rowCount,
+      rowsRead: collected.size,
+      rowsWritten: written,
+    });
   }
 
   // ---- Phase 5: Verify a sample matches between formula column and donor
@@ -490,8 +586,15 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
   if (!verify.ok) {
     phases.verify.error = `HTTP ${verify.status}: ${(verify.body || '').slice(0, 200)}`;
   } else {
-    const fKey = verify.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)?.key || verify.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)?.column_key || formulaColumnKey;
-    const dKey = verify.metadata.find((m: any) => (m.name || m.column_name) === donorColumnName)?.key || verify.metadata.find((m: any) => (m.name || m.column_name) === donorColumnName)?.column_key || donorColumnKey;
+    const fKey =
+      verify.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)?.key ||
+      verify.metadata.find((m: any) => (m.name || m.column_name) === formulaColumnName)
+        ?.column_key ||
+      formulaColumnKey;
+    const dKey =
+      verify.metadata.find((m: any) => (m.name || m.column_name) === donorColumnName)?.key ||
+      verify.metadata.find((m: any) => (m.name || m.column_name) === donorColumnName)?.column_key ||
+      donorColumnKey;
     let matched = 0;
     for (const r of verify.rows) {
       const f = r[fKey];
@@ -502,9 +605,13 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
     valuesMatched = matched;
     phases.verify.ok = matched === verify.rows.length;
     phases.verify.detail = `${matched}/${verify.rows.length} sampled rows match`;
-    notes.push(`P5 verify sample (first 3): ${JSON.stringify(verify.rows.slice(0, 3))}`.slice(0, 400));
+    notes.push(
+      `P5 verify sample (first 3): ${JSON.stringify(verify.rows.slice(0, 3))}`.slice(0, 400)
+    );
   }
-  notes.push(`P5 verify: ${phases.verify.ok ? 'ok' : 'FAIL'} in ${fmt(phases.verify.ms)} — ${phases.verify.detail || phases.verify.error}`);
+  notes.push(
+    `P5 verify: ${phases.verify.ok ? 'ok' : 'FAIL'} in ${fmt(phases.verify.ms)} — ${phases.verify.detail || phases.verify.error}`
+  );
 
   // ---- Phase 6: Restore (or leave frozen)
   if (autoRestore) {
@@ -517,16 +624,32 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
       restoreErr = `setColumnData restore: ${e?.message || e}`;
     }
     if (!restoreErr && donorColumnKey) {
-      const del = await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, donorColumnKey, httpTimeoutMs);
-      if (!del.ok) restoreErr = `delete donor: HTTP ${del.status}: ${(del.body || '').slice(0, 200)}`;
+      const del = await httpDeleteColumn(
+        serverUrl,
+        dtableUuid,
+        accessToken,
+        tableName,
+        donorColumnKey,
+        httpTimeoutMs
+      );
+      if (!del.ok)
+        restoreErr = `delete donor: HTTP ${del.status}: ${(del.body || '').slice(0, 200)}`;
     }
     phases.restore.ms = Date.now() - t6;
     phases.restore.ok = !restoreErr;
     if (restoreErr) phases.restore.error = restoreErr;
-    notes.push(`P6 restore: ${phases.restore.ok ? 'ok' : 'FAIL'} in ${fmt(phases.restore.ms)}${restoreErr ? ` — ${restoreErr}` : ''}`);
+    notes.push(
+      `P6 restore: ${phases.restore.ok ? 'ok' : 'FAIL'} in ${fmt(phases.restore.ms)}${restoreErr ? ` — ${restoreErr}` : ''}`
+    );
   } else {
-    phases.restore = { ok: true, ms: 0, detail: 'skipped (autoRestore=false) — left frozen for UI inspection' };
-    notes.push(`P6 restore SKIPPED — column is currently frozen. Run cleanup snippet (see result.cleanupSnippet) to revert.`);
+    phases.restore = {
+      ok: true,
+      ms: 0,
+      detail: 'skipped (autoRestore=false) — left frozen for UI inspection',
+    };
+    notes.push(
+      `P6 restore SKIPPED — column is currently frozen. Run cleanup snippet (see result.cleanupSnippet) to revert.`
+    );
   }
 
   // Verdict
@@ -540,7 +663,12 @@ export async function runTest3(opts: Test3Opts): Promise<Test3Result> {
   } else {
     // Heuristic: total wall time over 5min × (rows/10000) is "slow"; otherwise works.
     const total =
-      phases.addDonor.ms + phases.sqlRead.ms + phases.batchPopulate.ms + phases.swap.ms + phases.verify.ms + phases.restore.ms;
+      phases.addDonor.ms +
+      phases.sqlRead.ms +
+      phases.batchPopulate.ms +
+      phases.swap.ms +
+      phases.verify.ms +
+      phases.restore.ms;
     const slowThreshold = 5 * 60 * 1000 * Math.max(1, rowCount / 10_000);
     verdict = total > slowThreshold ? 'works-but-slow' : 'works';
     notes.push(`total wall time: ${fmt(total)}`);

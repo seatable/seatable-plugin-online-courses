@@ -248,7 +248,9 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
   const rowCount = (tbl.rows || []).length;
   const neutralData = { ...originalData, formula: neutralFormula, operated_columns: [] };
 
-  notes.push(`column: ${tableName} › ${columnName} (key=${columnKey}, rows=${rowCount}, result_type=${resultType})`);
+  notes.push(
+    `column: ${tableName} › ${columnName} (key=${columnKey}, rows=${rowCount}, result_type=${resultType})`
+  );
   notes.push(`original formula: ${JSON.stringify(originalData.formula).slice(0, 200)}`);
   notes.push(`neutral formula chosen for result_type=${resultType}: ${neutralLabel}`);
 
@@ -258,7 +260,8 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
   const restoreData: TrialResult = { ok: false, ms: 0 };
 
   // ---- Phase 1: Neutralize via setColumnData
-  if (onProgress) onProgress(`Phase 1/4: Neutralize via setColumnData (formula → ${neutralLabel})...`);
+  if (onProgress)
+    onProgress(`Phase 1/4: Neutralize via setColumnData (formula → ${neutralLabel})...`);
   const t1 = Date.now();
   try {
     dtableSDK.dtableStore.setColumnData(tableIndex, columnKey, neutralData);
@@ -288,7 +291,9 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
     neutralize.error = e?.message || String(e);
   }
   neutralize.ms = Date.now() - t1;
-  notes.push(`P1 neutralize: ${neutralize.ok ? 'ok' : 'FAIL'} in ${fmt(neutralize.ms)}${neutralize.error ? ` — ${neutralize.error}` : ''}`);
+  notes.push(
+    `P1 neutralize: ${neutralize.ok ? 'ok' : 'FAIL'} in ${fmt(neutralize.ms)}${neutralize.error ? ` — ${neutralize.error}` : ''}`
+  );
 
   // If neutralize failed we can't sensibly run the rest. Skip to slow data restore.
   if (!neutralize.ok) {
@@ -297,7 +302,8 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
     notes.push(`skipping Phase 2 + 3 due to Phase 1 failure`);
   } else {
     // ---- Phase 2: Optimized type change (formula → text) while neutral
-    if (onProgress) onProgress(`Phase 2/4: modifyColumnType(formula → text) on neutralized column...`);
+    if (onProgress)
+      onProgress(`Phase 2/4: modifyColumnType(formula → text) on neutralized column...`);
     const t2 = Date.now();
     try {
       // Correct signature: newColumnSpec object (NOT a bare type string), no 4th arg.
@@ -323,7 +329,12 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
             `Aborting before op reaches the server.`
         );
       }
-      const cond: ApplyPostCondition = { kind: 'columnType', tableName, columnKey, expectedType: 'text' };
+      const cond: ApplyPostCondition = {
+        kind: 'columnType',
+        tableName,
+        columnKey,
+        expectedType: 'text',
+      };
       const result = await pollMetadataUntilApplied(
         dtableUuid,
         accessToken,
@@ -337,7 +348,9 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
       optimizedTypeChange.error = e?.message || String(e);
     }
     optimizedTypeChange.ms = Date.now() - t2;
-    notes.push(`P2 opt-type:    ${optimizedTypeChange.ok ? 'ok' : 'FAIL'} in ${fmt(optimizedTypeChange.ms)}${optimizedTypeChange.error ? ` — ${optimizedTypeChange.error}` : ''}`);
+    notes.push(
+      `P2 opt-type:    ${optimizedTypeChange.ok ? 'ok' : 'FAIL'} in ${fmt(optimizedTypeChange.ms)}${optimizedTypeChange.error ? ` — ${optimizedTypeChange.error}` : ''}`
+    );
 
     // ---- Phase 3: Restore type (text → formula with trivial data)
     if (optimizedTypeChange.ok) {
@@ -349,7 +362,12 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
           name: columnName,
           data: neutralData,
         });
-        const cond: ApplyPostCondition = { kind: 'columnType', tableName, columnKey, expectedType: 'formula' };
+        const cond: ApplyPostCondition = {
+          kind: 'columnType',
+          tableName,
+          columnKey,
+          expectedType: 'formula',
+        };
         const result = await pollMetadataUntilApplied(
           dtableUuid,
           accessToken,
@@ -363,7 +381,9 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
         restoreType.error = e?.message || String(e);
       }
       restoreType.ms = Date.now() - t3;
-      notes.push(`P3 restore-type: ${restoreType.ok ? 'ok' : 'FAIL'} in ${fmt(restoreType.ms)}${restoreType.error ? ` — ${restoreType.error}` : ''}`);
+      notes.push(
+        `P3 restore-type: ${restoreType.ok ? 'ok' : 'FAIL'} in ${fmt(restoreType.ms)}${restoreType.error ? ` — ${restoreType.error}` : ''}`
+      );
     } else {
       restoreType.error = 'skipped — optimized type change failed';
       notes.push(`skipping Phase 3 due to Phase 2 failure`);
@@ -377,9 +397,12 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
   // failed), we need to land on formula with originalData. Branch accordingly.
   const currentCol = await fetchColumn(dtableUuid, accessToken, tableName, columnKey);
   const currentType = currentCol?.type;
-  notes.push(`pre-P4 column state: type=${currentType}, formula=${JSON.stringify(currentCol?.data?.formula ?? null).slice(0, 80)}`);
+  notes.push(
+    `pre-P4 column state: type=${currentType}, formula=${JSON.stringify(currentCol?.data?.formula ?? null).slice(0, 80)}`
+  );
 
-  if (onProgress) onProgress(`Phase 4/4: Restore original formula (slow — re-evaluates ${rowCount} rows)...`);
+  if (onProgress)
+    onProgress(`Phase 4/4: Restore original formula (slow — re-evaluates ${rowCount} rows)...`);
   const t4 = Date.now();
   try {
     if (currentType === 'text') {
@@ -390,7 +413,12 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
         name: columnName,
         data: originalData,
       });
-      const cond: ApplyPostCondition = { kind: 'columnType', tableName, columnKey, expectedType: 'formula' };
+      const cond: ApplyPostCondition = {
+        kind: 'columnType',
+        tableName,
+        columnKey,
+        expectedType: 'formula',
+      };
       const result = await pollMetadataUntilApplied(
         dtableUuid,
         accessToken,
@@ -423,15 +451,21 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
     restoreData.error = e?.message || String(e);
   }
   restoreData.ms = Date.now() - t4;
-  notes.push(`P4 restore-data: ${restoreData.ok ? 'ok' : 'FAIL'} in ${fmt(restoreData.ms)}${restoreData.error ? ` — ${restoreData.error}` : ''}`);
+  notes.push(
+    `P4 restore-data: ${restoreData.ok ? 'ok' : 'FAIL'} in ${fmt(restoreData.ms)}${restoreData.error ? ` — ${restoreData.error}` : ''}`
+  );
 
   // ---- Final sanity: confirm column_key survived end-to-end
   const finalCol = await fetchColumn(dtableUuid, accessToken, tableName, columnKey);
   const columnKeyAfter = finalCol?.key || '';
   if (columnKeyAfter !== columnKey) {
-    notes.push(`WARNING: column_key changed during test: ${columnKey} → ${columnKeyAfter}. Downstream-reference preservation hypothesis is INVALID.`);
+    notes.push(
+      `WARNING: column_key changed during test: ${columnKey} → ${columnKeyAfter}. Downstream-reference preservation hypothesis is INVALID.`
+    );
   } else if (finalCol) {
-    notes.push(`final state: type=${finalCol.type}, formula=${JSON.stringify(finalCol?.data?.formula ?? null).slice(0, 80)} — key preserved ✓`);
+    notes.push(
+      `final state: type=${finalCol.type}, formula=${JSON.stringify(finalCol?.data?.formula ?? null).slice(0, 80)} — key preserved ✓`
+    );
   }
 
   // ---- Verdict
@@ -447,7 +481,9 @@ export async function runTest1(opts: Test1Opts): Promise<Test1Result> {
 
   if (restoreData.ok && optimizedTypeChange.ok) {
     const ratio = restoreData.ms / Math.max(1, neutralize.ms + optimizedTypeChange.ms);
-    notes.push(`speedup vs baseline-equivalent (Phase 4): ${ratio.toFixed(1)}× (${fmt(restoreData.ms)} → ${fmt(neutralize.ms + optimizedTypeChange.ms)})`);
+    notes.push(
+      `speedup vs baseline-equivalent (Phase 4): ${ratio.toFixed(1)}× (${fmt(restoreData.ms)} → ${fmt(neutralize.ms + optimizedTypeChange.ms)})`
+    );
   }
 
   return {

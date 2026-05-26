@@ -304,10 +304,7 @@ export const ChainGraph: React.FC<ChainGraphProps> = ({ chain, rootColumn }) => 
         const tint = row.edge === 'traversal' ? row.tintColor || '#555' : '#555';
         return (
           <div key={i} style={{ ...baseStyle, fontSize: 12, color: tint }}>
-            <i
-              className={`dtable-font ${row.iconClass}`}
-              style={{ fontSize: 12, color: '#aaa' }}
-            />
+            <i className={`dtable-font ${row.iconClass}`} style={{ fontSize: 12, color: '#aaa' }} />
             <span>{row.name}</span>
           </div>
         );
