@@ -1283,9 +1283,7 @@ const TableTab: React.FC<TableTabProps> = ({
                       <span
                         style={{
                           textDecoration:
-                            isDeleted || stagedAction === 'delete' || isFrozen
-                              ? 'line-through'
-                              : undefined,
+                            isDeleted || stagedAction === 'delete' ? 'line-through' : undefined,
                           fontStyle: stagedAction === 'replace-static' ? 'italic' : undefined,
                         }}>
                         {col.name}
