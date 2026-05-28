@@ -581,7 +581,12 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             orphan.columnKey,
             90 * 1000
           );
-          if (!res.ok && res.status !== 404) {
+          // 404 and 400 both mean "column already gone" in practice — SeaTable
+          // returns 400 with no further detail when the named column no longer
+          // exists on the table, which is exactly the desired end state for
+          // delete. Don't fail the cleanup on either; the UI just removes the
+          // (now bogus) orphan entry below.
+          if (!res.ok && res.status !== 404 && res.status !== 400) {
             showToast(`Cleanup failed: HTTP ${res.status}`);
             return;
           }
@@ -1971,6 +1976,36 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             next.set(key, record);
             return next;
           });
+          // If this column had also been freeze-now'd in the same session,
+          // drop the pendingFrozenNow flag too — otherwise the candidate
+          // keeps its "frozen" strikethrough in the candidates list even
+          // though we just unfroze it.
+          setPendingFrozenNow((prev) => {
+            if (!prev.has(key)) return prev;
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+          // Pre-seed pendingDeletedOrphans with the helpers we just removed.
+          // SDK's getTables() lags the HTTP DELETE — without this, the orphan
+          // detector reads stale state and flags the just-deleted helpers as
+          // stranded for the few seconds until the WebSocket broadcast
+          // updates the cache. Same dedup-key format the detector uses at
+          // line ~493: `stranded:${tableId}:${columnKey}`.
+          const justDeleted: string[] = [];
+          if (result.snapshotDeleted && record.snapshotColumnKey) {
+            justDeleted.push(`stranded:${record.tableId}:${record.snapshotColumnKey}`);
+          }
+          if (deleteSelfLink && result.selfLinkDeleted && record.selfLinkColumnKey) {
+            justDeleted.push(`stranded:${record.tableId}:${record.selfLinkColumnKey}`);
+          }
+          if (justDeleted.length > 0) {
+            setPendingDeletedOrphans((prev) => {
+              const next = new Set(prev);
+              for (const k of justDeleted) next.add(k);
+              return next;
+            });
+          }
         }
       } catch (e: any) {
         showToast(`Unfreeze failed: ${e?.message || e}`);
