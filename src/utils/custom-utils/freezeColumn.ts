@@ -200,6 +200,20 @@ function extractRateLimitReset(resp: Response | undefined | null): number | unde
   return Number.isFinite(n) ? n : undefined;
 }
 
+/**
+ * Returns the count of requests remaining in the current rate-limit window
+ * from the `x-ratelimit-remaining` response header, or undefined if absent.
+ * Used by the freeze pipeline to pace adaptively — slow down only as the
+ * bucket gets close to empty rather than paying a fixed tax on every chunk.
+ */
+function extractRateLimitRemaining(resp: Response | undefined | null): number | undefined {
+  if (!resp) return undefined;
+  const v = resp.headers.get('x-ratelimit-remaining');
+  if (v == null) return undefined;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export async function httpAddColumn(
   serverUrl: string,
   uuid: string,
@@ -215,6 +229,7 @@ export async function httpAddColumn(
   body?: string;
   status: number;
   resetAt?: number;
+  remaining?: number;
 }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
@@ -236,6 +251,7 @@ export async function httpAddColumn(
       status: resp?.status ?? 0,
       body: text,
       resetAt: extractRateLimitReset(resp),
+      remaining: extractRateLimitRemaining(resp),
     };
   }
   const data = await resp.json().catch(() => ({}));
@@ -246,6 +262,7 @@ export async function httpAddColumn(
     key: data?.key,
     linkId: data?.data?.link_id,
     raw: data,
+    remaining: extractRateLimitRemaining(resp),
   };
 }
 
@@ -256,7 +273,14 @@ export async function httpDeleteColumn(
   tableName: string,
   columnKey: string,
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
+): Promise<{
+  ok: boolean;
+  ms: number;
+  body?: string;
+  status: number;
+  resetAt?: number;
+  remaining?: number;
+}> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/columns/`,
@@ -277,9 +301,10 @@ export async function httpDeleteColumn(
       status: resp?.status ?? 0,
       body: text,
       resetAt: extractRateLimitReset(resp),
+      remaining: extractRateLimitRemaining(resp),
     };
   }
-  return { ok: true, ms, status: resp.status };
+  return { ok: true, ms, status: resp.status, remaining: extractRateLimitRemaining(resp) };
 }
 
 export async function httpSqlChunk(
@@ -296,6 +321,7 @@ export async function httpSqlChunk(
   body?: string;
   status: number;
   resetAt?: number;
+  remaining?: number;
 }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
@@ -319,12 +345,20 @@ export async function httpSqlChunk(
       metadata: [],
       body: text,
       resetAt: extractRateLimitReset(resp),
+      remaining: extractRateLimitRemaining(resp),
     };
   }
   const data = await resp.json().catch(() => ({}));
   const rows: any[] = data?.results || data?.rows || [];
   const metadata: any[] = data?.metadata || data?.columns || [];
-  return { ok: true, ms, status: resp.status, rows, metadata };
+  return {
+    ok: true,
+    ms,
+    status: resp.status,
+    rows,
+    metadata,
+    remaining: extractRateLimitRemaining(resp),
+  };
 }
 
 export async function httpBatchUpdate(
@@ -334,7 +368,14 @@ export async function httpBatchUpdate(
   tableName: string,
   updates: { row_id: string; row: Record<string, any> }[],
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
+): Promise<{
+  ok: boolean;
+  ms: number;
+  body?: string;
+  status: number;
+  resetAt?: number;
+  remaining?: number;
+}> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/rows/`,
@@ -355,9 +396,10 @@ export async function httpBatchUpdate(
       status: resp?.status ?? 0,
       body: text,
       resetAt: extractRateLimitReset(resp),
+      remaining: extractRateLimitRemaining(resp),
     };
   }
-  return { ok: true, ms, status: resp.status };
+  return { ok: true, ms, status: resp.status, remaining: extractRateLimitRemaining(resp) };
 }
 
 /**
@@ -377,7 +419,14 @@ export async function httpBatchUpdateLinks(
     other_rows_ids_map: Record<string, string[]>;
   },
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
+): Promise<{
+  ok: boolean;
+  ms: number;
+  body?: string;
+  status: number;
+  resetAt?: number;
+  remaining?: number;
+}> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/links/`,
@@ -398,9 +447,10 @@ export async function httpBatchUpdateLinks(
       status: resp?.status ?? 0,
       body: text,
       resetAt: extractRateLimitReset(resp),
+      remaining: extractRateLimitRemaining(resp),
     };
   }
-  return { ok: true, ms, status: resp.status };
+  return { ok: true, ms, status: resp.status, remaining: extractRateLimitRemaining(resp) };
 }
 
 /**
@@ -416,7 +466,14 @@ export async function httpUpdateViewHidden(
   viewName: string,
   hiddenColumns: string[],
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
+): Promise<{
+  ok: boolean;
+  ms: number;
+  body?: string;
+  status: number;
+  resetAt?: number;
+  remaining?: number;
+}> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/views/${encodeURIComponent(viewName)}/?table_name=${encodeURIComponent(tableName)}`,
@@ -441,9 +498,10 @@ export async function httpUpdateViewHidden(
       status: resp?.status ?? 0,
       body: text,
       resetAt: extractRateLimitReset(resp),
+      remaining: extractRateLimitRemaining(resp),
     };
   }
-  return { ok: true, ms, status: resp.status };
+  return { ok: true, ms, status: resp.status, remaining: extractRateLimitRemaining(resp) };
 }
 
 /**
@@ -640,14 +698,14 @@ export interface FreezeColumnOpts {
   linksBatchChunkSize?: number; // default 1_000
   httpTimeoutMs?: number; // default 90s
   /**
-   * Sleep between chunked requests (SQL reads, batch row updates, batch link
-   * updates) to stay under SeaTable's per-minute rate limit (200/min cloud,
-   * 500/min dedicated — https://api.seatable.com/reference/limits). 250ms ≈
-   * 4 req/s, slightly over the cloud limit but well within burst tolerance.
-   * Set to 0 to disable. Adds ~N×delay seconds to freeze time on large bases,
-   * where N is the chunk count per phase.
+   * Fallback inter-chunk delay (ms) when `x-ratelimit-remaining` is NOT in the
+   * response headers. Default 0 — modern SeaTable instances send the header
+   * and the pipeline uses it for adaptive pacing (0ms when bucket is healthy,
+   * 200ms when getting low, 500ms when nearly empty). Set this to a positive
+   * value if you're hitting 429s on an older instance that doesn't send the
+   * header.
    */
-  interChunkDelayMs?: number; // default 250ms
+  interChunkDelayMs?: number; // default 0 (adaptive takes over when header present)
   arraySeparator?: string; // default ', '
   /** When true, the snapshot / self-link columns are left visible in every
    * view of the parent table. Useful in sandbox apply paths so the user can
@@ -703,14 +761,29 @@ export async function freezeColumnViaIndirection(
     batchUpdateChunkSize = 1_000,
     linksBatchChunkSize = 1_000,
     httpTimeoutMs = 90 * 1000,
-    interChunkDelayMs = 250,
+    interChunkDelayMs = 0,
     arraySeparator = ', ',
   } = opts;
 
-  const sleepBetweenChunks = (isLast: boolean): Promise<void> =>
-    isLast || interChunkDelayMs <= 0
-      ? Promise.resolve()
-      : new Promise((r) => setTimeout(r, interChunkDelayMs));
+  // Adaptive pacing: most requests run at full speed; we only slow down as the
+  // rate-limit bucket gets close to empty (informed by `x-ratelimit-remaining`
+  // from the most recent response). Falls back to `interChunkDelayMs` (default
+  // 0) when the header is absent — older SeaTable instances that don't send
+  // the header default to no pacing and rely on withRetryTransient to recover
+  // from any 429 that does land.
+  let lastRemaining: number | undefined = undefined;
+  const sleepBetweenChunks = (isLast: boolean): Promise<void> => {
+    if (isLast) return Promise.resolve();
+    let delay = interChunkDelayMs;
+    if (lastRemaining !== undefined) {
+      if (lastRemaining > 30) delay = 0;
+      else if (lastRemaining > 10) delay = 200;
+      else if (lastRemaining > 0) delay = 500;
+      else delay = 0; // bucket empty — next request will 429; retry handles wait
+    }
+    if (delay <= 0) return Promise.resolve();
+    return new Promise((r) => setTimeout(r, delay));
+  };
 
   const snapshotColumnName = opts.snapshotColumnName || `_frozen_${columnName}`;
   const selfLinkColumnName = opts.selfLinkColumnName || `_frozenLink_${tableName}`;
@@ -866,6 +939,7 @@ export async function freezeColumnViaIndirection(
         rowCount,
       });
     }
+    lastRemaining = chunk.remaining;
     const valKey =
       chunk.metadata.find((m: any) => (m.name || m.column_name) === columnName)?.key ||
       chunk.metadata.find((m: any) => (m.name || m.column_name) === columnName)?.column_key ||
@@ -1030,6 +1104,7 @@ export async function freezeColumnViaIndirection(
         `Populate snapshot failed: HTTP ${res.status}: ${(res.body || '').slice(0, 200)}`
       );
     }
+    lastRemaining = res.remaining;
     await sleepBetweenChunks(i + batchUpdateChunkSize >= allUpdates.length);
   }
 
@@ -1165,6 +1240,7 @@ export async function freezeColumnViaIndirection(
           `Populate self-link failed: HTTP ${res.status}: ${(res.body || '').slice(0, 200)}`
         );
       }
+      lastRemaining = res.remaining;
       await sleepBetweenChunks(i + linksBatchChunkSize >= allRowIds.length);
     }
   }
