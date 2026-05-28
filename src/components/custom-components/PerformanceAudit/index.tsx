@@ -428,6 +428,42 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       });
     }, [auditDate, frozenColumns]);
 
+    // Mirror of hasStaleFreezeAcrossSessions for the unfreeze side. We persist
+    // `lastUnfreezeAt` on every successful unfreeze (see handleUnfreeze); when
+    // it post-dates auditDate, the cached candidates list is stale (an unfrozen
+    // column that was filtered out of candidates because of its low post-freeze
+    // cost will reappear once the audit measures it again). Without this,
+    // after a refresh + an unfreeze the user has no signal that the audit
+    // needs rerunning — everything looks clean but the candidates list lies.
+    const hasStaleUnfreezeAcrossSessions = useMemo(() => {
+      if (!auditDate) return false;
+      try {
+        const settings = (window as any).dtableSDK.getPluginSettings(PLUGIN_NAME) || {};
+        const lastUnfreezeAt: string | undefined = settings.lastUnfreezeAt;
+        if (!lastUnfreezeAt) return false;
+        const auditTime = new Date(auditDate).getTime();
+        const unfreezeTime = new Date(lastUnfreezeAt).getTime();
+        if (Number.isNaN(auditTime) || Number.isNaN(unfreezeTime)) return false;
+        return unfreezeTime > auditTime;
+      } catch {
+        return false;
+      }
+      // frozenRefreshCounter is bumped on every freeze / unfreeze / orphan
+      // cleanup, which is also when lastUnfreezeAt might change — perfect
+      // signal to re-read settings.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [auditDate, frozenRefreshCounter]);
+
+    // Unified "audit is stale" signal — true when any session or cross-session
+    // freeze/unfreeze tracking indicates the cached candidates list doesn't
+    // reflect current base state. Drives both the in-section rerun link and
+    // the top-level banner above the candidates section.
+    const isAuditStale =
+      pendingUnfrozen.size > 0 ||
+      pendingFrozenNow.size > 0 ||
+      hasStaleFreezeAcrossSessions ||
+      hasStaleUnfreezeAcrossSessions;
+
     // Orphans = freeze-mechanism artifacts no longer paired with a healthy
     // FrozenColumnRecord ↔ live-column relationship. Two patterns:
     //   • `stale`: settings record points at a column that no longer exists
@@ -1938,7 +1974,11 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         });
 
         // Clear the settings entry whenever the column itself was restored —
-        // helper-column cleanup failures are warnings, not blockers.
+        // helper-column cleanup failures are warnings, not blockers. Also
+        // persist `lastUnfreezeAt` so the "audit is stale" signal survives
+        // a plugin refresh — without it, the user reloads to an empty
+        // Currently-frozen section, no rerun reminder, and a candidates
+        // list that doesn't reflect the (now-restored) column's true cost.
         let restoredOk = false;
         if (result.ok || result.restored) {
           try {
@@ -1949,6 +1989,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
               ...current,
               frozenColumns: updated,
+              lastUnfreezeAt: new Date().toISOString(),
             });
           } catch (e) {
             // eslint-disable-next-line no-console
@@ -1980,10 +2021,15 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           // drop the pendingFrozenNow flag too — otherwise the candidate
           // keeps its "frozen" strikethrough in the candidates list even
           // though we just unfroze it.
+          //
+          // Key-format gotcha: frozenColumns is keyed `${tableId}.${columnKey}`
+          // (dot), pendingFrozenNow uses `${tableId}:${columnKey}` (colon).
+          // The dot-form `key` from frozenColumns doesn't match — translate.
+          const pendingFrozenKey = `${record.tableId}:${record.columnKey}`;
           setPendingFrozenNow((prev) => {
-            if (!prev.has(key)) return prev;
+            if (!prev.has(pendingFrozenKey)) return prev;
             const next = new Set(prev);
-            next.delete(key);
+            next.delete(pendingFrozenKey);
             return next;
           });
           // Pre-seed pendingDeletedOrphans with the helpers we just removed.
@@ -3077,9 +3123,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                         </tbody>
                       </table>
                     )}
-                    {(pendingUnfrozen.size > 0 ||
-                      pendingFrozenNow.size > 0 ||
-                      hasStaleFreezeAcrossSessions) && (
+                    {isAuditStale && (
                       <div
                         style={{
                           marginTop: 8,
@@ -3262,6 +3306,38 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             </div>
 
             <div style={{ marginBottom: 24 }}>
+              {/* Top-level audit-stale banner. Visible whenever the audit's
+                  cached result is out of sync with the latest freeze/unfreeze
+                  state — including the case where the user unfroze a column
+                  off-session and reloaded the plugin, in which the in-section
+                  rerun link inside "Currently frozen" wouldn't render (that
+                  section's empty). Click to rerun in place. */}
+              {isAuditStale && (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: '8px 12px',
+                    border: '1px solid #ffc107',
+                    borderRadius: 4,
+                    backgroundColor: '#fff8e1',
+                    fontSize: 13,
+                    color: unfreezingKey || freezingNowKey ? '#999' : '#856404',
+                    cursor: unfreezingKey || freezingNowKey ? 'default' : 'pointer',
+                    userSelect: 'none',
+                  }}
+                  onClick={() => {
+                    if (unfreezingKey || freezingNowKey) return;
+                    setTests([]);
+                    setSandbox({ status: 'idle' });
+                    doAudit();
+                  }}>
+                  {intl
+                    .get('performance.freeze_audit_stale')
+                    .d(
+                      "Performance analysis is outdated — recent freeze/unfreeze changes haven't been measured. Click to rerun now."
+                    )}
+                </div>
+              )}
               {result.candidates.length === 0 && (
                 <div style={{ color: '#28a745', fontSize: 13, padding: '4px 0' }}>
                   {intl
