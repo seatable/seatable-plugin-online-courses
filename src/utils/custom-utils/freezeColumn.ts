@@ -777,8 +777,8 @@ export async function freezeColumnViaIndirection(
     let delay = interChunkDelayMs;
     if (lastRemaining !== undefined) {
       if (lastRemaining > 30) delay = 0;
-      else if (lastRemaining > 10) delay = 200;
-      else if (lastRemaining > 0) delay = 500;
+      else if (lastRemaining > 10) delay = 300;
+      else if (lastRemaining > 0) delay = 600;
       else delay = 0; // bucket empty — next request will 429; retry handles wait
     }
     if (delay <= 0) return Promise.resolve();
