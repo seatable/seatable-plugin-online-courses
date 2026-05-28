@@ -1275,6 +1275,19 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           next.add(fullKey);
           return next;
         });
+        // If this column was just unfrozen earlier in the session, drop the
+        // pendingUnfrozen entry — without this, freeze → unfreeze → re-freeze
+        // would render the column twice in the Currently frozen section
+        // (once as the new active row, once as the leftover pending-unfrozen
+        // strikethrough). pendingUnfrozen uses the same dot-keyed map shape
+        // as frozenColumns.
+        setPendingUnfrozen((prev) => {
+          const dotKey = `${tableId}.${result.lfColumnKey}`;
+          if (!prev.has(dotKey)) return prev;
+          const next = new Map(prev);
+          next.delete(dotKey);
+          return next;
+        });
         showToast(
           intl.get('performance.frozen_now', { name: columnName }).d(`Frozen ${columnName}`)
         );
@@ -1889,6 +1902,22 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             frozenColumns
           );
         }
+        // Drop any pendingUnfrozen entries that this batch's freezes just
+        // re-froze. Without this, a freeze → unfreeze → batch-apply-with-
+        // refreeze cycle leaves the column visible twice in Currently
+        // frozen (once as the new active row, once as the leftover
+        // pending-unfrozen strikethrough).
+        const newlyFrozenKeys = frozenColumns.map((fc) => `${fc.tableId}.${fc.columnKey}`);
+        setPendingUnfrozen((prev) => {
+          let next: Map<string, FrozenColumnRecord> | null = null;
+          for (const k of newlyFrozenKeys) {
+            if (prev.has(k)) {
+              if (!next) next = new Map(prev);
+              next.delete(k);
+            }
+          }
+          return next ?? prev;
+        });
       }
 
       // Delete the sandbox base if the user opted in AND the apply succeeded.
@@ -3042,6 +3071,28 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                         .get('performance.frozen_section_title', { count: activeCount })
                         .d(`Currently frozen (${activeCount})`)}
                     </div>
+                    {isAuditStale && (
+                      <div
+                        style={{
+                          marginBottom: 8,
+                          fontSize: 13,
+                          color: unfreezingKey || freezingNowKey ? '#999' : '#ff8000',
+                          cursor: unfreezingKey || freezingNowKey ? 'default' : 'pointer',
+                          userSelect: 'none',
+                        }}
+                        onClick={() => {
+                          if (unfreezingKey || freezingNowKey) return;
+                          setTests([]);
+                          setSandbox({ status: 'idle' });
+                          doAudit();
+                        }}>
+                        {intl
+                          .get('performance.freeze_audit_stale')
+                          .d(
+                            "Performance analysis is outdated — recent freeze/unfreeze changes haven't been measured. Click to rerun now."
+                          )}
+                      </div>
+                    )}
                     {rows.length > 0 && (
                       <table
                         className="audit-table"
@@ -3122,28 +3173,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                           ))}
                         </tbody>
                       </table>
-                    )}
-                    {isAuditStale && (
-                      <div
-                        style={{
-                          marginTop: 8,
-                          fontSize: 13,
-                          color: unfreezingKey || freezingNowKey ? '#999' : '#ff8000',
-                          cursor: unfreezingKey || freezingNowKey ? 'default' : 'pointer',
-                          userSelect: 'none',
-                        }}
-                        onClick={() => {
-                          if (unfreezingKey || freezingNowKey) return;
-                          setTests([]);
-                          setSandbox({ status: 'idle' });
-                          doAudit();
-                        }}>
-                        {intl
-                          .get('performance.freeze_audit_stale')
-                          .d(
-                            "Performance analysis is outdated — recent freeze/unfreeze changes haven't been measured. Click to rerun now."
-                          )}
-                      </div>
                     )}
                     {/* Orphan freeze helpers — stale settings entries or stranded
                       helper columns. Rendered as a sibling sub-block within the
@@ -3311,17 +3340,14 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                   state — including the case where the user unfroze a column
                   off-session and reloaded the plugin, in which the in-section
                   rerun link inside "Currently frozen" wouldn't render (that
-                  section's empty). Click to rerun in place. */}
+                  section's empty). Same orange-link styling as the sibling
+                  inside Currently frozen so the two reinforce each other. */}
               {isAuditStale && (
                 <div
                   style={{
-                    marginBottom: 12,
-                    padding: '8px 12px',
-                    border: '1px solid #ffc107',
-                    borderRadius: 4,
-                    backgroundColor: '#fff8e1',
+                    marginBottom: 8,
                     fontSize: 13,
-                    color: unfreezingKey || freezingNowKey ? '#999' : '#856404',
+                    color: unfreezingKey || freezingNowKey ? '#999' : '#ff8000',
                     cursor: unfreezingKey || freezingNowKey ? 'default' : 'pointer',
                     userSelect: 'none',
                   }}
