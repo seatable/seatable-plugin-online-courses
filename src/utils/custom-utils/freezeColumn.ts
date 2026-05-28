@@ -183,6 +183,23 @@ export async function fetchWithTimeout(
   }
 }
 
+/**
+ * Returns the Unix-seconds timestamp from the `x-ratelimit-reset` response
+ * header set by SeaTable's api-gateway, or undefined if absent or unparseable.
+ * Used by the retry helper to time 429 retries to the rate-limit bucket's
+ * refill — SeaTable enforces a per-minute window (200/min cloud, 500/min
+ * dedicated) and shipping a request early just earns another 429.
+ *
+ * See https://api.seatable.com/reference/limits.
+ */
+function extractRateLimitReset(resp: Response | undefined | null): number | undefined {
+  if (!resp) return undefined;
+  const v = resp.headers.get('x-ratelimit-reset');
+  if (!v) return undefined;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export async function httpAddColumn(
   serverUrl: string,
   uuid: string,
@@ -197,6 +214,7 @@ export async function httpAddColumn(
   raw?: any;
   body?: string;
   status: number;
+  resetAt?: number;
 }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
@@ -212,7 +230,13 @@ export async function httpAddColumn(
   if (error) return { ok: false, ms, status: 0, body: error };
   if (!resp || !resp.ok) {
     const text = resp ? await resp.text().catch(() => '') : '';
-    return { ok: false, ms, status: resp?.status ?? 0, body: text };
+    return {
+      ok: false,
+      ms,
+      status: resp?.status ?? 0,
+      body: text,
+      resetAt: extractRateLimitReset(resp),
+    };
   }
   const data = await resp.json().catch(() => ({}));
   return {
@@ -232,7 +256,7 @@ export async function httpDeleteColumn(
   tableName: string,
   columnKey: string,
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number }> {
+): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/columns/`,
@@ -247,7 +271,13 @@ export async function httpDeleteColumn(
   if (error) return { ok: false, ms, status: 0, body: error };
   if (!resp || !resp.ok) {
     const text = resp ? await resp.text().catch(() => '') : '';
-    return { ok: false, ms, status: resp?.status ?? 0, body: text };
+    return {
+      ok: false,
+      ms,
+      status: resp?.status ?? 0,
+      body: text,
+      resetAt: extractRateLimitReset(resp),
+    };
   }
   return { ok: true, ms, status: resp.status };
 }
@@ -265,6 +295,7 @@ export async function httpSqlChunk(
   metadata: any[];
   body?: string;
   status: number;
+  resetAt?: number;
 }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
@@ -280,7 +311,15 @@ export async function httpSqlChunk(
   if (error) return { ok: false, ms, status: 0, rows: [], metadata: [], body: error };
   if (!resp || !resp.ok) {
     const text = resp ? await resp.text().catch(() => '') : '';
-    return { ok: false, ms, status: resp?.status ?? 0, rows: [], metadata: [], body: text };
+    return {
+      ok: false,
+      ms,
+      status: resp?.status ?? 0,
+      rows: [],
+      metadata: [],
+      body: text,
+      resetAt: extractRateLimitReset(resp),
+    };
   }
   const data = await resp.json().catch(() => ({}));
   const rows: any[] = data?.results || data?.rows || [];
@@ -295,7 +334,7 @@ export async function httpBatchUpdate(
   tableName: string,
   updates: { row_id: string; row: Record<string, any> }[],
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number }> {
+): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/rows/`,
@@ -310,7 +349,13 @@ export async function httpBatchUpdate(
   if (error) return { ok: false, ms, status: 0, body: error };
   if (!resp || !resp.ok) {
     const text = resp ? await resp.text().catch(() => '') : '';
-    return { ok: false, ms, status: resp?.status ?? 0, body: text };
+    return {
+      ok: false,
+      ms,
+      status: resp?.status ?? 0,
+      body: text,
+      resetAt: extractRateLimitReset(resp),
+    };
   }
   return { ok: true, ms, status: resp.status };
 }
@@ -332,7 +377,7 @@ export async function httpBatchUpdateLinks(
     other_rows_ids_map: Record<string, string[]>;
   },
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number }> {
+): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/links/`,
@@ -347,7 +392,13 @@ export async function httpBatchUpdateLinks(
   if (error) return { ok: false, ms, status: 0, body: error };
   if (!resp || !resp.ok) {
     const text = resp ? await resp.text().catch(() => '') : '';
-    return { ok: false, ms, status: resp?.status ?? 0, body: text };
+    return {
+      ok: false,
+      ms,
+      status: resp?.status ?? 0,
+      body: text,
+      resetAt: extractRateLimitReset(resp),
+    };
   }
   return { ok: true, ms, status: resp.status };
 }
@@ -365,7 +416,7 @@ export async function httpUpdateViewHidden(
   viewName: string,
   hiddenColumns: string[],
   timeoutMs: number
-): Promise<{ ok: boolean; ms: number; body?: string; status: number }> {
+): Promise<{ ok: boolean; ms: number; body?: string; status: number; resetAt?: number }> {
   const t0 = Date.now();
   const { resp, error } = await fetchWithTimeout(
     `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/views/${encodeURIComponent(viewName)}/?table_name=${encodeURIComponent(tableName)}`,
@@ -384,7 +435,13 @@ export async function httpUpdateViewHidden(
   if (error) return { ok: false, ms, status: 0, body: error };
   if (!resp || !resp.ok) {
     const text = resp ? await resp.text().catch(() => '') : '';
-    return { ok: false, ms, status: resp?.status ?? 0, body: text };
+    return {
+      ok: false,
+      ms,
+      status: resp?.status ?? 0,
+      body: text,
+      resetAt: extractRateLimitReset(resp),
+    };
   }
   return { ok: true, ms, status: resp.status };
 }
@@ -439,17 +496,20 @@ async function hideColumnInAllViews(
 }
 
 // ----------------------------------------------------------------------------
-// Resilience helpers — retry-on-5xx and server-health cooldown.
+// Resilience helpers — transient-retry and server-health cooldown.
 //
 // Sequential freezes stack backend pressure: each adds columns, batch-writes
-// many cells, and commits a WS modify_column_data op. Empirically, the second
-// freeze in a row sometimes hits a transient 500 mid-pipeline because the
-// backend hasn't settled. The two patterns below mitigate this:
+// many cells, and commits a WS modify_column_data op. The two patterns below
+// mitigate the failure modes that surface as a result:
 //
-//   - `withRetry5xx`: retries a 5xx-failing HTTP thunk with exponential
-//     backoff. Used inside freezeColumnViaIndirection's heavy phases (SQL read,
-//     batch update rows, batch update links). One transient 500 on chunk 30/70
-//     no longer kills the entire freeze.
+//   - `withRetryTransient`: retries on 5xx (transient backend hiccups) and
+//     429 (rate limit). 5xx uses a short exponential backoff (1s, 2s, 4s);
+//     429 honors `x-ratelimit-reset` (Unix-seconds bucket refill) when the
+//     api-gateway sends it, otherwise falls back to a multi-second hold
+//     since SeaTable's bucket is per-minute (200/min cloud, 500/min
+//     dedicated — see https://api.seatable.com/reference/limits). Used
+//     inside freezeColumnViaIndirection's heavy phases (SQL read, batch
+//     update rows, batch update links).
 //
 //   - `waitForServerSettled`: a mandatory cooldown + /metadata/ preflight
 //     called by applyRemediationsToBase between sequential freezes. Gives the
@@ -460,7 +520,9 @@ async function hideColumnInAllViews(
 // harnesses want to see what fails.
 // ----------------------------------------------------------------------------
 
-async function withRetry5xx<R extends { ok: boolean; status: number; body?: string }>(
+async function withRetryTransient<
+  R extends { ok: boolean; status: number; body?: string; resetAt?: number },
+>(
   fn: () => Promise<R>,
   opts?: {
     retries?: number;
@@ -475,13 +537,36 @@ async function withRetry5xx<R extends { ok: boolean; status: number; body?: stri
   for (let attempt = 0; attempt <= retries; attempt++) {
     last = await fn();
     if (last.ok) return last;
-    // Only retry on 5xx. 4xx is a client error — won't fix itself with a retry.
-    if (last.status < 500 || last.status >= 600) return last;
+    const is5xx = last.status >= 500 && last.status < 600;
+    const is429 = last.status === 429;
+    // Other 4xx are client errors — won't fix themselves with a retry.
+    if (!is5xx && !is429) return last;
     if (attempt === retries) return last;
-    const delay = baseDelayMs * Math.pow(2, attempt); // 1s, 2s, 4s
+
+    let delay: number;
+    let reason: string;
+    if (is429) {
+      // SeaTable enforces per-minute buckets. If x-ratelimit-reset is present,
+      // hold until the bucket refills (+ jitter to avoid thundering herd);
+      // otherwise pick a fallback long enough to clear most cases.
+      if (last.resetAt) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const secsUntilReset = Math.max(1, last.resetAt - nowSec);
+        delay = Math.min(60_000, secsUntilReset * 1000) + 250 + Math.random() * 500;
+      } else {
+        // Fallback escalation: 10s, 20s, 30s.
+        delay = (10 + 10 * attempt) * 1000;
+      }
+      reason = 'rate-limited (HTTP 429)';
+    } else {
+      // 5xx fast backoff: 1s, 2s, 4s.
+      delay = baseDelayMs * Math.pow(2, attempt);
+      reason = `HTTP ${last.status}`;
+    }
+
     if (opts?.onProgress && opts?.label) {
       opts.onProgress(
-        `${opts.label} — HTTP ${last.status}, retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${retries})...`
+        `${opts.label} — ${reason}, retrying in ${Math.round(delay / 1000)}s (attempt ${attempt + 1}/${retries})...`
       );
     }
     await new Promise((r) => setTimeout(r, delay));
@@ -504,9 +589,8 @@ export async function waitForServerSettled(
   serverUrl: string,
   uuid: string,
   accessToken: string,
-  onProgress?: (msg: string) => void
+  _onProgress?: (msg: string) => void
 ): Promise<void> {
-  if (onProgress) onProgress('Letting the backend settle...');
   await new Promise((r) => setTimeout(r, 2000));
   for (let attempt = 0; attempt < 3; attempt++) {
     const t0 = Date.now();
@@ -521,11 +605,10 @@ export async function waitForServerSettled(
     );
     const elapsed = Date.now() - t0;
     if (resp?.ok && elapsed < 1500) return;
-    if (onProgress) {
-      onProgress(
-        `Backend still busy (${elapsed}ms, status ${resp?.status ?? 'no-response'}) — waiting...`
-      );
-    }
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[freezeColumn] waitForServerSettled attempt ${attempt + 1}/3: /metadata/ ${elapsed}ms, status ${resp?.status ?? 'no-response'} — waiting...`
+    );
     await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
   }
 }
@@ -750,7 +833,7 @@ export async function freezeColumnViaIndirection(
         `Reading rows ${offset}–${Math.min(offset + sqlChunkSize, rowCount)} of ${rowCount}...`
       );
     }
-    const chunk = await withRetry5xx(
+    const chunk = await withRetryTransient(
       () =>
         httpSqlChunk(
           serverUrl,
@@ -922,7 +1005,7 @@ export async function freezeColumnViaIndirection(
       );
     }
     const slice = allUpdates.slice(i, i + batchUpdateChunkSize);
-    const res = await withRetry5xx(
+    const res = await withRetryTransient(
       () => httpBatchUpdate(serverUrl, dtableUuid, accessToken, tableName, slice, httpTimeoutMs),
       { onProgress, label: `Populate snapshot chunk ${i / batchUpdateChunkSize + 1}` }
     );
@@ -1043,7 +1126,7 @@ export async function freezeColumnViaIndirection(
       const slice = allRowIds.slice(i, i + linksBatchChunkSize);
       const map: Record<string, string[]> = {};
       for (const id of slice) map[id] = [id];
-      const res = await withRetry5xx(
+      const res = await withRetryTransient(
         () =>
           httpBatchUpdateLinks(
             serverUrl,
@@ -1135,7 +1218,7 @@ export async function freezeColumnViaIndirection(
   // ---- Phase 7: Verify by SQL sample (10 rows). Catches a successful swap
   // that produces wrong values (e.g. self-link not populated for some rows).
   if (onProgress) onProgress('Verifying...');
-  const verify = await withRetry5xx(
+  const verify = await withRetryTransient(
     () =>
       httpSqlChunk(
         serverUrl,
