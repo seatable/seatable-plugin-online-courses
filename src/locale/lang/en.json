@@ -239,6 +239,7 @@
     "view_weight_tooltip": "Share of total view-load time (rowCount × ms). Deleting removes this view as a switching destination but doesn't reduce overall base compute work.",
     "archival_hint": "{count} archivable rows in {table} — archiving may reduce this view",
     "apply_warning": "Apply these changes to the original base? A snapshot will be created first, but deleted columns cannot be restored from within the plugin.",
+    "apply_warning_concurrent_writes": "During the freeze, rows added to the affected tables will land as null in the snapshot until you re-freeze. Avoid mass row additions while the apply runs.",
     "apply_changes": "Apply changes to original base",
     "apply_changes_menu": "Apply changes",
     "apply_modal_title": "Apply changes to original base",

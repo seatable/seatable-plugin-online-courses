@@ -201,6 +201,65 @@ function extractRateLimitReset(resp: Response | undefined | null): number | unde
 }
 
 /**
+ * Build a copy-paste browser-console snippet that finishes whatever automatic
+ * rollback could not do. Mirrors the shape of Test 7's cleanupSnippet so the
+ * recovery story is uniform across the diagnostic harness and production
+ * pipeline. The snippet uses `window.dtableSDK` + fetch DELETE for helper
+ * columns, and `applyLocalOperation(modify_column_data)` for restoring the
+ * original LF / formula data.
+ *
+ * Only includes sections for the artifacts that genuinely need attention —
+ * if rollback already restored the LF data, the snippet skips that block.
+ */
+function buildCleanupSnippet(opts: {
+  tableName: string;
+  lfColumnKey: string;
+  originalData: any;
+  needsRestore: boolean;
+  orphanSelfLinkKey: string;
+  orphanSnapshotKey: string;
+}): string {
+  /* eslint-disable no-template-curly-in-string */
+  const parts: string[] = ['// Manual freeze rollback — paste into the browser console.'];
+  parts.push('const sdk = window.dtableSDK;');
+  if (opts.needsRestore) {
+    parts.push(
+      `const ti = sdk.getTables().findIndex(t => t.name === ${JSON.stringify(opts.tableName)});`
+    );
+    parts.push('const tableId = sdk.getTables()[ti]._id;');
+    parts.push('const store = sdk.dtableStore;');
+    parts.push('store.applyLocalOperation(store.createOperation({');
+    // eslint-disable-next-line quotes
+    parts.push("  type: 'modify_column_data',");
+    parts.push('  table_id: tableId,');
+    parts.push(`  column_key: ${JSON.stringify(opts.lfColumnKey)},`);
+    parts.push(`  column_data: ${JSON.stringify(opts.originalData)},`);
+    parts.push('}));');
+  }
+  if (opts.orphanSelfLinkKey || opts.orphanSnapshotKey) {
+    parts.push(
+      // eslint-disable-next-line quotes
+      "const headers = { 'content-type': 'application/json', authorization: `Bearer ${sdk.config.accessToken}` };"
+    );
+    parts.push(
+      'const url = `${window.dtable.server}/api-gateway/api/v2/dtables/${sdk.config.dtableUuid}/columns/`;'
+    );
+    if (opts.orphanSelfLinkKey) {
+      parts.push(
+        `await fetch(url, { method: 'DELETE', headers, body: JSON.stringify({ table_name: ${JSON.stringify(opts.tableName)}, column: ${JSON.stringify(opts.orphanSelfLinkKey)} }) });`
+      );
+    }
+    if (opts.orphanSnapshotKey) {
+      parts.push(
+        `await fetch(url, { method: 'DELETE', headers, body: JSON.stringify({ table_name: ${JSON.stringify(opts.tableName)}, column: ${JSON.stringify(opts.orphanSnapshotKey)} }) });`
+      );
+    }
+  }
+  /* eslint-enable no-template-curly-in-string */
+  return parts.join('\n');
+}
+
+/**
  * Returns the count of requests remaining in the current rate-limit window
  * from the `x-ratelimit-remaining` response header, or undefined if absent.
  * Used by the freeze pipeline to pace adaptively — slow down only as the
@@ -872,7 +931,9 @@ export async function freezeColumnViaIndirection(
   let swapApplied = false;
 
   // Rollback helpers — call only after the corresponding phase succeeded.
-  const restoreLfData = (): void => {
+  // Returns true on success, false on failure so rollback can emit a cleanup
+  // snippet listing whatever it couldn't undo automatically.
+  const restoreLfData = (): boolean => {
     try {
       const store = dtableSDK.dtableStore;
       const op = store.createOperation({
@@ -882,22 +943,59 @@ export async function freezeColumnViaIndirection(
         column_data: originalData,
       });
       store.applyLocalOperation(op);
+      return true;
     } catch {
-      // best effort
+      return false;
     }
   };
-  const deleteHelper = async (key: string): Promise<void> => {
-    if (!key) return;
-    await httpDeleteColumn(serverUrl, dtableUuid, accessToken, tableName, key, httpTimeoutMs);
+  const deleteHelper = async (key: string): Promise<boolean> => {
+    if (!key) return true;
+    const res = await httpDeleteColumn(
+      serverUrl,
+      dtableUuid,
+      accessToken,
+      tableName,
+      key,
+      httpTimeoutMs
+    );
+    // 404 means the column is already gone — that's the desired end state
+    // for delete, so treat as success rather than dragging it into the
+    // cleanup snippet for the user to manually re-run.
+    return res.ok || res.status === 404;
   };
   const rollback = async (error: string): Promise<FreezeColumnResult> => {
-    if (swapApplied) restoreLfData();
+    const restoreOk = swapApplied ? restoreLfData() : true;
     // Only delete a self-link we created in this call — never a reused one.
-    if (!reuseSelfLink) await deleteHelper(selfLinkColumnKey);
-    await deleteHelper(snapshotColumnKey);
+    const selfLinkDeleteOk = reuseSelfLink ? true : await deleteHelper(selfLinkColumnKey);
+    const snapshotDeleteOk = await deleteHelper(snapshotColumnKey);
+
+    // If anything fell short of clean recovery, emit a copy-paste snippet to
+    // the browser console so the user can finish the cleanup manually. The
+    // shape mirrors performanceAuditTest7.ts:898 — same surgical fetch DELETEs
+    // and applyLocalOperation restore that the pipeline tries automatically.
+    const restoreFailed = swapApplied && !restoreOk;
+    const orphanSelfLink = selfLinkDeleteOk ? '' : selfLinkColumnKey;
+    const orphanSnapshot = snapshotDeleteOk ? '' : snapshotColumnKey;
+    let enrichedError = error;
+    if (restoreFailed || orphanSelfLink || orphanSnapshot) {
+      const snippet = buildCleanupSnippet({
+        tableName,
+        lfColumnKey,
+        originalData,
+        needsRestore: restoreFailed,
+        orphanSelfLinkKey: orphanSelfLink,
+        orphanSnapshotKey: orphanSnapshot,
+      });
+      // eslint-disable-next-line no-console
+      console.error(
+        `[freezeColumn] Rollback incomplete for "${tableName}" › "${columnName}". ` +
+          `Manual cleanup snippet follows — paste into the browser console:\n\n${snippet}`
+      );
+      enrichedError = `${error}. Rollback left partial state — see browser console for a copy-paste cleanup snippet.`;
+    }
     return {
       ok: false,
-      error,
+      error: enrichedError,
       lfColumnKey,
       snapshotColumnKey: '',
       selfLinkColumnKey: '',

@@ -6292,6 +6292,10 @@ const ApplyChangesModal: React.FC<{
 }> = ({ test, canDeleteSandbox, onCancel, onConfirm }) => {
   const { body, collectViewsToDelete } = useRemediationModalBody(test);
   const sandboxName = test.lastSandbox?.name;
+  // Surface the concurrent-write caveat only when the apply will run at least
+  // one freeze. Delete-only or view-only applies are atomic on the server side
+  // and don't have a read-then-write window for new rows to slip into.
+  const hasFreeze = test.remediations.some((r) => r.action === 'replace-static');
   // Default ON: after a successful apply the sandbox has served its purpose.
   // Hidden entirely when no sandbox exists or we have no account token to call
   // deleteBase with.
@@ -6336,14 +6340,21 @@ const ApplyChangesModal: React.FC<{
       )}
     </>
   );
+  const baseWarning = intl
+    .get('performance.apply_warning')
+    .d(
+      'Apply these changes to the original base? A snapshot will be created first, but deleted columns cannot be restored from within the plugin.'
+    );
+  const concurrentWriteWarning = intl
+    .get('performance.apply_warning_concurrent_writes')
+    .d(
+      'During the freeze, rows added to the affected tables will land as null in the snapshot until you re-freeze. Avoid mass row additions while the apply runs.'
+    );
+  const warning = hasFreeze ? `${baseWarning} ${concurrentWriteWarning}` : baseWarning;
   return (
     <ConfirmModal
       title={intl.get('performance.apply_modal_title').d('Apply changes to original base')}
-      warning={intl
-        .get('performance.apply_warning')
-        .d(
-          'Apply these changes to the original base? A snapshot will be created first, but deleted columns cannot be restored from within the plugin.'
-        )}
+      warning={warning}
       body={extendedBody}
       confirmLabel={intl.get('performance.apply_changes').d('Apply changes to original base')}
       confirmColor="#dc3545"
