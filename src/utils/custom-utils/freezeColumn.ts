@@ -952,15 +952,58 @@ export async function freezeColumnViaIndirection(
         },
         httpTimeoutMs
       );
-      if (!addLink.ok) {
-        return rollback(
-          `Add self-link failed: HTTP ${addLink.status}: ${(addLink.body || '').slice(0, 200)}`
-        );
-      }
-      selfLinkColumnKey = addLink.key || '';
-      selfLinkId = addLink.linkId || '';
-      if (!selfLinkColumnKey || !selfLinkId) {
-        const resolved = await resolveSelfLinkMetadata(
+      if (addLink.ok) {
+        selfLinkColumnKey = addLink.key || '';
+        selfLinkId = addLink.linkId || '';
+        if (!selfLinkColumnKey || !selfLinkId) {
+          const resolved = await resolveSelfLinkMetadata(
+            serverUrl,
+            dtableUuid,
+            accessToken,
+            tableName,
+            selfLinkColumnName,
+            httpTimeoutMs
+          );
+          selfLinkColumnKey = selfLinkColumnKey || resolved.key;
+          selfLinkId = selfLinkId || resolved.linkId;
+        }
+        if (!selfLinkColumnKey || !selfLinkId) {
+          return rollback('self-link key/link_id unresolved after create');
+        }
+        // Hide self-link in all views immediately. Best-effort like the snapshot
+        // hide. Reused self-links skip this — they were hidden on the prior freeze.
+        // Skipped entirely for sandbox applies (keepHelpersVisible: true).
+        if (!opts.keepHelpersVisible) {
+          if (onProgress) onProgress('Hiding self-link column in all views...');
+          const hideLink = await hideColumnInAllViews(
+            serverUrl,
+            dtableUuid,
+            accessToken,
+            tableName,
+            tbl.views || [],
+            selfLinkColumnKey,
+            httpTimeoutMs
+          );
+          if (hideLink.failed > 0) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[freezeColumn] self-link column visible in ${hideLink.failed} view(s) — ${hideLink.firstError || 'unknown'}`
+            );
+          }
+        }
+      } else {
+        // Add-self-link 4xx'd. Most likely cause in a multi-freeze batch: a
+        // prior freeze already created `_frozenLink_<tableName>` but the SDK
+        // websocket lag meant the reuse check at the top of this function
+        // (line ~673) didn't see it yet — so we ended up here on the create
+        // path. Hit /metadata/ directly to confirm; if we find a valid
+        // same-table link column, treat it as a reused self-link.
+        if (onProgress) {
+          onProgress(
+            `Add self-link returned HTTP ${addLink.status} — checking /metadata/ for pre-existing column...`
+          );
+        }
+        const fallback = await findValidSelfLinkInMetadata(
           serverUrl,
           dtableUuid,
           accessToken,
@@ -968,32 +1011,21 @@ export async function freezeColumnViaIndirection(
           selfLinkColumnName,
           httpTimeoutMs
         );
-        selfLinkColumnKey = selfLinkColumnKey || resolved.key;
-        selfLinkId = selfLinkId || resolved.linkId;
-      }
-      if (!selfLinkColumnKey || !selfLinkId) {
-        return rollback('self-link key/link_id unresolved after create');
-      }
-      // Hide self-link in all views immediately. Best-effort like the snapshot
-      // hide. Reused self-links skip this — they were hidden on the prior freeze.
-      // Skipped entirely for sandbox applies (keepHelpersVisible: true).
-      if (!opts.keepHelpersVisible) {
-        if (onProgress) onProgress('Hiding self-link column in all views...');
-        const hideLink = await hideColumnInAllViews(
-          serverUrl,
-          dtableUuid,
-          accessToken,
-          tableName,
-          tbl.views || [],
-          selfLinkColumnKey,
-          httpTimeoutMs
-        );
-        if (hideLink.failed > 0) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `[freezeColumn] self-link column visible in ${hideLink.failed} view(s) — ${hideLink.firstError || 'unknown'}`
+        if (!fallback) {
+          return rollback(
+            `Add self-link failed: HTTP ${addLink.status}: ${(addLink.body || '').slice(0, 200)}`
           );
         }
+        reuseSelfLink = fallback;
+        selfLinkColumnKey = fallback.key;
+        selfLinkId = fallback.linkId;
+        if (onProgress) {
+          onProgress(`Reusing existing self-link "${selfLinkColumnName}" (resolved via /metadata/)`);
+        }
+        // Hide is skipped in this branch for the same reason as the normal
+        // reuse path: a prior freeze hid the column already. (If the column
+        // was created out-of-band and is visible, the user accepts the
+        // cosmetic noise — same trade as the SDK-cache reuse path.)
       }
     }
 
@@ -1201,6 +1233,49 @@ async function resolveSelfLinkMetadata(
   const t = (m?.metadata?.tables || []).find((x: any) => x.name === tableName);
   const c = t?.columns?.find((x: any) => x.name === selfLinkColumnName);
   return { key: c?.key || '', linkId: c?.data?.link_id || '' };
+}
+
+/**
+ * Fallback for the create-self-link path: if `httpAddColumn` 4xx's (typically
+ * a name-collision because a prior freeze in this batch created the self-link
+ * but the SDK websocket lag meant our reuse check at line ~673 didn't see it
+ * yet), check live `/metadata/` for an existing column with this name and
+ * validate that it's a same-table link with a `link_id`. Returns reuse info
+ * iff the existing column passes all validation; null otherwise (so the
+ * caller can fail loudly on genuine collisions like a non-link column with
+ * the same name).
+ */
+async function findValidSelfLinkInMetadata(
+  serverUrl: string,
+  uuid: string,
+  accessToken: string,
+  tableName: string,
+  selfLinkColumnName: string,
+  timeoutMs: number
+): Promise<{ key: string; linkId: string } | null> {
+  const metaResp = await fetchWithTimeout(
+    `${serverUrl}/api-gateway/api/v2/dtables/${uuid}/metadata/`,
+    {
+      method: 'GET',
+      headers: { accept: 'application/json', authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    },
+    timeoutMs
+  );
+  if (!metaResp.resp?.ok) return null;
+  const m = await metaResp.resp.json().catch(() => ({}));
+  const t = (m?.metadata?.tables || []).find((x: any) => x.name === tableName);
+  const c = t?.columns?.find((x: any) => x.name === selfLinkColumnName);
+  if (
+    c?.type === 'link' &&
+    c?.data?.table === tableName &&
+    c?.data?.other_table === tableName &&
+    c?.data?.link_id &&
+    c?.key
+  ) {
+    return { key: c.key, linkId: c.data.link_id };
+  }
+  return null;
 }
 
 // ----------------------------------------------------------------------------
