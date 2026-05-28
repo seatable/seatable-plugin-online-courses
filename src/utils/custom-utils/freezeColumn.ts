@@ -639,6 +639,15 @@ export interface FreezeColumnOpts {
   batchUpdateChunkSize?: number; // default 1_000 (batch_update_rows API limit)
   linksBatchChunkSize?: number; // default 1_000
   httpTimeoutMs?: number; // default 90s
+  /**
+   * Sleep between chunked requests (SQL reads, batch row updates, batch link
+   * updates) to stay under SeaTable's per-minute rate limit (200/min cloud,
+   * 500/min dedicated — https://api.seatable.com/reference/limits). 250ms ≈
+   * 4 req/s, slightly over the cloud limit but well within burst tolerance.
+   * Set to 0 to disable. Adds ~N×delay seconds to freeze time on large bases,
+   * where N is the chunk count per phase.
+   */
+  interChunkDelayMs?: number; // default 250ms
   arraySeparator?: string; // default ', '
   /** When true, the snapshot / self-link columns are left visible in every
    * view of the parent table. Useful in sandbox apply paths so the user can
@@ -694,8 +703,14 @@ export async function freezeColumnViaIndirection(
     batchUpdateChunkSize = 1_000,
     linksBatchChunkSize = 1_000,
     httpTimeoutMs = 90 * 1000,
+    interChunkDelayMs = 250,
     arraySeparator = ', ',
   } = opts;
+
+  const sleepBetweenChunks = (isLast: boolean): Promise<void> =>
+    isLast || interChunkDelayMs <= 0
+      ? Promise.resolve()
+      : new Promise((r) => setTimeout(r, interChunkDelayMs));
 
   const snapshotColumnName = opts.snapshotColumnName || `_frozen_${columnName}`;
   const selfLinkColumnName = opts.selfLinkColumnName || `_frozenLink_${tableName}`;
@@ -867,6 +882,7 @@ export async function freezeColumnViaIndirection(
       }
     }
     if (chunk.rows.length < sqlChunkSize) break;
+    await sleepBetweenChunks(offset + sqlChunkSize >= rowCount);
   }
 
   if (formulaErrorRowCount > 0) {
@@ -1014,6 +1030,7 @@ export async function freezeColumnViaIndirection(
         `Populate snapshot failed: HTTP ${res.status}: ${(res.body || '').slice(0, 200)}`
       );
     }
+    await sleepBetweenChunks(i + batchUpdateChunkSize >= allUpdates.length);
   }
 
   // ---- Phase 4-5: Self-link add + populate. Link-formula only.
@@ -1148,6 +1165,7 @@ export async function freezeColumnViaIndirection(
           `Populate self-link failed: HTTP ${res.status}: ${(res.body || '').slice(0, 200)}`
         );
       }
+      await sleepBetweenChunks(i + linksBatchChunkSize >= allRowIds.length);
     }
   }
 
