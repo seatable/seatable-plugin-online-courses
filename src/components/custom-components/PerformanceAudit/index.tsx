@@ -54,6 +54,7 @@ import {
   renameBase,
   deleteBase,
   createSandboxFullCopy,
+  ExportBaseError,
   scanColumnReferences,
   findNowRulelessViews,
   computeCostPerRowTags,
@@ -1763,7 +1764,30 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       } catch (err: any) {
         setApplyingTestId(null);
         setProgressMsg('');
-        showToast(`Sandbox error: ${err?.message || err}`);
+        if (err instanceof ExportBaseError) {
+          // Log the full diagnostic detail to the console for backend
+          // investigation — toast text is intentionally short.
+          // eslint-disable-next-line no-console
+          console.error('[performance-audit] export-base request failed:', {
+            status: err.status,
+            body: err.body,
+            requestId: err.requestId,
+            url: err.url,
+          });
+          if (err.status >= 500) {
+            showToast(
+              intl
+                .get('performance.sandbox_export_500_hint', { status: err.status })
+                .d(
+                  `Sandbox creation failed: SeaTable couldn't export the base (HTTP ${err.status}). On large bases this is usually the asset-packaging step on the server side. Try unchecking "Include assets, scripts, and automations" to use the lighter copy path. (See console for request-id.)`
+                )
+            );
+          } else {
+            showToast(`Sandbox error: ${err.message}`);
+          }
+        } else {
+          showToast(`Sandbox error: ${err?.message || err}`);
+        }
       }
     };
 

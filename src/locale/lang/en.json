@@ -256,6 +256,7 @@
     "also_delete_sandbox_hint": "Removes the sandbox base from your workspace after the apply succeeds.",
     "also_delete_sandbox_hint_on_test_delete": "Removes the sandbox base from your workspace too.",
     "deleting_sandbox_after_apply": "Cleaning up sandbox...",
+    "sandbox_export_500_hint": "Sandbox creation failed: SeaTable couldn't export the base (HTTP {status}). On large bases this is usually the asset-packaging step on the server side. Try unchecking \"Include assets, scripts, and automations\" to use the lighter copy path. (See console for request-id.)",
     "remove_from_test": "Remove from test",
     "ruleless_views_title": "{count} view(s) will have no rules remaining",
     "ruleless_views_hint": "Without any filter/sort/group-by, these views will show an unfiltered dump of their table. You can delete them instead.",

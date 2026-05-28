@@ -1695,6 +1695,27 @@ export async function renameBase(
  * dump instead). Used by createSandboxFullCopy — the export/import path produces a
  * complete clone, unlike dtable-copy which only duplicates tables+rows.
  */
+/**
+ * Custom error from exportBase that carries enough detail for both the toast
+ * (`message` — short, user-facing) and console diagnostics (`status`, `body`,
+ * `requestId`, `url`). The caller (PerformanceAudit) inspects `status` to
+ * branch on 500-from-this-endpoint and surface a tailored message.
+ */
+export class ExportBaseError extends Error {
+  status: number;
+  body: string;
+  requestId?: string;
+  url: string;
+  constructor(opts: { status: number; body: string; requestId?: string; url: string }) {
+    super(`Failed to export base (${opts.status}): ${opts.body || '(no body)'}`);
+    this.name = 'ExportBaseError';
+    this.status = opts.status;
+    this.body = opts.body;
+    this.requestId = opts.requestId;
+    this.url = opts.url;
+  }
+}
+
 export async function exportBase(
   accountToken: string,
   workspaceId: number,
@@ -1709,11 +1730,16 @@ export async function exportBase(
     (ignoreAssets ? '&ignore_asset=true' : '');
   const resp = await fetch(url, {
     method: 'GET',
-    headers: { authorization: `Bearer ${accountToken}` },
+    headers: {
+      authorization: `Bearer ${accountToken}`,
+      accept: 'application/json',
+    },
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
-    throw new Error(`Failed to export base (${resp.status}): ${text}`);
+    const requestId =
+      resp.headers.get('x-request-id') || resp.headers.get('x-trace-id') || undefined;
+    throw new ExportBaseError({ status: resp.status, body: text, requestId, url });
   }
   return await resp.blob();
 }
