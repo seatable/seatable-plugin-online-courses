@@ -329,6 +329,10 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     const [applyingTestId, setApplyingTestId] = useState<string | null>(null);
     const [applyModalTestId, setApplyModalTestId] = useState<string | null>(null);
     const [copyModalTestId, setCopyModalTestId] = useState<string | null>(null);
+    const [deleteModalTestId, setDeleteModalTestId] = useState<string | null>(null);
+    // True while the delete-test modal's "also delete sandbox" path is mid-flight.
+    // Disables modal buttons + dismissal so the user can't double-trigger.
+    const [deleteModalProcessing, setDeleteModalProcessing] = useState(false);
     // Set when the user clicks "Create archival view" on a row whose table is
     // missing one or both of the ctime/mtime columns needed for the view filter.
     // Not opened for tables that already have both columns — the view is created
@@ -1302,9 +1306,26 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       setHideRemediations(new Map());
     };
 
-    const handleDeleteTest = (testId: string) => {
+    const handleDeleteTest = async (testId: string, deleteSandbox: boolean) => {
       if (isBusy) return;
+      const test = testsRef.current.find((t) => t.id === testId);
+      // Sandbox cleanup is soft-fail: if the base is already gone or the API
+      // hiccups, we still remove the test locally — leaving a deleted test
+      // around because the orphan-cleanup failed is worse UX than the rare
+      // case of a stranded sandbox base the user can manually delete.
+      if (deleteSandbox && test?.lastSandbox && accountToken) {
+        setDeleteModalProcessing(true);
+        try {
+          await deleteBase(accountToken, test.lastSandbox.workspaceId, test.lastSandbox.name);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[performance-audit] sandbox delete failed:', e);
+        } finally {
+          setDeleteModalProcessing(false);
+        }
+      }
       setTests((prev) => prev.filter((t) => t.id !== testId));
+      setDeleteModalTestId(null);
     };
 
     // Remove a single remediation from a test. Resets the test's benchmark since the
@@ -1509,6 +1530,16 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     };
 
     const closeCopyModal = () => setCopyModalTestId(null);
+
+    const openDeleteModal = (testId: string) => {
+      if (isBusy) return;
+      setDeleteModalTestId(testId);
+    };
+
+    const closeDeleteModal = () => {
+      if (deleteModalProcessing) return;
+      setDeleteModalTestId(null);
+    };
 
     // Phase 3 — Create a sandbox copy, apply this test's remediations against it.
     // Useful for visually inspecting the remediated base in SeaTable before committing
@@ -1740,11 +1771,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // sandbox and re-audit — the base structure has changed, so old tests are stale.
     const handleApplyTest = async (
       testId: string,
-      viewsToDelete: Array<{ tableName: string; viewName: string }>
+      viewsToDelete: Array<{ tableName: string; viewName: string }>,
+      deleteSandbox: boolean
     ) => {
       if (!result || isBusy) return;
       const test = testsRef.current.find((t) => t.id === testId);
       if (!test) return;
+      const sandboxToDelete = deleteSandbox && test.lastSandbox ? test.lastSandbox : null;
 
       setApplyingTestId(testId);
       setApplyModalTestId(null);
@@ -1790,6 +1823,22 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             err,
             frozenColumns
           );
+        }
+      }
+
+      // Delete the sandbox base if the user opted in AND the apply succeeded.
+      // Skipping on failure leaves the sandbox available for debugging or retry.
+      // Soft-fail: a sandbox we can't delete is a minor inconvenience, not a
+      // reason to mask the (successful) original-base apply from the user.
+      if (sandboxToDelete && failed === 0 && accountToken) {
+        try {
+          setProgressMsg(
+            intl.get('performance.deleting_sandbox_after_apply').d('Cleaning up sandbox...')
+          );
+          await deleteBase(accountToken, sandboxToDelete.workspaceId, sandboxToDelete.name);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[performance-audit] post-apply sandbox delete failed:', e);
         }
       }
 
@@ -2698,6 +2747,9 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     const copyModalTest = copyModalTestId
       ? tests.find((t) => t.id === copyModalTestId) || null
       : null;
+    const deleteModalTest = deleteModalTestId
+      ? tests.find((t) => t.id === deleteModalTestId) || null
+      : null;
 
     // When embedded inside Tables audit, we inherit the host's scrolling container and
     // layout flow naturally. Standalone mode keeps the full-height column layout it's
@@ -3397,7 +3449,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                     isApplyingThis={applyingTestId === t.id}
                     progressMsg={progressMsg}
                     onRun={() => handleRunTest(t.id)}
-                    onDelete={() => handleDeleteTest(t.id)}
+                    onDelete={() => openDeleteModal(t.id)}
                     onApply={() => openApplyModal(t.id)}
                     onCopyToSandbox={accountToken ? () => openCopyModal(t.id) : undefined}
                     onRemoveRemediation={(tableName, columnKey) =>
@@ -3505,8 +3557,22 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         {applyModalTest && (
           <ApplyChangesModal
             test={applyModalTest}
+            canDeleteSandbox={!!accountToken}
             onCancel={closeApplyModal}
-            onConfirm={(viewsToDelete) => handleApplyTest(applyModalTest.id, viewsToDelete)}
+            onConfirm={(viewsToDelete, deleteSandbox) =>
+              handleApplyTest(applyModalTest.id, viewsToDelete, deleteSandbox)
+            }
+          />
+        )}
+
+        {/* ---- Delete test confirmation modal ---- */}
+        {deleteModalTest && (
+          <DeleteTestModal
+            test={deleteModalTest}
+            canDeleteSandbox={!!accountToken}
+            isProcessing={deleteModalProcessing}
+            onCancel={closeDeleteModal}
+            onConfirm={(deleteSandbox) => handleDeleteTest(deleteModalTest.id, deleteSandbox)}
           />
         )}
 
@@ -5800,6 +5866,7 @@ const TestBlock: React.FC<{
           <ContextMenu
             onDelete={onDelete}
             label={intl.get('performance.delete_test').d('Delete test')}
+            confirmDelete={false}
             extraActions={[
               {
                 label: runLabel,
@@ -6183,10 +6250,59 @@ function useRemediationModalBody(test: PerformanceTest): {
 
 const ApplyChangesModal: React.FC<{
   test: PerformanceTest;
+  canDeleteSandbox: boolean;
   onCancel: () => void;
-  onConfirm: (viewsToDelete: Array<{ tableName: string; viewName: string }>) => void;
-}> = ({ test, onCancel, onConfirm }) => {
+  onConfirm: (
+    viewsToDelete: Array<{ tableName: string; viewName: string }>,
+    deleteSandbox: boolean
+  ) => void;
+}> = ({ test, canDeleteSandbox, onCancel, onConfirm }) => {
   const { body, collectViewsToDelete } = useRemediationModalBody(test);
+  const sandboxName = test.lastSandbox?.name;
+  // Default ON: after a successful apply the sandbox has served its purpose.
+  // Hidden entirely when no sandbox exists or we have no account token to call
+  // deleteBase with.
+  const [deleteSandbox, setDeleteSandbox] = useState(true);
+  const showSandboxOption = !!sandboxName && canDeleteSandbox;
+  const extendedBody = (
+    <>
+      {body}
+      {showSandboxOption && (
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            fontSize: 13,
+            color: '#555',
+            marginTop: 12,
+            padding: '8px 10px',
+            backgroundColor: '#f8f9fa',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}>
+          <input
+            type="checkbox"
+            checked={deleteSandbox}
+            onChange={(e) => setDeleteSandbox(e.target.checked)}
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+          <span>
+            <div style={{ fontWeight: 500, color: '#333' }}>
+              {intl
+                .get('performance.also_delete_sandbox_label', { name: sandboxName })
+                .d(`Also delete the sandbox "${sandboxName}"`)}
+            </div>
+            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+              {intl
+                .get('performance.also_delete_sandbox_hint')
+                .d('Removes the sandbox base from your workspace after the apply succeeds.')}
+            </div>
+          </span>
+        </label>
+      )}
+    </>
+  );
   return (
     <ConfirmModal
       title={intl.get('performance.apply_modal_title').d('Apply changes to original base')}
@@ -6195,11 +6311,74 @@ const ApplyChangesModal: React.FC<{
         .d(
           'Apply these changes to the original base? A snapshot will be created first, but deleted columns cannot be restored from within the plugin.'
         )}
-      body={body}
+      body={extendedBody}
       confirmLabel={intl.get('performance.apply_changes').d('Apply changes to original base')}
       confirmColor="#dc3545"
       onCancel={onCancel}
-      onConfirm={() => onConfirm(collectViewsToDelete())}
+      onConfirm={() => onConfirm(collectViewsToDelete(), showSandboxOption && deleteSandbox)}
+    />
+  );
+};
+
+const DeleteTestModal: React.FC<{
+  test: PerformanceTest;
+  canDeleteSandbox: boolean;
+  isProcessing: boolean;
+  onCancel: () => void;
+  onConfirm: (deleteSandbox: boolean) => void;
+}> = ({ test, canDeleteSandbox, isProcessing, onCancel, onConfirm }) => {
+  const sandboxName = test.lastSandbox?.name;
+  // Default ON: the user is throwing away the test config, so the sandbox
+  // built from it is usually also unwanted. They can opt out if they want to
+  // keep the base around to poke at manually.
+  const [deleteSandbox, setDeleteSandbox] = useState(true);
+  const showSandboxOption = !!sandboxName && canDeleteSandbox;
+  const body = showSandboxOption ? (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 8,
+        fontSize: 13,
+        color: '#555',
+        padding: '8px 10px',
+        backgroundColor: '#f8f9fa',
+        borderRadius: 4,
+        cursor: 'pointer',
+      }}>
+      <input
+        type="checkbox"
+        checked={deleteSandbox}
+        onChange={(e) => setDeleteSandbox(e.target.checked)}
+        style={{ marginTop: 2, flexShrink: 0 }}
+      />
+      <span>
+        <div style={{ fontWeight: 500, color: '#333' }}>
+          {intl
+            .get('performance.also_delete_sandbox_label', { name: sandboxName })
+            .d(`Also delete the sandbox "${sandboxName}"`)}
+        </div>
+        <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+          {intl
+            .get('performance.also_delete_sandbox_hint_on_test_delete')
+            .d('Removes the sandbox base from your workspace too.')}
+        </div>
+      </span>
+    </label>
+  ) : null;
+  return (
+    <ConfirmModal
+      title={intl.get('performance.delete_test_modal_title').d('Delete this test?')}
+      body={body}
+      confirmLabel={
+        isProcessing
+          ? intl.get('performance.deleting_test').d('Deleting...')
+          : intl.get('performance.delete_test').d('Delete test')
+      }
+      confirmColor="#dc3545"
+      isProcessing={isProcessing}
+      onCancel={onCancel}
+      onConfirm={() => onConfirm(showSandboxOption && deleteSandbox)}
     />
   );
 };
