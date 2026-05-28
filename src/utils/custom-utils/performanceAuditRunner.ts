@@ -1467,10 +1467,15 @@ export async function measurePerColumnCost(
  * hidden_columns). Determinism is the point — anchors on cost-per-cell so view
  * weight no longer depends on the noisy single-pass `getViewRows` timing.
  *
- * Does NOT capture filter/sort/group cost. That's a known gap, recovered later by
- * residual analysis once the top-N HTTP measurements come back. Returns a Map keyed
- * by `${tableId}:${viewId}` → ms. Views with zero visible computed columns, zero
- * visible rows, or whose table has zero rows return undefined (left out of the map).
+ * SeaTable evaluates ALL formula/link-formula columns on every view-switch
+ * regardless of which columns are visible in the view (validated 2026-05-27).
+ * Column visibility only affects rendering, not formula evaluation. Therefore
+ * every view's cost is: total per-row formula cost × filtered row count.
+ *
+ * Does NOT capture sort/group overhead (~22ms per 1k rows, validated but too
+ * small and noisy to model). Returns a Map keyed by `${tableId}:${viewId}` → ms.
+ * Views with zero rows or whose table has zero rows return 0; views without a
+ * row-count measurement are left out of the map (undefined).
  */
 export function computeTheoreticalViewCosts(
   costByKey: Map<string, number>,
@@ -1524,16 +1529,8 @@ export function computeTheoreticalViewCosts(
         continue;
       }
 
-      // A column's compute cost in this view is incurred when it's *visible OR
-      // referenced by any rule* (filter / sort / groupby / colorby / column_colors /
-      // summary). Hiding a column doesn't save its cost when SeaTable still has to
-      // compute its value to evaluate a filter or sort. Skipping the cost only for
-      // columns that are both hidden AND not referenced is the honest accounting.
-      const hidden = new Set<string>(v.hidden_columns || []);
-      const referenced = getViewReferencedColumnKeys(v);
       let costMs = 0;
-      perCellByColKey.forEach((perCell, colKey) => {
-        if (hidden.has(colKey) && !referenced.has(colKey)) return;
+      perCellByColKey.forEach((perCell) => {
         costMs += perCell * visibleRows;
       });
       // Round to 2 decimals to match other ms fields and keep spreadsheet diffs tidy.

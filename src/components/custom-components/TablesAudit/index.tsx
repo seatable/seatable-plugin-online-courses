@@ -74,6 +74,10 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
   const [perfResult, setPerfResult] = useState<PerformanceAuditResult | null>(null);
   const [perfAuditDate, setPerfAuditDate] = useState<string>('');
   const [perfStatus, setPerfStatus] = useState<AuditStatus>('idle');
+  // True while a single-column freeze-now or unfreeze is running. Separate from
+  // perfStatus (audit run) so the two can coexist (rare but plausible) and so
+  // we can render the header spinner without faking perfStatus = 'running'.
+  const [perfBusy, setPerfBusy] = useState(false);
   // Mirrored from PerformanceAudit so per-table tabs can render strikethrough on the
   // archival cell after a delete (the embedded audit is a sibling, not a child of
   // TableTab, so this state has to round-trip up).
@@ -389,7 +393,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
               flexWrap: 'wrap',
               marginTop: auditDate ? 4 : 0,
             }}>
-            {perfAuditDate && perfStatus !== 'running' && (
+            {perfAuditDate && perfStatus !== 'running' && !perfBusy && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <PerfIcon size={13} />
                 {intl
@@ -397,7 +401,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                   .d(`Performance test: ${perfAuditDate}`)}
               </span>
             )}
-            {!perfAuditDate && perfStatus !== 'running' && (
+            {!perfAuditDate && perfStatus !== 'running' && !perfBusy && (
               <span
                 style={{
                   fontStyle: 'italic',
@@ -409,7 +413,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 {intl.get('tables.no_perf_yet').d('Performance test: not run yet')}
               </span>
             )}
-            {perfStatus === 'running' && (
+            {(perfStatus === 'running' || perfBusy) && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span
                   style={{
@@ -430,21 +434,21 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 setActiveTab(0); // Overview tab shows the running state + progress
                 perfAuditRef.current?.run();
               }}
-              disabled={perfStatus === 'running'}
+              disabled={perfStatus === 'running' || perfBusy}
               style={{
                 padding: '4px 12px',
                 fontSize: 12,
                 fontWeight: 500,
                 border: '1px solid #ff8000',
                 borderRadius: 4,
-                backgroundColor: perfStatus === 'running' ? '#e9ecef' : '#ff8000',
-                color: perfStatus === 'running' ? '#999' : '#fff',
-                cursor: perfStatus === 'running' ? 'default' : 'pointer',
+                backgroundColor: perfStatus === 'running' || perfBusy ? '#e9ecef' : '#ff8000',
+                color: perfStatus === 'running' || perfBusy ? '#999' : '#fff',
+                cursor: perfStatus === 'running' || perfBusy ? 'default' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
               }}>
-              <PerfIcon size={12} color={perfStatus === 'running' ? '#999' : '#fff'} />
+              <PerfIcon size={12} color={perfStatus === 'running' || perfBusy ? '#999' : '#fff'} />
               {perfStatus === 'running'
                 ? intl.get('performance.running').d('Running...')
                 : perfAuditDate
@@ -560,6 +564,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                   setPerfAuditDate(d);
                 }}
                 onStatusChange={setPerfStatus}
+                onBusyChange={setPerfBusy}
                 onDeletedArchivalTableIdsChange={setPerfDeletedArchivalIds}
                 onProgressChange={setPerfProgressMsg}
                 onStagedColumnsChange={setStagedColumns}

@@ -10,8 +10,6 @@ import {
   RemediatedColumnHide,
 } from '../../../utils/custom-interfaces/AuditTypes';
 import ChainGraph, { ChainGraphRoot } from './ChainGraph';
-import ImpactBadge from './ImpactBadge';
-import { impactBandFromPct, BAND_SORT_ORDER, ImpactBand } from './impactBands';
 
 interface CandidateExpansionProps {
   candidate: PerformanceCandidateColumn;
@@ -19,14 +17,11 @@ interface CandidateExpansionProps {
   viewEdits: Map<string, Set<string>>;
   onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
   stagedHides: Map<string, RemediatedColumnHide>;
-  costByKey: Map<string, number>;
-  visibleRowsByKey: Map<string, number>;
-  totalViewLoadMs: number;
-  // Per-view total load ms keyed `${tableId}:${viewId}` — used to derive each
-  // view's loading band (slow / moderate / fast). Sourced from the audit's
-  // `result.views[].loadMs` so the band matches what the user sees on the
-  // TableTab Views section.
-  viewLoadMsByKey: Map<string, number>;
+  // When false, suppress the per-view hide drill — only the chain graph is
+  // rendered. Used by Overview (perf-focused), where hiding columns has no
+  // measurable effect on view-load time and the drill is more misleading than
+  // useful. TableTab still shows it for structural / readability hygiene.
+  showHideDrill?: boolean;
 }
 
 function candidateRoot(c: PerformanceCandidateColumn): ChainGraphRoot {
@@ -65,10 +60,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
   viewEdits,
   onSetViewEdit,
   stagedHides,
-  costByKey,
-  visibleRowsByKey,
-  totalViewLoadMs,
-  viewLoadMsByKey,
+  showHideDrill = true,
 }) => {
   const hasChain = !!c.chain && c.chain.length > 0;
   const stagedViewIdsForCol = (() => {
@@ -85,14 +77,12 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
         viewId: string;
         viewName: string;
         ruleKinds: string[];
-        band: ImpactBand;
         isHidden: boolean;
       }>;
     const out: Array<{
       viewId: string;
       viewName: string;
       ruleKinds: string[];
-      band: ImpactBand;
       isHidden: boolean;
     }> = [];
     for (const v of t.views || []) {
@@ -101,33 +91,16 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
       const edits = viewEdits.get(v._id);
       const isHidden = edits ? edits.has(c.columnKey) : stagedViewIdsForCol.has(v._id);
       const ruleKinds = getColumnRuleKindsInView(v, c.columnKey);
-      // Show each view's overall loading band — the user picks which views
-      // to hide-in based on which views feel slow, not on a derived "% saved"
-      // number. Within-band ordering preserves the savings ranking implicitly
-      // (heavier views = larger drop when this column is hidden).
-      const viewMs = viewLoadMsByKey.get(`${c.tableId}:${v._id}`) ?? 0;
-      const viewPct = totalViewLoadMs > 0 ? (viewMs / totalViewLoadMs) * 100 : 0;
-      const band = impactBandFromPct(viewPct);
       out.push({
         viewId: v._id,
         viewName: v.name,
         ruleKinds,
-        band,
         isHidden,
       });
     }
-    // Sort by band order (high → low → not-relevant). Within a band, preserve
-    // the audit's natural per-view weight order via viewLoadMsByKey lookup.
-    out.sort((a, b) => {
-      const ord = BAND_SORT_ORDER[a.band] - BAND_SORT_ORDER[b.band];
-      if (ord !== 0) return ord;
-      const am = viewLoadMsByKey.get(`${c.tableId}:${a.viewId}`) ?? 0;
-      const bm = viewLoadMsByKey.get(`${c.tableId}:${b.viewId}`) ?? 0;
-      return bm - am;
-    });
     return out;
   })();
-  const hasDrill = drillRows.length > 0;
+  const hasDrill = showHideDrill && drillRows.length > 0;
   if (!hasChain && !hasDrill) return null;
 
   const handleToggle = (viewId: string) => {
@@ -207,7 +180,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
                               kinds: localizedKinds,
                             })
                             .d(
-                              `Referenced by ${localizedKinds} in this view. Hiding doesn't reduce compute cost — the value is still needed to evaluate the rule.`
+                              `Referenced by ${localizedKinds} in this view.`
                             )}
                           style={{
                             fontSize: 12,
@@ -216,24 +189,6 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
                             cursor: 'help',
                           }}
                         />
-                      )}
-                    </td>
-                    <td style={{ padding: '3px 8px' }}>
-                      {row.ruleKinds.length > 0 ? (
-                        <span
-                          style={{
-                            color: '#aaa',
-                            fontStyle: 'italic',
-                            fontSize: 12,
-                          }}>
-                          {intl
-                            .get('performance.hide_used_in_rules_band', {
-                              kinds: localizedKinds,
-                            })
-                            .d(`hiding doesn't help — used in ${localizedKinds}`)}
-                        </span>
-                      ) : (
-                        <ImpactBadge band={row.band} surface="view" />
                       )}
                     </td>
                   </tr>
@@ -253,13 +208,19 @@ export default CandidateExpansion;
  * True iff the candidate has anything to expand (chain or drill). Mirrors
  * the internal CandidateExpansion logic so callers can decide whether to
  * render an expand chevron without rendering the expansion itself.
+ *
+ * Pass `showHideDrill: false` to match Overview's CandidateExpansion call —
+ * the chevron should only appear when there's a chain to show, since the
+ * drill is suppressed there.
  */
 export function hasCandidateExpansionContent(
   candidate: PerformanceCandidateColumn,
-  liveValue: any
+  liveValue: any,
+  showHideDrill: boolean = true
 ): boolean {
   const hasChain = !!candidate.chain && candidate.chain.length > 0;
   if (hasChain) return true;
+  if (!showHideDrill) return false;
   const tables: any[] = liveValue?.tables || [];
   const t = tables.find((tt: any) => tt._id === candidate.tableId);
   if (!t) return false;

@@ -23,7 +23,6 @@ import { buildCandidateMenuExtras } from '../shared/candidateMenu';
 import { showToast } from '../shared/showToast';
 import {
   computeCostPerRowTags,
-  getViewReferencedColumnKeys,
   getColumnRuleKindsInView,
   RULE_KIND_LABEL_SHORT,
   setViewHiddenColumnsDirect,
@@ -221,27 +220,6 @@ const TableTab: React.FC<TableTabProps> = ({
     }
     return m;
   }, [perfResult, result.tableName]);
-
-  // visibleRowsByKey + totalViewLoadMs — feed CandidateExpansion's drill so
-  // the "% saved" estimate is consistent with the Overview's per-candidate
-  // drill (same data, same math).
-  const visibleRowsByKey = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const v of perfResult?.views || []) {
-      m.set(`${v.tableId}:${v.viewId}`, v.rowCount);
-    }
-    return m;
-  }, [perfResult]);
-  const totalViewLoadMs = useMemo(() => {
-    return (perfResult?.views || []).reduce((s, v) => s + (v.loadMs || 0), 0);
-  }, [perfResult]);
-  const viewLoadMsByKey = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const v of perfResult?.views || []) {
-      m.set(`${v.tableId}:${v.viewId}`, v.loadMs || 0);
-    }
-    return m;
-  }, [perfResult]);
 
   // Archival info for this table — used to show the small file-cabinet hint in the
   // Views section when the table has rows that could be archived.
@@ -818,13 +796,28 @@ const TableTab: React.FC<TableTabProps> = ({
                 {intl.get('common.view').d('View')}
                 {viewSortIndicator('name')}
               </th>
-              <th style={{ padding: '8px 12px' }}>
+              <th
+                style={{ padding: '8px 12px' }}
+                title={perfResult
+                  ? intl.get('tables.view_filters_perf_hint').d('Filtering reduces the number of rows evaluated, which speeds up view loading.')
+                  : undefined}>
+                {perfResult && <PerfIcon size={12} style={{ marginRight: 4 }} />}
                 {intl.get('tables.view_filters').d('Filters')}
               </th>
-              <th style={{ padding: '8px 12px' }}>
+              <th
+                style={{ padding: '8px 12px' }}
+                title={perfResult
+                  ? intl.get('tables.view_sorting_perf_hint').d('Sorting adds a small overhead to view loading time.')
+                  : undefined}>
+                {perfResult && <PerfIcon size={12} style={{ marginRight: 4 }} />}
                 {intl.get('tables.view_sorting').d('Sorting')}
               </th>
-              <th style={{ padding: '8px 12px' }}>
+              <th
+                style={{ padding: '8px 12px' }}
+                title={perfResult
+                  ? intl.get('tables.view_grouping_perf_hint').d('Grouping adds a small overhead to view loading time.')
+                  : undefined}>
+                {perfResult && <PerfIcon size={12} style={{ marginRight: 4 }} />}
                 {intl.get('tables.view_grouping').d('Grouping')}
               </th>
               {perfResult && (
@@ -1351,10 +1344,6 @@ const TableTab: React.FC<TableTabProps> = ({
                           onSetViewEdit && onSetViewEdit(viewId, hidden)
                         }
                         stagedHides={stagedHides ?? new Map()}
-                        costByKey={perfResult.costByKey}
-                        visibleRowsByKey={visibleRowsByKey}
-                        totalViewLoadMs={totalViewLoadMs}
-                        viewLoadMsByKey={viewLoadMsByKey}
                       />
                     )}
                     {hasLabels && (

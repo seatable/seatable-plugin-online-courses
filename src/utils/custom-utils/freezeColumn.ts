@@ -45,6 +45,12 @@ import dayjs from 'dayjs';
 
 export type ShapeMode = 'scalar' | 'collapsed-array' | 'multi-array';
 
+/** SeaTable formula error sentinels (#VALUE!, #NAME?, #REF!, #DIV/0!, #N/A, ...).
+ *  Same pattern as tableAuditor.ts. Returned by the SQL endpoint as scalar
+ *  strings even when the formula's result_type is `array` — passing them through
+ *  to batch_update_rows produces a 400. We coerce to null at collection time. */
+const FORMULA_ERROR_PATTERN = /^#[A-Z!?]+/;
+
 /** Element types we'll happily turn into a typed snapshot column. Other array_types
  *  (e.g. nested formula, link, etc.) stay as long-text. */
 export const COLLAPSIBLE_ARRAY_ELEMENT_TYPES = new Set([
@@ -737,6 +743,7 @@ export async function freezeColumnViaIndirection(
     onProgress(`Reading ${rowCount} values from ${tableName} › ${columnName}...`);
   }
   const collected: Map<string, any> = new Map();
+  let formulaErrorRowCount = 0;
   for (let offset = 0; offset < rowCount; offset += sqlChunkSize) {
     if (onProgress) {
       onProgress(
@@ -767,9 +774,23 @@ export async function freezeColumnViaIndirection(
       lfColumnKey;
     for (const r of chunk.rows) {
       const id = r._id || r._rowid;
-      if (id) collected.set(id, r[valKey]);
+      if (!id) continue;
+      const raw = r[valKey];
+      if (typeof raw === 'string' && FORMULA_ERROR_PATTERN.test(raw)) {
+        formulaErrorRowCount += 1;
+        collected.set(id, null);
+      } else {
+        collected.set(id, raw);
+      }
     }
     if (chunk.rows.length < sqlChunkSize) break;
+  }
+
+  if (formulaErrorRowCount > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[freezeColumn] ${tableName} › ${columnName}: ${formulaErrorRowCount} row(s) had formula errors (#VALUE! etc) — frozen as empty.`
+    );
   }
 
   // Shape inspection: a result_type:'array' LF whose every row has length ≤ 1 AND

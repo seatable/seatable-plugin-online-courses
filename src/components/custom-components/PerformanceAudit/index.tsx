@@ -41,7 +41,6 @@ import {
   runPerformanceAudit,
   benchmarkInMemory,
   applyRemediationsToValue,
-  getViewReferencedColumnKeys,
   getColumnRuleKindsInView,
   RULE_KIND_LABEL_SHORT,
   setViewHiddenColumnsDirect,
@@ -132,6 +131,11 @@ interface PerformanceAuditProps {
   // Fires on status transitions (idle → running → done/error). Lets the host disable
   // the Run button while an audit is in flight.
   onStatusChange?: (status: AuditStatus) => void;
+  // Fires true while a background operation (freeze-now, unfreeze) is in flight.
+  // Separate from onStatusChange because these are NOT audit runs — they're
+  // single-column mutations triggered from the candidate menu. The host uses
+  // this to surface the same header spinner without conflating with `status`.
+  onBusyChange?: (busy: boolean) => void;
   // Fires whenever the in-component "tables we deleted archival rows from since the
   // last perf rerun" set changes. The host uses this to render strikethrough state
   // on per-table tabs (tabs are siblings of the embedded PerformanceAudit, not
@@ -252,6 +256,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       embedded = false,
       onResultChange,
       onStatusChange,
+      onBusyChange,
       onDeletedArchivalTableIdsChange,
       onProgressChange,
       onStagedColumnsChange,
@@ -362,6 +367,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // refreshCounter bumps after unfreeze to force the useMemo re-read.
     const [frozenRefreshCounter, setFrozenRefreshCounter] = useState(0);
     const [unfreezingKey, setUnfreezingKey] = useState<string | null>(null);
+    const [freezingNowKey, setFreezingNowKey] = useState<string | null>(null);
     // Rows whose Unfreeze just succeeded but the audit hasn't been rerun yet.
     // We keep these visible (strikethrough) instead of forcing an auto-rerun —
     // batching multiple unfreezes into one rerun is much faster on big bases.
@@ -383,6 +389,33 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [frozenRefreshCounter]);
+
+    // Union of "frozen this session" + "persisted as frozen". Used to drive
+    // strikethrough + action labels on candidate rows. Without the persisted
+    // half, a candidate that's frozen in plugin settings but unknown to the
+    // session (e.g. after a plugin refresh before re-running the audit) would
+    // render as if it were still a live candidate.
+    const allFrozenKeys = useMemo(() => {
+      const keys = new Set<string>(pendingFrozenNow);
+      for (const fc of Object.values(frozenColumns)) {
+        keys.add(`${fc.tableId}:${fc.columnKey}`);
+      }
+      return keys;
+    }, [pendingFrozenNow, frozenColumns]);
+
+    // True iff a persisted freeze post-dates the last audit run. This survives
+    // a plugin refresh, so the "Performance analysis is outdated" rerun link
+    // shows after refresh too — not just within the session that did the freeze.
+    const hasStaleFreezeAcrossSessions = useMemo(() => {
+      if (!auditDate) return false;
+      const auditTime = new Date(auditDate).getTime();
+      if (Number.isNaN(auditTime)) return false;
+      return Object.values(frozenColumns).some((fc) => {
+        if (!fc.frozenAt) return false;
+        const frozenTime = new Date(fc.frozenAt).getTime();
+        return !Number.isNaN(frozenTime) && frozenTime > auditTime;
+      });
+    }, [auditDate, frozenColumns]);
 
     // Orphans = freeze-mechanism artifacts no longer paired with a healthy
     // FrozenColumnRecord ↔ live-column relationship. Two patterns:
@@ -929,6 +962,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status]);
 
+    // Mirror freeze-now / unfreeze in-flight state up so the host can show its
+    // header spinner during these single-column ops too.
+    useEffect(() => {
+      if (onBusyChange) onBusyChange(freezingNowKey !== null || unfreezingKey !== null);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [freezingNowKey, unfreezingKey]);
+
     // Mirror the deleted-archival set up to the host so per-table tabs can render
     // strikethrough on the archival cell after a delete.
     useEffect(() => {
@@ -1103,6 +1143,9 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       columnKey: string,
       columnName: string
     ) => {
+      if (freezingNowKey || unfreezingKey) return; // serialize — one freeze/unfreeze at a time
+      const fullKey = `${tableId}:${columnKey}`;
+      setFreezingNowKey(fullKey);
       setProgressMsg(`Freezing ${columnName}...`);
       try {
         const auth = await getAuthContext();
@@ -1161,7 +1204,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           console.error('[performance-audit] failed to persist frozen entry:', e);
         }
         // Clear any staged remediation for this column (now redundant).
-        const fullKey = `${tableId}:${columnKey}`;
         setRemediations((prev) => {
           if (!prev.has(fullKey)) return prev;
           const next = new Map(prev);
@@ -1180,6 +1222,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       } catch (e: any) {
         showToast(`Freeze failed: ${e?.message || e}`);
       } finally {
+        setFreezingNowKey(null);
         setProgressMsg('');
       }
     };
@@ -1193,7 +1236,9 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       sandbox.status === 'applying' ||
       sandbox.status === 'benchmarking' ||
       sandbox.status === 'cleaning' ||
-      applyingTestId !== null;
+      applyingTestId !== null ||
+      freezingNowKey !== null ||
+      unfreezingKey !== null;
 
     // Snapshot the current remediations draft into a new pending Test; reset the draft.
     const handleCreateTestCase = () => {
@@ -1868,34 +1913,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       : new Map<string, 'structural' | 'volume'>();
 
     // Denominator for each view's "Weight" badge — sum of loadMs over all views.
-    // Computed on the unfiltered list so that hiding noise rows below 2% does not
-    // inflate the weights of the visible ones.
-    const totalViewLoadMs = result
-      ? (result.views || []).reduce((s, v) => s + (v.loadMs || 0), 0)
-      : 0;
-
-    // Per-view visibleRows lookup keyed `${tableId}:${viewId}`. Built from the
-    // audit's `result.views[].rowCount`, used by the per-candidate drill to
-    // estimate the cost share each (column, view) hide would shave off.
-    const visibleRowsByKey = useMemo(() => {
-      const m = new Map<string, number>();
-      for (const v of result?.views || []) {
-        m.set(`${v.tableId}:${v.viewId}`, v.rowCount);
-      }
-      return m;
-    }, [result]);
-
-    // Per-view total compute cost (ms) keyed `${tableId}:${viewId}`. Drives the
-    // loading-band classification in CandidateExpansion's drill so each view's
-    // pill matches what the TableTab Views section shows.
-    const viewLoadMsByKey = useMemo(() => {
-      const m = new Map<string, number>();
-      for (const v of result?.views || []) {
-        m.set(`${v.tableId}:${v.viewId}`, v.loadMs || 0);
-      }
-      return m;
-    }, [result]);
-
     // Live SDK value snapshot — used by the per-candidate drill to read the
     // current views' hidden_columns + rule references. Read on every render
     // because the user might toggle visibility outside the plugin while
@@ -2936,17 +2953,19 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                         </tbody>
                       </table>
                     )}
-                    {(pendingUnfrozen.size > 0 || pendingFrozenNow.size > 0) && (
+                    {(pendingUnfrozen.size > 0 ||
+                      pendingFrozenNow.size > 0 ||
+                      hasStaleFreezeAcrossSessions) && (
                       <div
                         style={{
                           marginTop: 8,
                           fontSize: 13,
-                          color: unfreezingKey ? '#999' : '#ff8000',
-                          cursor: unfreezingKey ? 'default' : 'pointer',
+                          color: unfreezingKey || freezingNowKey ? '#999' : '#ff8000',
+                          cursor: unfreezingKey || freezingNowKey ? 'default' : 'pointer',
                           userSelect: 'none',
                         }}
                         onClick={() => {
-                          if (unfreezingKey) return;
+                          if (unfreezingKey || freezingNowKey) return;
                           setTests([]);
                           setSandbox({ status: 'idle' });
                           doAudit();
@@ -3200,14 +3219,11 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                             onToggleAction={toggleColumnAction}
                             onDeleteNow={handleDeleteCandidateNow}
                             deletedCandidateKeys={deletedCandidateKeys}
-                            frozenNowKeys={pendingFrozenNow}
+                            frozenNowKeys={allFrozenKeys}
                             totalCostMs={totalCostMs}
                             costPerRowTags={costPerRowTags}
                             liveValue={liveValue}
                             costByKey={result.costByKey}
-                            visibleRowsByKey={visibleRowsByKey}
-                            totalViewLoadMs={totalViewLoadMs}
-                            viewLoadMsByKey={viewLoadMsByKey}
                             viewEdits={viewEdits}
                             onSetViewEdit={(viewId, hidden) =>
                               setViewEdits((prev) => {
@@ -3245,14 +3261,11 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                             onToggleAction={toggleColumnAction}
                             onDeleteNow={handleDeleteCandidateNow}
                             deletedCandidateKeys={deletedCandidateKeys}
-                            frozenNowKeys={pendingFrozenNow}
+                            frozenNowKeys={allFrozenKeys}
                             totalCostMs={totalCostMs}
                             costPerRowTags={costPerRowTags}
                             liveValue={liveValue}
                             costByKey={result.costByKey}
-                            visibleRowsByKey={visibleRowsByKey}
-                            totalViewLoadMs={totalViewLoadMs}
-                            viewLoadMsByKey={viewLoadMsByKey}
                             viewEdits={viewEdits}
                             onSetViewEdit={(viewId, hidden) =>
                               setViewEdits((prev) => {
@@ -4460,9 +4473,6 @@ const CandidateRow: React.FC<{
   // commit handlers are passed in too for the menu.
   liveValue: any;
   costByKey: Map<string, number>;
-  visibleRowsByKey: Map<string, number>;
-  totalViewLoadMs: number;
-  viewLoadMsByKey: Map<string, number>;
   viewEdits: Map<string, Set<string>>;
   onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
   // Read-only view of staged hides — included in the drill's effective state
@@ -4494,9 +4504,6 @@ const CandidateRow: React.FC<{
   rowIdx,
   liveValue,
   costByKey,
-  visibleRowsByKey,
-  totalViewLoadMs,
-  viewLoadMsByKey,
   viewEdits,
   onSetViewEdit,
   stagedHides,
@@ -4525,7 +4532,10 @@ const CandidateRow: React.FC<{
 
   // Whether the chevron should be available — either chain or drill content.
   const expandable =
-    !isSelected && !isDeletedNow && !isFrozenNow && hasCandidateExpansionContent(c, liveValue);
+    !isSelected &&
+    !isDeletedNow &&
+    !isFrozenNow &&
+    hasCandidateExpansionContent(c, liveValue, false);
 
   // True iff this column has uncommitted visibility edits in any view.
   // Compares viewEdits against `(base ∪ staged)` — once Stage commits a hide
@@ -4710,10 +4720,7 @@ const CandidateRow: React.FC<{
             viewEdits={viewEdits}
             onSetViewEdit={onSetViewEdit}
             stagedHides={stagedHides}
-            costByKey={costByKey}
-            visibleRowsByKey={visibleRowsByKey}
-            totalViewLoadMs={totalViewLoadMs}
-            viewLoadMsByKey={viewLoadMsByKey}
+            showHideDrill={false}
           />
         )}
 
@@ -4833,9 +4840,6 @@ const CandidateTableGroup: React.FC<{
   costPerRowTags: Map<string, 'structural' | 'volume'>;
   liveValue: any;
   costByKey: Map<string, number>;
-  visibleRowsByKey: Map<string, number>;
-  totalViewLoadMs: number;
-  viewLoadMsByKey: Map<string, number>;
   viewEdits: Map<string, Set<string>>;
   onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
   stagedHides: Map<string, RemediatedColumnHide>;
@@ -4864,9 +4868,6 @@ const CandidateTableGroup: React.FC<{
   costPerRowTags,
   liveValue,
   costByKey,
-  visibleRowsByKey,
-  totalViewLoadMs,
-  viewLoadMsByKey,
   viewEdits,
   onSetViewEdit,
   stagedHides,
@@ -4939,9 +4940,6 @@ const CandidateTableGroup: React.FC<{
             rowIdx={i}
             liveValue={liveValue}
             costByKey={costByKey}
-            visibleRowsByKey={visibleRowsByKey}
-            totalViewLoadMs={totalViewLoadMs}
-            viewLoadMsByKey={viewLoadMsByKey}
             viewEdits={viewEdits}
             onSetViewEdit={onSetViewEdit}
             stagedHides={stagedHides}
@@ -4971,9 +4969,6 @@ const CandidateBandGroup: React.FC<{
   costPerRowTags: Map<string, 'structural' | 'volume'>;
   liveValue: any;
   costByKey: Map<string, number>;
-  visibleRowsByKey: Map<string, number>;
-  totalViewLoadMs: number;
-  viewLoadMsByKey: Map<string, number>;
   viewEdits: Map<string, Set<string>>;
   onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
   stagedHides: Map<string, RemediatedColumnHide>;
@@ -5002,9 +4997,6 @@ const CandidateBandGroup: React.FC<{
   costPerRowTags,
   liveValue,
   costByKey,
-  visibleRowsByKey,
-  totalViewLoadMs,
-  viewLoadMsByKey,
   viewEdits,
   onSetViewEdit,
   stagedHides,
@@ -5080,9 +5072,6 @@ const CandidateBandGroup: React.FC<{
             rowIdx={i}
             liveValue={liveValue}
             costByKey={costByKey}
-            visibleRowsByKey={visibleRowsByKey}
-            totalViewLoadMs={totalViewLoadMs}
-            viewLoadMsByKey={viewLoadMsByKey}
             viewEdits={viewEdits}
             onSetViewEdit={onSetViewEdit}
             stagedHides={stagedHides}
