@@ -3449,7 +3449,10 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                     isApplyingThis={applyingTestId === t.id}
                     progressMsg={progressMsg}
                     onRun={() => handleRunTest(t.id)}
-                    onDelete={() => openDeleteModal(t.id)}
+                    onDelete={() =>
+                      t.lastSandbox ? openDeleteModal(t.id) : handleDeleteTest(t.id, false)
+                    }
+                    confirmDeleteInDropdown={!t.lastSandbox}
                     onApply={() => openApplyModal(t.id)}
                     onCopyToSandbox={accountToken ? () => openCopyModal(t.id) : undefined}
                     onRemoveRemediation={(tableName, columnKey) =>
@@ -5786,6 +5789,11 @@ const TestBlock: React.FC<{
   progressMsg: string;
   onRun: () => void;
   onDelete: () => void;
+  // When true, the ContextMenu's "Delete test" entry uses its built-in two-step
+  // "Confirm?" affordance instead of firing onDelete directly. Caller passes
+  // true when there's no sandbox to also-delete — opening a modal with nothing
+  // to choose just adds friction. When false, onDelete should open a modal.
+  confirmDeleteInDropdown: boolean;
   onApply: () => void;
   onCopyToSandbox?: () => void;
   onRemoveRemediation: (tableName: string, columnKey: string) => void;
@@ -5799,6 +5807,7 @@ const TestBlock: React.FC<{
   progressMsg,
   onRun,
   onDelete,
+  confirmDeleteInDropdown,
   onApply,
   onCopyToSandbox,
   onRemoveRemediation,
@@ -5866,7 +5875,7 @@ const TestBlock: React.FC<{
           <ContextMenu
             onDelete={onDelete}
             label={intl.get('performance.delete_test').d('Delete test')}
-            confirmDelete={false}
+            confirmDelete={confirmDeleteInDropdown}
             extraActions={[
               {
                 label: runLabel,
