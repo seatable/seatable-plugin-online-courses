@@ -141,6 +141,11 @@ interface PerformanceAuditProps {
   // on per-table tabs (tabs are siblings of the embedded PerformanceAudit, not
   // children, so they can't read the state directly).
   onDeletedArchivalTableIdsChange?: (ids: Set<string>) => void;
+  // Fires whenever the union of session-frozen + persisted-frozen keys changes
+  // (`${tableId}:${columnKey}` format). Mirrored up so per-table tabs can render
+  // the same frozen treatment Overview's CandidateRow uses (strikethrough +
+  // "frozen" label + suppressed menu).
+  onFrozenKeysChange?: (keys: Set<string>) => void;
   // Fires whenever the audit's progressMsg changes. Lets the host render the
   // running spinner + step text in its own header, instead of in the embedded
   // body — useful when the host wants progress visible regardless of which tab
@@ -258,6 +263,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       onStatusChange,
       onBusyChange,
       onDeletedArchivalTableIdsChange,
+      onFrozenKeysChange,
       onProgressChange,
       onStagedColumnsChange,
       onStagedViewsChange,
@@ -968,6 +974,13 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       if (onBusyChange) onBusyChange(freezingNowKey !== null || unfreezingKey !== null);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [freezingNowKey, unfreezingKey]);
+
+    // Mirror the union of session + persisted frozen keys up so per-table tabs
+    // can render the same strikethrough/"frozen" treatment as Overview.
+    useEffect(() => {
+      if (onFrozenKeysChange) onFrozenKeysChange(allFrozenKeys);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allFrozenKeys]);
 
     // Mirror the deleted-archival set up to the host so per-table tabs can render
     // strikethrough on the archival cell after a delete.

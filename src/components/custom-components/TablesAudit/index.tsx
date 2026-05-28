@@ -78,6 +78,10 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
   // perfStatus (audit run) so the two can coexist (rare but plausible) and so
   // we can render the header spinner without faking perfStatus = 'running'.
   const [perfBusy, setPerfBusy] = useState(false);
+  // Union of session pendingFrozenNow + persisted plugin-settings frozenColumns,
+  // mirrored up from PerformanceAudit so per-table tabs can render the same
+  // strikethrough/"frozen" treatment Overview's CandidateRow uses.
+  const [perfFrozenKeys, setPerfFrozenKeys] = useState<Set<string>>(new Set());
   // Mirrored from PerformanceAudit so per-table tabs can render strikethrough on the
   // archival cell after a delete (the embedded audit is a sibling, not a child of
   // TableTab, so this state has to round-trip up).
@@ -565,6 +569,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 }}
                 onStatusChange={setPerfStatus}
                 onBusyChange={setPerfBusy}
+                onFrozenKeysChange={setPerfFrozenKeys}
                 onDeletedArchivalTableIdsChange={setPerfDeletedArchivalIds}
                 onProgressChange={setPerfProgressMsg}
                 onStagedColumnsChange={setStagedColumns}
@@ -639,6 +644,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 stagedColumns={stagedColumns}
                 stagedViews={stagedViews}
                 stagedHides={stagedHides}
+                frozenKeys={perfFrozenKeys}
                 deletedArchivalTableIds={perfDeletedArchivalIds}
                 onRequestPerfRerun={() => perfAuditRef.current?.run()}
                 perfRunning={perfStatus === 'running'}

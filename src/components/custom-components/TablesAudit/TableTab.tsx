@@ -86,6 +86,10 @@ interface TableTabProps {
   stagedColumns?: Map<string, RemediationAction>;
   stagedViews?: Map<string, RemediatedView>;
   stagedHides?: Map<string, RemediatedColumnHide>;
+  // Union of session pendingFrozenNow + persisted plugin-settings frozenColumns
+  // (`${tableId}:${columnKey}` format). Drives the same strikethrough + "frozen"
+  // mention + suppressed menu treatment that Overview's CandidateRow uses.
+  frozenKeys?: Set<string>;
   // Set of table ids whose archival rows have been deleted via the plugin since the
   // last performance rerun. Used to render strikethrough on the archival cell.
   deletedArchivalTableIds?: Set<string>;
@@ -181,6 +185,7 @@ const TableTab: React.FC<TableTabProps> = ({
   stagedColumns,
   stagedViews,
   stagedHides,
+  frozenKeys,
   deletedArchivalTableIds,
   onRequestPerfRerun,
   perfRunning,
@@ -1142,9 +1147,12 @@ const TableTab: React.FC<TableTabProps> = ({
             {sortedColumns.map((col, i) => {
               const isDeleted = deletedCols.has(col.name);
               const candidate = candidateByColName.get(col.name);
-              const stagedAction = candidate
-                ? stagedColumns?.get(`${candidate.tableId}:${candidate.columnKey}`)
+              const candidateFullKey = candidate
+                ? `${candidate.tableId}:${candidate.columnKey}`
                 : undefined;
+              const isFrozen = !!candidateFullKey && !!frozenKeys?.has(candidateFullKey);
+              const stagedAction =
+                candidateFullKey && !isFrozen ? stagedColumns?.get(candidateFullKey) : undefined;
               const isStaged = !isDeleted && !!stagedAction;
               const stagedMention =
                 stagedAction === 'delete'
@@ -1173,7 +1181,10 @@ const TableTab: React.FC<TableTabProps> = ({
               // Available iff the column is a candidate AND has at least one
               // of those — non-candidates don't get any expansion.
               const expandable =
-                !!candidate && !isDeleted && hasCandidateExpansionContent(candidate, liveValue);
+                !!candidate &&
+                !isDeleted &&
+                !isFrozen &&
+                hasCandidateExpansionContent(candidate, liveValue);
               const isExpanded = expandedColumnChains.has(col.name);
               // structural/volume tags are now surfaced in the labels list (with
               // their tooltips), and "formula on large table" is suppressed when the
@@ -1245,7 +1256,7 @@ const TableTab: React.FC<TableTabProps> = ({
                     borderBottom: '1px solid #eee',
                     backgroundColor: i % 2 === 0 ? '#fff' : '#f9f9f9',
                     opacity: isDeleted ? 0.5 : 1,
-                    color: isDeleted ? '#888' : isStaged ? '#777' : undefined,
+                    color: isDeleted || isFrozen ? '#888' : isStaged ? '#777' : undefined,
                     cursor: expandable ? 'pointer' : undefined,
                   }}
                   onClick={expandable ? () => toggleColumnChain(col.name) : undefined}>
@@ -1272,12 +1283,24 @@ const TableTab: React.FC<TableTabProps> = ({
                       <span
                         style={{
                           textDecoration:
-                            isDeleted || stagedAction === 'delete' ? 'line-through' : undefined,
+                            isDeleted || stagedAction === 'delete' || isFrozen
+                              ? 'line-through'
+                              : undefined,
                           fontStyle: stagedAction === 'replace-static' ? 'italic' : undefined,
                         }}>
                         {col.name}
                       </span>
                       <span style={{ color: '#aaa', fontSize: 12 }}>{col.type}</span>
+                      {isFrozen && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: '#777',
+                            fontStyle: 'italic',
+                          }}>
+                          · {intl.get('performance.candidate_frozen').d('frozen')}
+                        </span>
+                      )}
                       {isStaged && stagedMention && (
                         <span
                           style={{
@@ -1288,7 +1311,7 @@ const TableTab: React.FC<TableTabProps> = ({
                           · {stagedMention}
                         </span>
                       )}
-                      {candidate && !isStaged && hasUnsavedHidesForColumn(candidate) && (
+                      {candidate && !isStaged && !isFrozen && hasUnsavedHidesForColumn(candidate) && (
                         <span
                           style={{
                             marginLeft: 4,
@@ -1417,6 +1440,7 @@ const TableTab: React.FC<TableTabProps> = ({
                   </td>
                   <td style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'top' }}>
                     {!isDeleted &&
+                      !isFrozen &&
                       (() => {
                         // Non-candidate columns: simpler menu (just direct delete).
                         if (!candidate) {
