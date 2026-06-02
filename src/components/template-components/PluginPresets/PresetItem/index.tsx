@@ -58,6 +58,20 @@ const PresetItem: React.FC<IPresetItemProps> = ({
     };
   }, [p.name]);
 
+  // Allow remote opens of this preset's dropdown via a custom event so other
+  // surfaces (e.g. TablesAudit's "not run yet" hint link) can guide the user
+  // into the menu without prop-drilling a setter through several layers.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.presetId && detail.presetId === p?._id) {
+        setShowPresetDropdown(true);
+      }
+    };
+    window.addEventListener('audit:open-preset-menu', handler);
+    return () => window.removeEventListener('audit:open-preset-menu', handler);
+  }, [p?._id]);
+
   let popupDomNode = useClickOut(() => {
     setShowPresetDropdown(false);
   });
@@ -87,6 +101,15 @@ const PresetItem: React.FC<IPresetItemProps> = ({
         break;
       case PresetHandleAction.reset:
         resetPreset();
+        setShowPresetDropdown(false);
+        break;
+      case PresetHandleAction.runPerf:
+        // Fire-and-forget — TablesAudit listens for this event on its active
+        // preset id and triggers the run. PresetItem doesn't import / depend
+        // on TablesAudit's state.
+        window.dispatchEvent(
+          new CustomEvent('audit:run-perf', { detail: { presetId: p?._id } })
+        );
         setShowPresetDropdown(false);
         break;
       case PresetHandleAction.export:
@@ -155,6 +178,7 @@ const PresetItem: React.FC<IPresetItemProps> = ({
             pluginPresets={pluginPresets}
             togglePresetsUpdatePopUp={handlePresetsUpdate}
             presetName={p.name}
+            hasPerfRun={!!(p as any)?.customSettings?.savedPerformanceAudit?.date}
           />
         )}
       </div>

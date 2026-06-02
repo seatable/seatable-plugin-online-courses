@@ -6,7 +6,6 @@ import {
   PerformanceAuditResult,
   RemediationAction,
   RemediatedView,
-  RemediatedColumnHide,
 } from '../../../utils/custom-interfaces/AuditTypes';
 import stylesPSettings from '../../../styles/template-styles/PluginSettings.module.scss';
 import FillRateBar from './FillRateBar';
@@ -54,38 +53,9 @@ interface TableTabProps {
   // happens on this surface. Keeps the staging set consistent.
   onUnstageColumn?: (tableId: string, columnKey: string) => void;
   onUnstageView?: (tableId: string, viewId: string) => void;
-  // Toggle one (column, view) hide pair in the embedded PerformanceAudit.
-  onToggleHideInView?: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string,
-    view: { viewId: string; viewName: string }
-  ) => void;
-  // Column-level visibility commit handlers — exposed by PA's imperative
-  // handle so TableTab can drive the same Stage / Apply flow as Overview.
-  onStageColumnVisibility?: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
-  onApplyColumnVisibility?: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
-  // Shared per-view local visibility edits (mirrored from PerformanceAudit).
-  // Same Map both surfaces read so toggling in either place produces the
-  // "(unsaved)" mention in the other and gets committed by Stage / Apply.
-  viewEdits?: Map<string, Set<string>>;
-  onSetViewEdit?: (viewId: string, hidden: Set<string>) => void;
-  onClearViewEdit?: (viewId: string) => void;
   // Mirrored staged maps so the menu can render Stage / Unstage labels reactively.
   stagedColumns?: Map<string, RemediationAction>;
   stagedViews?: Map<string, RemediatedView>;
-  stagedHides?: Map<string, RemediatedColumnHide>;
   // Union of session pendingFrozenNow + persisted plugin-settings frozenColumns
   // (`${tableId}:${columnKey}` format). Drives the same strikethrough + "frozen"
   // mention + suppressed menu treatment that Overview's CandidateRow uses.
@@ -176,15 +146,8 @@ const TableTab: React.FC<TableTabProps> = ({
   onToggleViewDelete,
   onUnstageColumn,
   onUnstageView,
-  onToggleHideInView,
-  onStageColumnVisibility,
-  onApplyColumnVisibility,
-  viewEdits,
-  onSetViewEdit,
-  onClearViewEdit,
   stagedColumns,
   stagedViews,
-  stagedHides,
   frozenKeys,
   deletedArchivalTableIds,
   onRequestPerfRerun,
@@ -362,29 +325,6 @@ const TableTab: React.FC<TableTabProps> = ({
     });
   }, [result.views, viewSortKey, viewSortDir, viewRowCountByName, viewWeightPctByName]);
 
-  // Per-column dirty check — true iff any view has viewEdits whose state for
-  // this column differs from the committed (base ∪ staged) state. Drives the
-  // Stage/Apply views-changes items in the column three-dots menu.
-  const hasUnsavedHidesForColumn = (candidate: { tableId: string; columnKey: string }) => {
-    const tables = liveValue?.tables ?? [];
-    const t = tables.find((tt: any) => tt._id === candidate.tableId);
-    if (!t) return false;
-    const stagedSetForCol = new Set<string>();
-    if (stagedHides) {
-      const entry = stagedHides.get(`${candidate.tableId}:${candidate.columnKey}`);
-      if (entry) entry.views.forEach((v) => stagedSetForCol.add(v.viewId));
-    }
-    for (const v of t.views || []) {
-      const edits = viewEdits?.get(v._id);
-      if (!edits) continue;
-      const baseHas = (v.hidden_columns || []).includes(candidate.columnKey);
-      const committed = baseHas || stagedSetForCol.has(v._id);
-      const editsHas = edits.has(candidate.columnKey);
-      if (editsHas !== committed) return true;
-    }
-    return false;
-  };
-
   const handleDeleteColumn = (colName: string) => {
     if (deleteColumnDirect(result.tableName, colName)) {
       showToast(
@@ -406,13 +346,17 @@ const TableTab: React.FC<TableTabProps> = ({
   };
 
   // ------------------------------------------------------------------------
-  // Per-view "manage visibility" panel — slider drill that lets the user
-  // edit hidden_columns locally (`viewEdits` mirrored from PerformanceAudit)
-  // and commit either via Stage (queue as hide-in-view remediations) or
-  // Apply (direct PUT to the base). viewEdits is shared with the Overview
-  // per-candidate drill so toggling there updates the slider state here
-  // and produces the "(unsaved)" mention until committed.
+  // Per-view "manage visibility" panel — slider drill that commits each
+  // toggle straight to the base via setViewHiddenColumnsDirect. Matches
+  // SeaTable's native UI; no staging, no "(unsaved)" state.
+  //
+  // hideRefreshCounter is bumped after every successful hide PUT so the
+  // drill re-renders against the freshly mutated SDK state. Without it the
+  // slider visually freezes — `v.hidden_columns = desired` updates the
+  // store but React has no reason to recompute getBaseHidden().
   // ------------------------------------------------------------------------
+
+  const [hideRefreshCounter, setHideRefreshCounter] = useState(0);
 
   const liveValue = (window as any).dtableSDK?.dtableStore?.value;
 
@@ -427,152 +371,39 @@ const TableTab: React.FC<TableTabProps> = ({
     return new Set<string>(v?.hidden_columns || []);
   };
 
-  // Column keys in stagedHides whose `views` array includes this view.
-  // Read-only — produced from the mirrored staged map.
-  const getStagedHiddenForView = (viewId: string): Set<string> => {
-    const out = new Set<string>();
-    if (!stagedHides) return out;
-    stagedHides.forEach((h) => {
-      if (h.tableId !== result.tableId) return;
-      if (h.views.some((v) => v.viewId === viewId)) out.add(h.columnKey);
-    });
-    return out;
-  };
-
-  // Committed hidden = base ∪ stagedHides_for_view. The slider considers any
-  // column "currently hidden" if it's either in base or staged (a Stage
-  // commits the user's intent into stagedHides; the slider reflects that
-  // immediately even before Apply pushes it to base).
-  const getCommittedHidden = (viewId: string): Set<string> => {
-    const base = getBaseHidden(viewId);
-    const staged = getStagedHiddenForView(viewId);
-    if (staged.size === 0) return base;
-    const merged = new Set<string>(base);
-    staged.forEach((k) => merged.add(k));
-    return merged;
-  };
-
-  // Effective = viewEdits if set (the user's local desired state), else
-  // committed. viewEdits, when first written by toggleColumnInView, is
-  // initialized from `committed` so existing staged hides aren't dropped.
-  const getEffectiveHidden = (viewId: string): Set<string> => {
-    return viewEdits?.get(viewId) ?? getCommittedHidden(viewId);
-  };
-
-  const toggleColumnInView = (viewId: string, colKey: string) => {
-    if (!onSetViewEdit) return;
-    const current = viewEdits?.get(viewId) ?? getCommittedHidden(viewId);
-    const next = new Set(current);
-    if (next.has(colKey)) next.delete(colKey);
-    else next.add(colKey);
-    onSetViewEdit(viewId, next);
-  };
-
-  const hasUnsavedVisibilityChanges = (viewId: string): boolean => {
-    const edits = viewEdits?.get(viewId);
-    if (!edits) return false;
-    const committed = getCommittedHidden(viewId);
-    if (edits.size !== committed.size) return true;
-    for (const k of Array.from(edits)) {
-      if (!committed.has(k)) return true;
-    }
-    return false;
-  };
-
-  // Diff is computed against the *committed* set. "added" = needs staging.
-  // "removedFromStaged" = needs un-staging. "removedFromBase" = un-hide
-  // intent (Stage can't commit; needs Apply).
-  const computeVisibilityDiff = (viewId: string) => {
-    const base = getBaseHidden(viewId);
-    const staged = getStagedHiddenForView(viewId);
-    const committed = new Set<string>(base);
-    staged.forEach((k) => committed.add(k));
-    const edits = viewEdits?.get(viewId) ?? committed;
-    const added: string[] = [];
-    const removedFromStaged: string[] = [];
-    const removedFromBase: string[] = [];
-    edits.forEach((k) => {
-      if (!committed.has(k)) added.push(k);
-    });
-    committed.forEach((k) => {
-      if (!edits.has(k)) {
-        if (staged.has(k)) removedFromStaged.push(k);
-        else removedFromBase.push(k);
-      }
-    });
-    return {
-      added,
-      removedFromStaged,
-      removedFromBase,
-      desired: Array.from(edits),
-    };
-  };
-
-  const applyVisibilityChanges = async (viewId: string, viewName: string) => {
-    const { desired } = computeVisibilityDiff(viewId);
+  // Commit a desired hidden_columns array to the base. Used by both the
+  // per-row toggle (with the column-key flipped) and the bulk show/hide
+  // switch (with the full array supplied). Mutates the live SDK state on
+  // success and bumps hideRefreshCounter so the drill re-renders.
+  const commitHiddenColumns = async (
+    viewId: string,
+    viewName: string,
+    desired: string[],
+    failureLabel: string
+  ) => {
     const ok = await setViewHiddenColumnsDirect(result.tableName, viewName, desired);
     if (ok) {
-      showToast(
-        intl
-          .get('performance.visibility_applied', { view: viewName })
-          .d(`View "${viewName}" visibility updated.`)
-      );
       const v = getLiveView(viewId);
       if (v) v.hidden_columns = desired;
-      if (onClearViewEdit) onClearViewEdit(viewId);
+      setHideRefreshCounter((c) => c + 1);
     } else {
       showToast(
         intl
-          .get('performance.visibility_apply_failed', { view: viewName })
-          .d(`Failed to update visibility for view "${viewName}".`)
+          .get('performance.hide_toggle_failed', { col: failureLabel, view: viewName })
+          .d(`Failed to update visibility of "${failureLabel}" in view "${viewName}".`)
       );
     }
   };
 
-  const stageVisibilityChanges = (viewId: string, viewName: string) => {
-    if (!onToggleHideInView || !onClearViewEdit) return;
-    const { added, removedFromStaged, removedFromBase } = computeVisibilityDiff(viewId);
-    const liveCols: any[] =
-      liveValue?.tables?.find((t: any) => t._id === result.tableId)?.columns ?? [];
-    // Both `added` (needs staging) and `removedFromStaged` (needs unstaging)
-    // map to the same toggleHideRemediation call — it adds when not present,
-    // removes when present. removedFromBase is the un-hide-from-base case
-    // which Stage can't handle and is dropped here.
-    for (const colKey of [...added, ...removedFromStaged]) {
-      const col = liveCols.find((c: any) => c.key === colKey);
-      const colName = col?.name || colKey;
-      onToggleHideInView(result.tableId, result.tableName, colKey, colName, {
-        viewId,
-        viewName,
-      });
-    }
-    onClearViewEdit(viewId);
-    const stagedTotal = added.length + removedFromStaged.length;
-    if (stagedTotal > 0 && removedFromBase.length > 0) {
-      showToast(
-        intl
-          .get('performance.visibility_staged_mixed', {
-            staged: stagedTotal,
-            dropped: removedFromBase.length,
-            view: viewName,
-          })
-          .d(
-            `${stagedTotal} change(s) staged for "${viewName}"; ${removedFromBase.length} un-hide(s) discarded — use Apply for those.`
-          )
-      );
-    } else if (stagedTotal > 0) {
-      showToast(
-        intl
-          .get('performance.visibility_staged', { count: stagedTotal, view: viewName })
-          .d(`${stagedTotal} change(s) staged for "${viewName}".`)
-      );
-    } else {
-      showToast(
-        intl
-          .get('performance.visibility_stage_no_adds')
-          .d('Stage only commits new hides — nothing to stage. Use Apply for un-hides.')
-      );
-    }
+  const toggleColumnInView = (viewId: string, viewName: string, colKey: string, colName: string) => {
+    const current = new Set<string>(getBaseHidden(viewId));
+    if (current.has(colKey)) current.delete(colKey);
+    else current.add(colKey);
+    commitHiddenColumns(viewId, viewName, Array.from(current), colName);
+  };
+
+  const setAllHiddenInView = (viewId: string, viewName: string, hiddenKeys: string[]) => {
+    commitHiddenColumns(viewId, viewName, hiddenKeys, intl.get('common.all').d('all columns'));
   };
 
   const toggleViewExpand = (viewId: string) => {
@@ -858,14 +689,11 @@ const TableTab: React.FC<TableTabProps> = ({
             {sortedViews.map((view, i) => {
               const isDeleted = deletedViews.has(view.name);
               const isStaged = !isDeleted && !!stagedViews?.has(`${result.tableId}:${view.viewId}`);
-              const viewWeightPct = viewWeightPctByName.get(view.name);
-              const expandable =
-                !isDeleted &&
-                !isStaged &&
-                viewWeightPct !== undefined &&
-                viewWeightPct >= MIN_RELEVANT_PCT;
+              // Drill is a hygiene/readability affordance (hiding doesn't
+              // affect perf — confirmed 2026-05-27), so expand every non-deleted,
+              // non-staged view regardless of load weight.
+              const expandable = !isDeleted && !isStaged;
               const isExpanded = expandedViewIds.has(view.viewId);
-              const isDirty = hasUnsavedVisibilityChanges(view.viewId);
               const colSpanForExpand = perfResult ? 7 : 5;
               return (
                 <React.Fragment key={view.name}>
@@ -896,17 +724,6 @@ const TableTab: React.FC<TableTabProps> = ({
                         }}>
                         {view.name}
                       </span>
-                      {isDirty && (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            fontSize: 11,
-                            color: '#e6a117',
-                            fontStyle: 'italic',
-                          }}>
-                          {intl.get('performance.unsaved_visibility').d('(unsaved)')}
-                        </span>
-                      )}
                       {view.privateFor && (
                         <span
                           title={intl
@@ -1013,28 +830,10 @@ const TableTab: React.FC<TableTabProps> = ({
                                 .get('performance.delete_private_view_now')
                                 .d('Delete private view now')
                             : intl.get('performance.delete_view_now').d('Delete view now');
-                          // Direct-only menu: views are hygiene cleanup, not a
-                          // staged remediation. "Update view now" applies any
-                          // pending column-slider changes to this view; ContextMenu
-                          // appends "Delete view now" automatically via onDelete.
-                          const extras: any[] = [];
-                          if (expandable) {
-                            extras.push({
-                              label: intl.get('performance.update_view_now').d('Update view now'),
-                              icon: 'dtable-icon-eye',
-                              color: isDirty ? '#0066cc' : '#999',
-                              disabled: !isDirty,
-                              disabledTooltip: intl
-                                .get('performance.no_unsaved_visibility')
-                                .d('Toggle the column sliders first.'),
-                              onClick: () => applyVisibilityChanges(view.viewId, view.name),
-                            });
-                          }
                           return (
                             <ContextMenu
                               onDelete={() => handleDeleteView(view.name, view.viewId)}
                               label={directLabel}
-                              extraActions={extras.length > 0 ? extras : undefined}
                             />
                           );
                         })()}
@@ -1044,12 +843,6 @@ const TableTab: React.FC<TableTabProps> = ({
                     (() => {
                       const liveView = getLiveView(view.viewId);
                       if (!liveView) return null;
-                      const effectiveHidden = getEffectiveHidden(view.viewId);
-                      const candidateKeys = new Set(
-                        perfResult?.candidates
-                          .filter((c) => c.tableId === result.tableId)
-                          .map((c) => c.columnKey) ?? []
-                      );
                       const cols = (liveValue?.tables?.find((t: any) => t._id === result.tableId)
                         ?.columns ?? []) as any[];
                       return (
@@ -1062,9 +855,13 @@ const TableTab: React.FC<TableTabProps> = ({
                               viewId={view.viewId}
                               liveView={liveView}
                               liveColumns={cols}
-                              candidateColumnKeys={candidateKeys}
-                              effectiveHidden={effectiveHidden}
-                              onToggleColumn={(colKey) => toggleColumnInView(view.viewId, colKey)}
+                              effectiveHidden={getBaseHidden(view.viewId)}
+                              onToggleColumn={(colKey, colName) =>
+                                toggleColumnInView(view.viewId, view.name, colKey, colName)
+                              }
+                              onSetAllHidden={(hiddenKeys) =>
+                                setAllHiddenInView(view.viewId, view.name, hiddenKeys)
+                              }
                             />
                           </td>
                         </tr>
@@ -1309,17 +1106,6 @@ const TableTab: React.FC<TableTabProps> = ({
                           · {stagedMention}
                         </span>
                       )}
-                      {candidate && !isStaged && !isFrozen && hasUnsavedHidesForColumn(candidate) && (
-                        <span
-                          style={{
-                            marginLeft: 4,
-                            fontSize: 11,
-                            color: '#e6a117',
-                            fontStyle: 'italic',
-                          }}>
-                          {intl.get('performance.unsaved_visibility').d('(unsaved)')}
-                        </span>
-                      )}
                       {col.matchesCtime && (
                         <span
                           style={{
@@ -1360,11 +1146,9 @@ const TableTab: React.FC<TableTabProps> = ({
                       <CandidateExpansion
                         candidate={candidate}
                         liveValue={liveValue}
-                        viewEdits={viewEdits ?? new Map()}
-                        onSetViewEdit={(viewId, hidden) =>
-                          onSetViewEdit && onSetViewEdit(viewId, hidden)
+                        onToggleHideInView={(_t, _tn, viewId, viewName, colKey, colName) =>
+                          toggleColumnInView(viewId, viewName, colKey, colName)
                         }
-                        stagedHides={stagedHides ?? new Map()}
                       />
                     )}
                     {hasLabels && (
@@ -1457,13 +1241,9 @@ const TableTab: React.FC<TableTabProps> = ({
                         // shows below-threshold candidates that Overview filters
                         // out).
                         const notRelevant = costPct === undefined || costPct < MIN_RELEVANT_PCT;
-                        const isColumnDirty = candidate
-                          ? hasUnsavedHidesForColumn(candidate)
-                          : false;
                         const extras = buildCandidateMenuExtras({
                           candidate,
                           remediations: stagedColumns ?? new Map(),
-                          isColumnDirty,
                           notRelevant,
                           onToggleAction: (key, action) => {
                             const [tableId, columnKey] = key.split(':');
@@ -1472,10 +1252,6 @@ const TableTab: React.FC<TableTabProps> = ({
                             } else if (onSelectColumnForReplacement) {
                               onSelectColumnForReplacement(tableId, columnKey);
                             }
-                          },
-                          onApplyColumnVisibility: (tableId, tableName, columnKey, columnName) => {
-                            if (onApplyColumnVisibility)
-                              onApplyColumnVisibility(tableId, tableName, columnKey, columnName);
                           },
                         });
                         return (

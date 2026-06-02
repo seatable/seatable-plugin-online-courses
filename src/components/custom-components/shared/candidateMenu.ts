@@ -8,18 +8,11 @@ import { MenuAction } from './ContextMenu';
 interface BuildCandidateMenuExtrasParams {
   candidate: PerformanceCandidateColumn;
   remediations: Map<string, RemediationAction>;
-  isColumnDirty: boolean;
   // True when this candidate's cost share is below the relevance threshold.
   // TableTab shows below-threshold candidates and gates Stage actions on
   // them; Overview filters them out, so passing false there is fine.
   notRelevant?: boolean;
   onToggleAction: (key: string, action: RemediationAction) => void;
-  onApplyColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
   // Direct freeze on the original base — skips the test/sandbox workflow.
   // Same indirection mechanism as the apply path, just invoked one column at
   // a time. Omit to hide the menu entry (e.g. in contexts where the host
@@ -33,12 +26,12 @@ interface BuildCandidateMenuExtrasParams {
  * ContextMenu's `onDelete` + `label` props.
  *
  * Order: Stage delete column / Stage replace by static data / divider /
- * Apply views changes now.
+ * Freeze column now.
  *
- * View visibility changes are direct-only — toggling the per-view sliders
- * + clicking "Apply views changes now" commits to the base immediately. The
- * old "Stage views changes" affordance was removed alongside the broader
- * view-staging redesign (views are hygiene cleanup, not test workflow).
+ * View visibility is no longer a remediation — the per-view sliders commit
+ * directly to the base on toggle. The previous Stage/Apply-visibility menu
+ * items were removed alongside the broader hide-staging rip (sliders match
+ * SeaTable's native UI now).
  *
  * Shared between Overview's CandidateRow and TableTab's Columns row when a
  * column is a candidate. Non-candidate columns in TableTab use a simpler
@@ -47,10 +40,8 @@ interface BuildCandidateMenuExtrasParams {
 export function buildCandidateMenuExtras({
   candidate: c,
   remediations,
-  isColumnDirty,
   notRelevant = false,
   onToggleAction,
-  onApplyColumnVisibility,
   onFreezeNow,
 }: BuildCandidateMenuExtrasParams): MenuAction[] {
   const key = `${c.tableId}:${c.columnKey}`;
@@ -71,9 +62,6 @@ export function buildCandidateMenuExtras({
     action === 'replace-static'
       ? intl.get('performance.unselect_replace').d('Unstage freeze column')
       : intl.get('performance.select_replace').d('Stage freeze column');
-  const noUnsavedTooltip = intl
-    .get('performance.no_unsaved_visibility')
-    .d('Toggle the column sliders first.');
   const primaryDisabledTooltip = intl
     .get('performance.delete_disabled_primary')
     .d("Cannot delete — this is the table's first column");
@@ -117,21 +105,13 @@ export function buildCandidateMenuExtras({
       disabledTooltip: replaceTip,
       onClick: () => onToggleAction(key, 'replace-static'),
     },
-    { divider: true, label: '', onClick: () => {} },
-    {
-      label: intl.get('performance.apply_views_changes_now').d('Update views now'),
-      icon: 'dtable-icon-eye',
-      color: isColumnDirty ? '#0066cc' : '#999',
-      disabled: !isColumnDirty,
-      disabledTooltip: noUnsavedTooltip,
-      onClick: () => onApplyColumnVisibility(c.tableId, c.tableName, c.columnKey, c.columnName),
-    },
     // Direct freeze on the original base — single column, no staging. Two-click
     // confirm (needsConfirm) since it's a real mutation. Disabled when the
     // column is staged for delete (mutually exclusive) or staged for freeze
     // (redundant — user should commit via Apply).
     ...(onFreezeNow
       ? [
+          { divider: true, label: '', onClick: () => {} } as MenuAction,
           {
             label: intl.get('performance.freeze_column_now').d('Freeze column now'),
             icon: 'dtable-icon-pin',

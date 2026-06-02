@@ -10,7 +10,6 @@ import {
   ReplacementType,
   RemediatedColumn,
   RemediatedView,
-  RemediatedColumnHide,
   AffectedRule,
   FrozenColumnRecord,
 } from '../custom-interfaces/AuditTypes';
@@ -200,7 +199,6 @@ export async function benchmarkInMemory(
  * - Replace-static: changes the column's type (and data) in place, as if the formula
  *   had been swapped for a plain column of the replacement type.
  * - Delete-view: drops the view from its table's views array.
- * - Hide-in-view: appends the column key to the affected views' `hidden_columns`.
  *
  * Only tables touched by a remediation get a fresh columns/views array; everything
  * else — including rows, links, and untouched tables — is shared by reference. Memory
@@ -209,13 +207,11 @@ export async function benchmarkInMemory(
 export function applyRemediationsToValue(
   value: any,
   remediations: RemediatedColumn[],
-  remediationViews: RemediatedView[] = [],
-  remediationHides: RemediatedColumnHide[] = []
+  remediationViews: RemediatedView[] = []
 ): any {
   if (
     (!remediations || remediations.length === 0) &&
-    (!remediationViews || remediationViews.length === 0) &&
-    (!remediationHides || remediationHides.length === 0)
+    (!remediationViews || remediationViews.length === 0)
   ) {
     return value;
   }
@@ -232,24 +228,10 @@ export function applyRemediationsToValue(
     viewsByTable[v.tableName].add(v.viewId);
   }
 
-  // Per-table, per-view set of column keys to add to hidden_columns. Keyed
-  // first by tableName so the table loop hits it once, then by viewId so the
-  // inner view loop can apply all the columns staged for that view at once.
-  const hidesByTableAndView: Record<string, Record<string, Set<string>>> = {};
-  for (const h of remediationHides || []) {
-    if (!hidesByTableAndView[h.tableName]) hidesByTableAndView[h.tableName] = {};
-    for (const v of h.views) {
-      const set = hidesByTableAndView[h.tableName][v.viewId] || new Set<string>();
-      set.add(h.columnKey);
-      hidesByTableAndView[h.tableName][v.viewId] = set;
-    }
-  }
-
   const newTables = (value.tables || []).map((t: any) => {
     const affectedCols = colsByTable[t.name];
     const deletedViewIds = viewsByTable[t.name];
-    const hidesForTable = hidesByTableAndView[t.name];
-    if (!affectedCols && !deletedViewIds && !hidesForTable) return t;
+    if (!affectedCols && !deletedViewIds) return t;
 
     let newColumns = t.columns;
     if (affectedCols) {
@@ -271,16 +253,8 @@ export function applyRemediationsToValue(
     }
 
     let newViews: any = t.views;
-    if (deletedViewIds || hidesForTable) {
-      newViews = (t.views || [])
-        .filter((v: any) => !(deletedViewIds && deletedViewIds.has(v._id)))
-        .map((v: any) => {
-          const toHide = hidesForTable?.[v._id];
-          if (!toHide || toHide.size === 0) return v;
-          const merged = new Set<string>(v.hidden_columns || []);
-          toHide.forEach((k) => merged.add(k));
-          return { ...v, hidden_columns: Array.from(merged) };
-        });
+    if (deletedViewIds) {
+      newViews = (t.views || []).filter((v: any) => !deletedViewIds.has(v._id));
     }
 
     return { ...t, columns: newColumns, views: newViews };
@@ -1824,9 +1798,9 @@ export async function deleteBase(
 
 /**
  * Direct PUT of a view's hidden_columns on the original base. Replaces (does not
- * merge) the field, so caller must supply the full desired array. Used by the
- * "Apply visibility changes" action in TableTab when the user finishes editing
- * sliders and wants the change live without going through the test workflow.
+ * merge) the field, so caller must supply the full desired array. Used when a
+ * column-visibility slider is toggled in the audit — the change goes live
+ * immediately, matching SeaTable's native UI.
  */
 export async function setViewHiddenColumnsDirect(
   tableName: string,
@@ -2207,7 +2181,6 @@ export async function applyRemediationsToBase(
   remediations: RemediatedColumn[],
   onProgress?: (msg: string) => void,
   viewsToDelete?: Array<{ tableName: string; viewName: string }>,
-  remediationHides?: RemediatedColumnHide[],
   // Forwarded into each freeze call — fires when shape detection determines
   // the column's freeze would change its array result shape to long-text.
   // Caller (UI) should show a warning modal and return user's decision.
@@ -2439,104 +2412,6 @@ export async function applyRemediationsToBase(
           }
         } catch (e: any) {
           errors.push(`delete view "${v.viewName}": ${e?.message || e}`);
-        }
-      }
-    }
-  }
-
-  // -------- 4c. Hide-in-view remediation (PUT view's hidden_columns)
-  // Group staged hides by (tableName, viewId) so one PUT carries all columns
-  // staged for that view. Skip views that are about to be deleted entirely
-  // (already excluded from cleanup at step 4 via the same toDeleteSet).
-  if (remediationHides && remediationHides.length > 0) {
-    type HideUpdate = {
-      tableId: string;
-      tableName: string;
-      viewName: string;
-      viewId: string;
-      columnKeys: Set<string>;
-    };
-    const byViewKey: Record<string, HideUpdate> = {};
-    for (const h of remediationHides) {
-      for (const v of h.views) {
-        const k = `${h.tableName}::${v.viewId}`;
-        if (!byViewKey[k]) {
-          byViewKey[k] = {
-            tableId: h.tableId,
-            tableName: h.tableName,
-            viewName: v.viewName,
-            viewId: v.viewId,
-            columnKeys: new Set<string>(),
-          };
-        }
-        byViewKey[k].columnKeys.add(h.columnKey);
-      }
-    }
-
-    const hideToken = isOriginal ? originalAuth?.accessToken : remoteToken;
-    const hideUuid = isOriginal ? originalAuth?.dtableUuid : remoteUuid;
-    const canHttpHide = !useSandboxSDKForViews && !!hideToken && !!hideUuid;
-
-    for (const u of Object.values(byViewKey)) {
-      if (toDeleteSet.has(`${u.tableName}::${u.viewName}`)) continue;
-      // Look up the current view to merge with its existing hidden_columns —
-      // both HTTP PUT and the modify_hidden_columns op replace the field, so we
-      // must include the prior keys. Read from the appropriate SDK to reflect any
-      // hides applied earlier in this same batch (matters when sandboxSDK is used).
-      const lookupSDK = useSandboxSDKForViews ? sandboxSDK : dtableSDK;
-      const lookupTables: any[] = lookupSDK.getTables();
-      const tbl = lookupTables.find((t: any) => t.name === u.tableName);
-      const view = (tbl?.views || []).find((vv: any) => vv._id === u.viewId);
-      const currentHidden: string[] = view?.hidden_columns || [];
-      const mergedSet = new Set<string>(currentHidden);
-      u.columnKeys.forEach((k) => mergedSet.add(k));
-      const merged = Array.from(mergedSet);
-      if (onProgress) {
-        onProgress(`Hiding columns in view "${u.viewName}" of ${u.tableName}...`);
-      }
-      if (useSandboxSDKForViews) {
-        try {
-          const store = sandboxSDK.dtableStore;
-          store.applyLocalOperation(
-            store.createOperation({
-              type: 'modify_hidden_columns',
-              table_id: u.tableId,
-              view_id: u.viewId,
-              hidden_columns: merged,
-            })
-          );
-          applied += u.columnKeys.size;
-        } catch (e: any) {
-          errors.push(`hide in view "${u.viewName}": ${e?.message || e}`);
-          failed += u.columnKeys.size;
-        }
-      } else if (canHttpHide) {
-        try {
-          const resp = await fetch(
-            `${serverUrl}/api-gateway/api/v2/dtables/${hideUuid}/views/${encodeURIComponent(u.viewName)}/?table_name=${encodeURIComponent(u.tableName)}`,
-            {
-              method: 'PUT',
-              headers: {
-                accept: 'application/json',
-                'content-type': 'application/json',
-                authorization: `Bearer ${hideToken}`,
-              },
-              body: JSON.stringify({ hidden_columns: merged }),
-            }
-          );
-          if (resp.ok) {
-            applied += u.columnKeys.size;
-          } else {
-            const bodyText = await resp.text().catch(() => '');
-            const msg = `hide columns in view "${u.viewName}": HTTP ${resp.status} ${bodyText}`;
-            // eslint-disable-next-line no-console
-            console.warn('[performance-audit]', msg);
-            errors.push(msg);
-            failed += u.columnKeys.size;
-          }
-        } catch (e: any) {
-          errors.push(`hide in view "${u.viewName}": ${e?.message || e}`);
-          failed += u.columnKeys.size;
         }
       }
     }

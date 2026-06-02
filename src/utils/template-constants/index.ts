@@ -87,6 +87,7 @@ const PresetHandleAction = {
   new: 'new',
   reset: 'reset',
   export: 'export',
+  runPerf: 'runPerf',
 };
 
 // KeyDown Actions

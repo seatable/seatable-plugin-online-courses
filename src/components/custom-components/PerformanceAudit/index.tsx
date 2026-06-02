@@ -23,7 +23,6 @@ import {
   RemediationAction,
   RemediatedColumn,
   RemediatedView,
-  RemediatedColumnHide,
   PerformanceTest,
   PerformanceTestSandbox,
   AffectedRule,
@@ -43,7 +42,6 @@ import {
   applyRemediationsToValue,
   getColumnRuleKindsInView,
   RULE_KIND_LABEL_SHORT,
-  setViewHiddenColumnsDirect,
   applyRemediationsToBase,
   createSandboxCopy,
   getSandboxToken,
@@ -96,10 +94,6 @@ export interface SavedPerformanceAudit {
   // `${tableId}:${viewId}`. Value carries the metadata needed to rebuild a
   // RemediatedView when the test is created.
   remediationViews?: Array<[string, RemediatedView]>;
-  // Staged hide-in-view entries, serialized as entries. Key is `${tableId}:${columnKey}`.
-  // Each entry's `views` field accumulates the views in which the column should be
-  // hidden — toggling a single (column, view) pair edits the array on the entry.
-  remediationHides?: Array<[string, RemediatedColumnHide]>;
   // Threshold used at the time of this run — lets PluginSettings detect when the
   // user has changed the setting since and prompt for a rerun.
   rowArchivalThresholdDaysAtRun?: number;
@@ -158,11 +152,6 @@ interface PerformanceAuditProps {
   onStagedColumnsChange?: (m: Map<string, RemediationAction>) => void;
   // Same as onStagedColumnsChange, for view-deletion staging.
   onStagedViewsChange?: (m: Map<string, RemediatedView>) => void;
-  // Same as onStagedColumnsChange, for hide-in-view staging.
-  onStagedHidesChange?: (m: Map<string, RemediatedColumnHide>) => void;
-  // Mirrors the local per-view visibility edits so per-table tabs (TableTab)
-  // can render the slider state + "(unsaved)" mention reactively.
-  onViewEditsChange?: (m: Map<string, Set<string>>) => void;
   // Per-table audit results from the host's tables audit. When provided, the
   // top-of-overview key figures (Tables / Rows / Columns / Views) are summed
   // from this instead of the perf audit's own archival data — so they refresh
@@ -210,36 +199,6 @@ export interface PerformanceAuditHandle {
   // direct mutation. No-op if the entity wasn't staged.
   unstageColumn: (tableId: string, columnKey: string) => void;
   unstageView: (tableId: string, viewId: string) => void;
-  // Toggle a (column, view) hide pair. Mutually exclusive with delete/replace
-  // for the column — toggling clears any column action for that key.
-  toggleHideInView: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string,
-    view: { viewId: string; viewName: string }
-  ) => void;
-  isHideStaged: (tableId: string, columnKey: string, viewId: string) => boolean;
-  unstageAllHidesForColumn: (tableId: string, columnKey: string) => void;
-  // Set / clear the local desired hidden_columns set for a view. The set is
-  // shared across surfaces (per-candidate drill + per-view slider expansion).
-  setViewEdit: (viewId: string, hidden: Set<string>) => void;
-  clearViewEdit: (viewId: string) => void;
-  // Stage / Apply this column's visibility edits across all dirty views.
-  // Used by both Overview's CandidateRow three-dots and TableTab's Columns
-  // three-dots when the column is a perf candidate.
-  stageColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
-  applyColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => Promise<void>;
 }
 
 const perfResultCache: Record<string, SavedPerformanceAudit> = {};
@@ -268,8 +227,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       onProgressChange,
       onStagedColumnsChange,
       onStagedViewsChange,
-      onStagedHidesChange,
-      onViewEditsChange,
       tablesAuditResults,
       onRequestTablesAuditRerun,
     },
@@ -312,20 +269,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     const [viewRemediations, setViewRemediations] = useState<Map<string, RemediatedView>>(
       () => new Map(cached?.remediationViews || [])
     );
-    // Staged hide-in-view entries, keyed by `${tableId}:${columnKey}`. Each
-    // entry's `views` array accumulates the views the column should be hidden
-    // in. Toggling a single (column, view) pair edits the array; the entry is
-    // dropped when its array becomes empty.
-    const [hideRemediations, setHideRemediations] = useState<Map<string, RemediatedColumnHide>>(
-      () => new Map(cached?.remediationHides || [])
-    );
-    // Per-view local visibility edits (desired hidden_columns set per viewId),
-    // shared between the per-candidate drill (Overview) and the per-view
-    // slider expansion (TableTab + Overview Views section). Toggling a slider
-    // in either surface writes to this map, producing the "(unsaved)" mention
-    // until the user commits via "Stage update view" or "Update view now".
-    // Not persisted — local edits are ephemeral by design.
-    const [viewEdits, setViewEdits] = useState<Map<string, Set<string>>>(new Map());
     const [tests, setTests] = useState<PerformanceTest[]>(cached?.tests || []);
     const [applyingTestId, setApplyingTestId] = useState<string | null>(null);
     const [applyModalTestId, setApplyModalTestId] = useState<string | null>(null);
@@ -662,7 +605,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // Refs for persistence access without triggering dep cycles
     const remediationsRef = useRef(remediations);
     const viewRemediationsRef = useRef(viewRemediations);
-    const hideRemediationsRef = useRef(hideRemediations);
     const testsRef = useRef(tests);
     useEffect(() => {
       remediationsRef.current = remediations;
@@ -670,9 +612,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     useEffect(() => {
       viewRemediationsRef.current = viewRemediations;
     }, [viewRemediations]);
-    useEffect(() => {
-      hideRemediationsRef.current = hideRemediations;
-    }, [hideRemediations]);
     useEffect(() => {
       testsRef.current = tests;
     }, [tests]);
@@ -706,12 +645,10 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         testList: PerformanceTest[],
         remediationsMap?: Map<string, RemediationAction>,
         thresholdAtRun?: number,
-        viewRemediationsMap?: Map<string, RemediatedView>,
-        hideRemediationsMap?: Map<string, RemediatedColumnHide>
+        viewRemediationsMap?: Map<string, RemediatedView>
       ) => {
         const rem = remediationsMap ?? remediationsRef.current;
         const viewRem = viewRemediationsMap ?? viewRemediationsRef.current;
-        const hideRem = hideRemediationsMap ?? hideRemediationsRef.current;
         // Serialize costByKey as entries — the Map type doesn't round-trip
         // through JSON.stringify when settings are pushed to the SeaTable
         // store. The hydration path at component init handles both shapes.
@@ -728,7 +665,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           tests: testList,
           remediations: rem.size > 0 ? Array.from(rem.entries()) : undefined,
           remediationViews: viewRem.size > 0 ? Array.from(viewRem.entries()) : undefined,
-          remediationHides: hideRem.size > 0 ? Array.from(hideRem.entries()) : undefined,
           // Freeze the threshold value used. Non-audit changes (remediations, tests)
           // preserve whatever was saved previously; audit runs overwrite with the
           // value that was just used.
@@ -748,17 +684,9 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     // Auto-persist when remediations or tests change after the initial audit is loaded.
     useEffect(() => {
       if (!result || !auditDate) return;
-      persist(
-        result,
-        auditDate,
-        testsRef.current,
-        remediations,
-        undefined,
-        viewRemediations,
-        hideRemediations
-      );
+      persist(result, auditDate, testsRef.current, remediations, undefined, viewRemediations);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [remediations, viewRemediations, hideRemediations, tests]);
+    }, [remediations, viewRemediations, tests]);
 
     // -------------------------------------------------------------------------
     // Run initial audit (benchmark + detect candidates)
@@ -886,9 +814,8 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
               // delete manually. Column keys tied to the old audit no longer match the new one.
               setRemediations(new Map());
               setViewRemediations(new Map());
-              setHideRemediations(new Map());
               setTests([]);
-              persist(auditResult, now, [], new Map(), thresholdNow, new Map(), new Map());
+              persist(auditResult, now, [], new Map(), thresholdNow, new Map());
             } catch (err: any) {
               if (!silent) {
                 setProgressMsg(`Error: ${err.message}`);
@@ -965,37 +892,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             return next;
           });
         },
-        setViewEdit: (viewId: string, hidden: Set<string>) => {
-          setViewEdits((prev) => {
-            const next = new Map(prev);
-            next.set(viewId, hidden);
-            return next;
-          });
-        },
-        clearViewEdit: (viewId: string) => {
-          setViewEdits((prev) => {
-            if (!prev.has(viewId)) return prev;
-            const next = new Map(prev);
-            next.delete(viewId);
-            return next;
-          });
-        },
-        toggleHideInView: toggleHideRemediation,
-        isHideStaged: (tableId: string, columnKey: string, viewId: string) => {
-          const entry = hideRemediationsRef.current.get(`${tableId}:${columnKey}`);
-          return !!entry?.views.some((v) => v.viewId === viewId);
-        },
-        unstageAllHidesForColumn: (tableId: string, columnKey: string) => {
-          const k = `${tableId}:${columnKey}`;
-          setHideRemediations((prev) => {
-            if (!prev.has(k)) return prev;
-            const next = new Map(prev);
-            next.delete(k);
-            return next;
-          });
-        },
-        stageColumnVisibility: handleStageColumnVisibility,
-        applyColumnVisibility: handleApplyColumnVisibility,
       }),
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [doAudit, status]
@@ -1045,14 +941,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       if (onStagedViewsChange) onStagedViewsChange(viewRemediations);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [viewRemediations]);
-    useEffect(() => {
-      if (onStagedHidesChange) onStagedHidesChange(hideRemediations);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hideRemediations]);
-    useEffect(() => {
-      if (onViewEditsChange) onViewEditsChange(viewEdits);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [viewEdits]);
 
     // Mirror the live progress message up so embedding hosts can render the running
     // spinner + step text in their own header (TablesAudit does this).
@@ -1092,17 +980,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         else next.set(key, action);
         return next;
       });
-      // Staging delete/replace clears any hide-in-view staging for the same
-      // column — those are mutually exclusive (a deleted/replaced column has
-      // no hide concept). Skip if we just toggled OFF (the user un-staged).
-      setHideRemediations((prev) => {
-        if (!prev.has(key)) return prev;
-        const wasStaged = remediationsRef.current.get(key) === action;
-        if (wasStaged) return prev; // un-staging delete/replace, leave hides alone
-        const next = new Map(prev);
-        next.delete(key);
-        return next;
-      });
     };
 
     // Toggle staging of a view deletion. Key is `${tableId}:${viewId}`.
@@ -1111,53 +988,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         const next = new Map(prev);
         if (next.has(key)) next.delete(key);
         else next.set(key, payload);
-        return next;
-      });
-    };
-
-    // Toggle staging of "hide column in view" for one (column, view) pair.
-    // The map is keyed `${tableId}:${columnKey}`; each entry's `views` array
-    // accumulates the views the column should be hidden in. Mutually
-    // exclusive with delete/replace-static for the same column — toggling
-    // hide on a column staged for delete/replace clears the column action
-    // first; staging delete/replace on a hide-staged column clears the
-    // hides (handled at toggleColumnAction below by re-checking).
-    const toggleHideRemediation = (
-      tableId: string,
-      tableName: string,
-      columnKey: string,
-      columnName: string,
-      view: { viewId: string; viewName: string }
-    ) => {
-      const colKey = `${tableId}:${columnKey}`;
-      // If the column is currently staged for delete/replace, hide is
-      // disallowed — earlier checks at the menu level should prevent this,
-      // but be defensive: silently clear the column action.
-      setRemediations((prev) => {
-        if (!prev.has(colKey)) return prev;
-        const next = new Map(prev);
-        next.delete(colKey);
-        return next;
-      });
-      setHideRemediations((prev) => {
-        const next = new Map(prev);
-        const existing = next.get(colKey);
-        if (existing) {
-          const hasView = existing.views.some((v) => v.viewId === view.viewId);
-          const newViews = hasView
-            ? existing.views.filter((v) => v.viewId !== view.viewId)
-            : [...existing.views, view];
-          if (newViews.length === 0) next.delete(colKey);
-          else next.set(colKey, { ...existing, views: newViews });
-        } else {
-          next.set(colKey, {
-            tableId,
-            tableName,
-            columnKey,
-            columnName,
-            views: [view],
-          });
-        }
         return next;
       });
     };
@@ -1316,7 +1146,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
     const handleCreateTestCase = () => {
       if (
         !result ||
-        (remediations.size === 0 && viewRemediations.size === 0 && hideRemediations.size === 0) ||
+        (remediations.size === 0 && viewRemediations.size === 0) ||
         isBusy
       )
         return;
@@ -1343,22 +1173,19 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       }
 
       const viewSnapshot: RemediatedView[] = Array.from(viewRemediations.values());
-      const hideSnapshot: RemediatedColumnHide[] = Array.from(hideRemediations.values());
 
-      if (snapshot.length === 0 && viewSnapshot.length === 0 && hideSnapshot.length === 0) return;
+      if (snapshot.length === 0 && viewSnapshot.length === 0) return;
 
       const newTest: PerformanceTest = {
         id: `test-${Date.now()}`,
         createdAt: formatNow(),
         remediations: snapshot,
         remediationViews: viewSnapshot.length > 0 ? viewSnapshot : undefined,
-        remediationHides: hideSnapshot.length > 0 ? hideSnapshot : undefined,
         status: 'pending',
       };
       setTests((prev) => [...prev, newTest]);
       setRemediations(new Map());
       setViewRemediations(new Map());
-      setHideRemediations(new Map());
     };
 
     const handleDeleteTest = async (testId: string, deleteSandbox: boolean) => {
@@ -1427,41 +1254,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       );
     };
 
-    // Remove a (column, view) hide pair from a test. If that pair is the last
-    // entry in the column's `views` list, the whole hide entry is dropped.
-    const handleRemoveRemediationHide = (
-      testId: string,
-      tableId: string,
-      columnKey: string,
-      viewId: string
-    ) => {
-      if (isBusy) return;
-      setTests((prev) =>
-        prev.map((t) => {
-          if (t.id !== testId) return t;
-          const newHides: RemediatedColumnHide[] = [];
-          for (const h of t.remediationHides || []) {
-            if (h.tableId !== tableId || h.columnKey !== columnKey) {
-              newHides.push(h);
-              continue;
-            }
-            const remainingViews = h.views.filter((v) => v.viewId !== viewId);
-            if (remainingViews.length > 0) {
-              newHides.push({ ...h, views: remainingViews });
-            }
-          }
-          return {
-            ...t,
-            remediationHides: newHides.length > 0 ? newHides : undefined,
-            status: 'pending',
-            beforeBenchmark: undefined,
-            afterBenchmark: undefined,
-            errorMessage: undefined,
-          };
-        })
-      );
-    };
-
     // Internal test runner — no is-busy guard (the public handlers below hold that).
     // Runs entirely in memory: clones the SDK's current value with the test's remediations
     // applied, then times dtable-store's compute on the original vs the clone. No network
@@ -1512,8 +1304,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         const mutatedValue = applyRemediationsToValue(
           baseValue,
           test.remediations,
-          test.remediationViews,
-          test.remediationHides
+          test.remediationViews
         );
         const afterBenchmark = await benchmarkInMemory(
           mutatedValue,
@@ -1703,7 +1494,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
           test.remediations,
           (msg) => setProgressMsg(msg),
           viewsToDelete,
-          test.remediationHides,
           (info) =>
             new Promise<boolean>((resolve) => {
               setMultiArrayModalState({ info, resolve });
@@ -1865,7 +1655,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         test.remediations,
         (msg) => setProgressMsg(msg),
         viewsToDelete,
-        test.remediationHides,
         (info) =>
           new Promise<boolean>((resolve) => {
             setMultiArrayModalState({ info, resolve });
@@ -2192,373 +1981,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
       } catch (err: any) {
         showToast(`Failed to delete view: ${err?.message || err}`);
       }
-    };
-
-    // ----- Visibility commit helpers (shared with TableTab via mirroring) -----
-
-    const getBaseHiddenForView = (tableId: string, viewId: string): Set<string> => {
-      const dtableSDK = (window as any).dtableSDK;
-      const t = (dtableSDK?.dtableStore?.value?.tables || []).find((tt: any) => tt._id === tableId);
-      const v = t?.views?.find((vv: any) => vv._id === viewId);
-      return new Set<string>(v?.hidden_columns || []);
-    };
-
-    // Column keys staged-hidden for this view, sourced from hideRemediations.
-    const getStagedHiddenForView = (tableId: string, viewId: string): Set<string> => {
-      const out = new Set<string>();
-      hideRemediations.forEach((h) => {
-        if (h.tableId !== tableId) return;
-        if (h.views.some((v) => v.viewId === viewId)) out.add(h.columnKey);
-      });
-      return out;
-    };
-
-    const getCommittedHiddenForView = (tableId: string, viewId: string): Set<string> => {
-      const base = getBaseHiddenForView(tableId, viewId);
-      const staged = getStagedHiddenForView(tableId, viewId);
-      if (staged.size === 0) return base;
-      const merged = new Set<string>(base);
-      staged.forEach((k) => merged.add(k));
-      return merged;
-    };
-
-    const computeViewVisibilityDiff = (tableId: string, viewId: string) => {
-      const base = getBaseHiddenForView(tableId, viewId);
-      const staged = getStagedHiddenForView(tableId, viewId);
-      const committed = new Set<string>(base);
-      staged.forEach((k) => committed.add(k));
-      const edits = viewEdits.get(viewId) ?? committed;
-      const added: string[] = [];
-      const removedFromStaged: string[] = [];
-      const removedFromBase: string[] = [];
-      edits.forEach((k) => {
-        if (!committed.has(k)) added.push(k);
-      });
-      committed.forEach((k) => {
-        if (!edits.has(k)) {
-          if (staged.has(k)) removedFromStaged.push(k);
-          else removedFromBase.push(k);
-        }
-      });
-      return {
-        added,
-        removedFromStaged,
-        removedFromBase,
-        desired: Array.from(edits),
-      };
-    };
-
-    const handleStageVisibilityChanges = (
-      tableId: string,
-      tableName: string,
-      viewId: string,
-      viewName: string
-    ) => {
-      const { added, removedFromStaged, removedFromBase } = computeViewVisibilityDiff(
-        tableId,
-        viewId
-      );
-      const dtableSDK = (window as any).dtableSDK;
-      const liveCols: any[] =
-        (dtableSDK?.dtableStore?.value?.tables || []).find((t: any) => t._id === tableId)
-          ?.columns ?? [];
-      // toggleHideRemediation flips: present → unstage, absent → stage.
-      // Both `added` and `removedFromStaged` map to the same call.
-      for (const colKey of [...added, ...removedFromStaged]) {
-        const col = liveCols.find((c: any) => c.key === colKey);
-        const colName = col?.name || colKey;
-        toggleHideRemediation(tableId, tableName, colKey, colName, { viewId, viewName });
-      }
-      // Always clear edits — committed staged adds/removes are flushed,
-      // un-hides discarded.
-      setViewEdits((prev) => {
-        if (!prev.has(viewId)) return prev;
-        const next = new Map(prev);
-        next.delete(viewId);
-        return next;
-      });
-      const stagedTotal = added.length + removedFromStaged.length;
-      if (stagedTotal > 0 && removedFromBase.length > 0) {
-        showToast(
-          intl
-            .get('performance.visibility_staged_mixed', {
-              staged: stagedTotal,
-              dropped: removedFromBase.length,
-              view: viewName,
-            })
-            .d(
-              `${stagedTotal} change(s) staged for "${viewName}"; ${removedFromBase.length} un-hide(s) discarded — use Apply for those.`
-            )
-        );
-      } else if (stagedTotal > 0) {
-        showToast(
-          intl
-            .get('performance.visibility_staged', { count: stagedTotal, view: viewName })
-            .d(`${stagedTotal} change(s) staged for "${viewName}".`)
-        );
-      } else {
-        showToast(
-          intl
-            .get('performance.visibility_stage_no_adds')
-            .d('Stage only commits new hides — nothing to stage. Use Apply for un-hides.')
-        );
-      }
-    };
-
-    // For one column, find every view in viewEdits where this column's
-    // visibility differs from the *committed* state (base ∪ staged). Used
-    // to drive column-level Stage / Apply and the "(unsaved)" mention.
-    const findDirtyViewsForColumn = (
-      tableId: string,
-      columnKey: string
-    ): Array<{
-      viewId: string;
-      viewName: string;
-      baseHas: boolean;
-      stagedHas: boolean;
-      editsHas: boolean;
-    }> => {
-      const dtableSDK = (window as any).dtableSDK;
-      const t = (dtableSDK?.dtableStore?.value?.tables || []).find((tt: any) => tt._id === tableId);
-      if (!t) return [];
-      const out: Array<{
-        viewId: string;
-        viewName: string;
-        baseHas: boolean;
-        stagedHas: boolean;
-        editsHas: boolean;
-      }> = [];
-      for (const v of t.views || []) {
-        const edits = viewEdits.get(v._id);
-        if (!edits) continue;
-        const baseHas = (v.hidden_columns || []).includes(columnKey);
-        const stagedHas = getStagedHiddenForView(tableId, v._id).has(columnKey);
-        const editsHas = edits.has(columnKey);
-        const committed = baseHas || stagedHas;
-        if (editsHas !== committed) {
-          out.push({
-            viewId: v._id,
-            viewName: v.name,
-            baseHas,
-            stagedHas,
-            editsHas,
-          });
-        }
-      }
-      return out;
-    };
-
-    // Drop one column from a view's edit set; if the resulting set matches
-    // the view's base hidden_columns, drop the entry entirely. Used after
-    // column-level Stage / Apply commits the column's portion of the edits.
-    const dropColumnFromViewEdit = (tableId: string, viewId: string, columnKey: string) => {
-      setViewEdits((prev) => {
-        const current = prev.get(viewId);
-        if (!current) return prev;
-        const newSet = new Set(current);
-        newSet.delete(columnKey);
-        const t = ((window as any).dtableSDK?.dtableStore?.value?.tables || []).find(
-          (tt: any) => tt._id === tableId
-        );
-        const v = t?.views?.find((vv: any) => vv._id === viewId);
-        const base = new Set<string>(v?.hidden_columns || []);
-        const next = new Map(prev);
-        if (newSet.size === base.size) {
-          let allMatch = true;
-          for (const k of Array.from(newSet)) {
-            if (!base.has(k)) {
-              allMatch = false;
-              break;
-            }
-          }
-          if (allMatch) {
-            next.delete(viewId);
-            return next;
-          }
-        }
-        next.set(viewId, newSet);
-        return next;
-      });
-    };
-
-    const handleStageColumnVisibility = (
-      tableId: string,
-      tableName: string,
-      columnKey: string,
-      columnName: string
-    ) => {
-      const dirty = findDirtyViewsForColumn(tableId, columnKey);
-      if (dirty.length === 0) return;
-      let stagedCount = 0;
-      let droppedCount = 0;
-      for (const dv of dirty) {
-        const wantHidden = dv.editsHas;
-        const wasCommitted = dv.baseHas || dv.stagedHas;
-        if (wantHidden && !wasCommitted) {
-          // Add a new staged hide.
-          toggleHideRemediation(tableId, tableName, columnKey, columnName, {
-            viewId: dv.viewId,
-            viewName: dv.viewName,
-          });
-          stagedCount++;
-        } else if (!wantHidden && dv.stagedHas) {
-          // Un-stage (toggle off).
-          toggleHideRemediation(tableId, tableName, columnKey, columnName, {
-            viewId: dv.viewId,
-            viewName: dv.viewName,
-          });
-          stagedCount++;
-        } else {
-          // Un-hide from base — Stage can't commit; needs Apply.
-          droppedCount++;
-        }
-        dropColumnFromViewEdit(tableId, dv.viewId, columnKey);
-      }
-      if (stagedCount > 0 && droppedCount > 0) {
-        showToast(
-          intl
-            .get('performance.col_visibility_staged_mixed', {
-              staged: stagedCount,
-              dropped: droppedCount,
-              col: columnName,
-            })
-            .d(
-              `${stagedCount} change(s) staged for "${columnName}"; ${droppedCount} un-hide(s) discarded — use Apply for those.`
-            )
-        );
-      } else if (stagedCount > 0) {
-        showToast(
-          intl
-            .get('performance.col_visibility_staged', {
-              count: stagedCount,
-              col: columnName,
-            })
-            .d(`${stagedCount} change(s) staged for "${columnName}".`)
-        );
-      } else {
-        showToast(
-          intl
-            .get('performance.col_visibility_stage_no_adds')
-            .d('Stage only commits new hides — nothing to stage. Use Apply for un-hides.')
-        );
-      }
-    };
-
-    const handleApplyColumnVisibility = async (
-      tableId: string,
-      tableName: string,
-      columnKey: string,
-      columnName: string
-    ) => {
-      const dirty = findDirtyViewsForColumn(tableId, columnKey);
-      if (dirty.length === 0) return;
-      let okCount = 0;
-      let failCount = 0;
-      const dtableSDK = (window as any).dtableSDK;
-      for (const dv of dirty) {
-        const t = (dtableSDK?.dtableStore?.value?.tables || []).find(
-          (tt: any) => tt._id === tableId
-        );
-        const v = t?.views?.find((vv: any) => vv._id === dv.viewId);
-        const base = new Set<string>(v?.hidden_columns || []);
-        const desired = new Set(base);
-        if (dv.editsHas) desired.add(columnKey);
-        else desired.delete(columnKey);
-        const arr = Array.from(desired);
-        const ok = await setViewHiddenColumnsDirect(tableName, dv.viewName, arr);
-        if (ok) {
-          okCount++;
-          if (v) v.hidden_columns = arr;
-          dropColumnFromViewEdit(tableId, dv.viewId, columnKey);
-          // If this (col, view) was staged, drop the staged entry too — base
-          // is now the source of truth.
-          if (dv.stagedHas) {
-            toggleHideRemediation(tableId, tableName, columnKey, columnName, {
-              viewId: dv.viewId,
-              viewName: dv.viewName,
-            });
-          }
-        } else {
-          failCount++;
-        }
-      }
-      if (okCount > 0) {
-        showToast(
-          intl
-            .get('performance.col_visibility_applied', {
-              count: okCount,
-              col: columnName,
-            })
-            .d(`${okCount} view(s) updated for "${columnName}".`)
-        );
-      }
-      if (failCount > 0) {
-        showToast(
-          intl
-            .get('performance.col_visibility_apply_failed', {
-              count: failCount,
-              col: columnName,
-            })
-            .d(`Failed to update ${failCount} view(s) for "${columnName}".`)
-        );
-      }
-    };
-
-    const handleApplyVisibilityChanges = async (
-      tableId: string,
-      tableName: string,
-      viewId: string,
-      viewName: string
-    ) => {
-      const { desired } = computeViewVisibilityDiff(tableId, viewId);
-      const ok = await setViewHiddenColumnsDirect(tableName, viewName, desired);
-      if (!ok) {
-        showToast(
-          intl
-            .get('performance.visibility_apply_failed', { view: viewName })
-            .d(`Failed to update visibility for view "${viewName}".`)
-        );
-        return;
-      }
-      showToast(
-        intl
-          .get('performance.visibility_applied', { view: viewName })
-          .d(`View "${viewName}" visibility updated.`)
-      );
-      // Mutate the live SDK value so subsequent reads reflect the new state.
-      const dtableSDK = (window as any).dtableSDK;
-      const t = (dtableSDK?.dtableStore?.value?.tables || []).find((tt: any) => tt._id === tableId);
-      const v = t?.views?.find((vv: any) => vv._id === viewId);
-      if (v) v.hidden_columns = desired;
-      setViewEdits((prev) => {
-        if (!prev.has(viewId)) return prev;
-        const next = new Map(prev);
-        next.delete(viewId);
-        return next;
-      });
-      // Drop any staged-hides whose viewId matches this view — they're now
-      // in base, no longer "staged". Avoids the test workflow re-trying an
-      // already-applied change.
-      setHideRemediations((prev) => {
-        let mutated = false;
-        const next = new Map<string, RemediatedColumnHide>();
-        prev.forEach((h, key) => {
-          if (h.tableId !== tableId) {
-            next.set(key, h);
-            return;
-          }
-          const newViews = h.views.filter((vv) => vv.viewId !== viewId);
-          if (newViews.length === h.views.length) {
-            next.set(key, h);
-          } else {
-            mutated = true;
-            if (newViews.length > 0) {
-              next.set(key, { ...h, views: newViews });
-            }
-          }
-        });
-        return mutated ? next : prev;
-      });
     };
 
     // ----- Archival actions on RowsSection three-dots menu --------------------
@@ -2935,11 +2357,14 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
         {status === 'done' && result && (
           <div style={embedded ? {} : { flex: 1, overflow: 'auto', paddingRight: 16 }}>
             {/* ---- Base-wide key figures ----
+                When embedded inside TablesAudit, the host owns these (rendered
+                inline on its "Last audit" header line). Standalone mode keeps
+                rendering them here.
                 Source of truth, in order of preference:
                   1. tablesAuditResults (host-provided) — refreshes on tables-audit rerun.
                   2. result.archival + live SDK — fallback for standalone mode and the
                      pre-tables-audit case where the host hasn't passed results yet. */}
-            {(() => {
+            {!embedded && (() => {
               let totalTables: number;
               let totalRows: number;
               let totalColumns: number;
@@ -3450,17 +2875,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                             costPerRowTags={costPerRowTags}
                             liveValue={liveValue}
                             costByKey={result.costByKey}
-                            viewEdits={viewEdits}
-                            onSetViewEdit={(viewId, hidden) =>
-                              setViewEdits((prev) => {
-                                const next = new Map(prev);
-                                next.set(viewId, hidden);
-                                return next;
-                              })
-                            }
-                            stagedHides={hideRemediations}
-                            onStageColumnVisibility={handleStageColumnVisibility}
-                            onApplyColumnVisibility={handleApplyColumnVisibility}
                             onFreezeNow={handleFreezeNow}
                           />
                         );
@@ -3492,17 +2906,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                             costPerRowTags={costPerRowTags}
                             liveValue={liveValue}
                             costByKey={result.costByKey}
-                            viewEdits={viewEdits}
-                            onSetViewEdit={(viewId, hidden) =>
-                              setViewEdits((prev) => {
-                                const next = new Map(prev);
-                                next.set(viewId, hidden);
-                                return next;
-                              })
-                            }
-                            stagedHides={hideRemediations}
-                            onStageColumnVisibility={handleStageColumnVisibility}
-                            onApplyColumnVisibility={handleApplyColumnVisibility}
                             onFreezeNow={handleFreezeNow}
                           />
                         );
@@ -3530,15 +2933,9 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
             </div>
 
             {/* ---- Create test case ---- */}
-            {(result.candidates.length > 0 ||
-              viewRemediations.size > 0 ||
-              hideRemediations.size > 0) &&
+            {(result.candidates.length > 0 || viewRemediations.size > 0) &&
               (() => {
-                const stagedHideViewCount = Array.from(hideRemediations.values()).reduce(
-                  (s, h) => s + h.views.length,
-                  0
-                );
-                const stagedCount = remediations.size + viewRemediations.size + stagedHideViewCount;
+                const stagedCount = remediations.size + viewRemediations.size;
                 const enabled = stagedCount > 0 && !isBusy;
                 return (
                   <div style={{ marginBottom: 16 }}>
@@ -3621,9 +3018,6 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                     }
                     onRemoveRemediationView={(tableId, viewId) =>
                       handleRemoveRemediationView(t.id, tableId, viewId)
-                    }
-                    onRemoveRemediationHide={(tableId, columnKey, viewId) =>
-                      handleRemoveRemediationHide(t.id, tableId, columnKey, viewId)
                     }
                   />
                 ))}
@@ -3917,536 +3311,6 @@ PerformanceAudit.displayName = 'PerformanceAudit';
 // Sub-components
 // ---------------------------------------------------------------------------
 
-/** Table group — collapsible, Links-audit style, with context menus */
-// Views-by-size section. Renders either grouped by table (one block per table with a
-// collapsible header) or flat (single list sorted by row count desc). Each row shows the
-// view name, row count, weight bar, and a delete action. Deletion happens immediately
-// in the base; the row is marked with strikethrough until the next audit rerun.
-
-const ViewsSection: React.FC<{
-  views: PerformanceAuditView[];
-  // Optional override for the weight % denominator. When the parent has filtered
-  // `views` for noise but wants weights computed against the original total, it
-  // passes the unfiltered total here. Falls back to summing the passed-in views.
-  totalLoadMsOverride?: number;
-  archival: PerformanceAuditTableArchival[];
-  mode: 'grouped' | 'flat';
-  deletedViewKeys: Set<string>;
-  viewRemediations: Map<string, RemediatedView>;
-  // Per-view visibility drill props — shared with TableTab via PA-level state.
-  viewEdits: Map<string, Set<string>>;
-  onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
-  // Read-only view of staged hides for the slider state.
-  hideRemediations: Map<string, RemediatedColumnHide>;
-  liveValue: any;
-  candidateColumnKeys: Set<string>;
-  onApplyVisibility: (tableId: string, tableName: string, viewId: string, viewName: string) => void;
-  onStageVisibility: (tableId: string, tableName: string, viewId: string, viewName: string) => void;
-  onDelete: (tableName: string, viewName: string, keyStr: string) => void;
-  onToggleStage: (payload: RemediatedView) => void;
-}> = ({
-  views,
-  totalLoadMsOverride,
-  archival,
-  mode,
-  deletedViewKeys,
-  viewRemediations,
-  viewEdits,
-  onSetViewEdit,
-  hideRemediations,
-  liveValue,
-  candidateColumnKeys,
-  onApplyVisibility,
-  onStageVisibility,
-  onDelete,
-  onToggleStage,
-}) => {
-  const [expandedViewIds, setExpandedViewIds] = useState<Set<string>>(new Set());
-  const toggleViewExpand = (viewId: string) =>
-    setExpandedViewIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(viewId)) next.delete(viewId);
-      else next.add(viewId);
-      return next;
-    });
-
-  // Staged hidden columns for one view (any column in this table whose
-  // staged-hides list includes this viewId).
-  const getStagedHiddenForView = (tableId: string, viewId: string): Set<string> => {
-    const out = new Set<string>();
-    hideRemediations.forEach((h) => {
-      if (h.tableId !== tableId) return;
-      if (h.views.some((v) => v.viewId === viewId)) out.add(h.columnKey);
-    });
-    return out;
-  };
-
-  const getCommittedHiddenForView = (tableId: string, viewId: string): Set<string> => {
-    const t = liveValue?.tables?.find((tt: any) => tt._id === tableId);
-    const v = t?.views?.find((vv: any) => vv._id === viewId);
-    const base = new Set<string>(v?.hidden_columns || []);
-    const staged = getStagedHiddenForView(tableId, viewId);
-    if (staged.size === 0) return base;
-    const merged = new Set<string>(base);
-    staged.forEach((k) => merged.add(k));
-    return merged;
-  };
-
-  const getEffectiveHiddenForView = (tableId: string, viewId: string): Set<string> => {
-    return viewEdits.get(viewId) ?? getCommittedHiddenForView(tableId, viewId);
-  };
-
-  const hasUnsavedFor = (tableId: string, viewId: string): boolean => {
-    const edits = viewEdits.get(viewId);
-    if (!edits) return false;
-    const committed = getCommittedHiddenForView(tableId, viewId);
-    if (edits.size !== committed.size) return true;
-    for (const k of Array.from(edits)) {
-      if (!committed.has(k)) return true;
-    }
-    return false;
-  };
-
-  const toggleColumnInView = (tableId: string, viewId: string, colKey: string) => {
-    const current = new Set(viewEdits.get(viewId) ?? getCommittedHiddenForView(tableId, viewId));
-    if (current.has(colKey)) current.delete(colKey);
-    else current.add(colKey);
-    onSetViewEdit(viewId, current);
-  };
-  type SortKey = 'view' | 'rows' | 'weight';
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      if (sortDir === 'asc') setSortDir('desc');
-      else setSortKey(null);
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-  };
-
-  const totalLoadMs = totalLoadMsOverride ?? views.reduce((s, v) => s + (v.loadMs || 0), 0);
-  const archivalByTableId = new Map<string, PerformanceAuditTableArchival>();
-  // Per-table total row count, keyed by tableId — used to display "viewRows / tableRows".
-  const tableRowsByTableId = new Map<string, number>();
-  for (const a of archival) {
-    if (a.candidateCountNoIncomingLinks > 0) archivalByTableId.set(a.tableId, a);
-    tableRowsByTableId.set(a.tableId, a.totalRows);
-  }
-
-  if (views.length === 0) {
-    return (
-      <div style={{ fontSize: 13, color: '#888', padding: '4px 0' }}>
-        {intl.get('performance.no_views').d('No views in this base.')}
-      </div>
-    );
-  }
-
-  const sortViews = (vs: PerformanceAuditView[]): PerformanceAuditView[] => {
-    if (!sortKey) return vs;
-    return [...vs].sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'view') cmp = a.viewName.localeCompare(b.viewName);
-      else if (sortKey === 'rows') cmp = a.rowCount - b.rowCount;
-      else cmp = (a.loadMs ?? 0) - (b.loadMs ?? 0);
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  };
-
-  // Render a single body row as a <tr>. `rowIdx` is the alternating-bg index local to the
-  // current tbody segment (flat: full list, grouped: within the current group).
-  const renderRow = (v: PerformanceAuditView, showTableName: boolean, rowIdx: number) => {
-    const keyStr = `${v.tableId}:${v.viewId}`;
-    const isDeleted = deletedViewKeys.has(keyStr);
-    const isStaged = !isDeleted && viewRemediations.has(keyStr);
-    const weightPct = totalLoadMs > 0 ? (v.loadMs / totalLoadMs) * 100 : 0;
-    const archivalHint = archivalByTableId.get(v.tableId);
-    const expandable = !isDeleted && !isStaged && weightPct >= MIN_RELEVANT_PCT;
-    const isExpanded = expandedViewIds.has(v.viewId);
-    const isDirty = hasUnsavedFor(v.tableId, v.viewId);
-    return (
-      <React.Fragment key={keyStr}>
-        <tr
-          className="audit-row"
-          style={{
-            borderBottom: '1px solid #eee',
-            backgroundColor: rowIdx % 2 === 0 ? '#fff' : '#f9f9f9',
-            opacity: isDeleted ? 0.5 : 1,
-            color: isDeleted ? '#888' : isStaged ? '#777' : undefined,
-          }}>
-          <td style={{ padding: '6px 12px', wordBreak: 'break-word' }}>
-            {expandable && (
-              <i
-                onClick={() => toggleViewExpand(v.viewId)}
-                className={`dtable-font ${isExpanded ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-                style={{
-                  fontSize: 10,
-                  color: '#888',
-                  marginRight: 6,
-                  cursor: 'pointer',
-                }}
-              />
-            )}
-            {showTableName && (
-              <>
-                <span style={{ fontWeight: 700 }}>{v.tableName}</span>
-                <span style={{ color: '#999', marginLeft: 4, marginRight: 4 }}>&rsaquo;</span>
-              </>
-            )}
-            <span
-              style={{
-                textDecoration: isDeleted || isStaged ? 'line-through' : undefined,
-              }}>
-              {v.viewName}
-            </span>
-            {isDirty && (
-              <span
-                style={{
-                  marginLeft: 6,
-                  fontSize: 11,
-                  color: '#e6a117',
-                  fontStyle: 'italic',
-                }}>
-                {intl.get('performance.unsaved_visibility').d('(unsaved)')}
-              </span>
-            )}
-            {v.privateFor && (
-              <span
-                title={intl
-                  .get('performance.private_view_tooltip', { owner: v.privateFor })
-                  .d(`Private view (owner: ${v.privateFor})`)}
-                style={{ marginLeft: 6 }}>
-                <i
-                  className="dtable-font dtable-icon-private-database"
-                  style={{ fontSize: 14, color: '#888' }}
-                />
-              </span>
-            )}
-            {archivalHint && (
-              <span
-                title={intl
-                  .get('performance.archival_hint', {
-                    count: archivalHint.candidateCountNoIncomingLinks,
-                    table: v.tableName,
-                  })
-                  .d(
-                    `${archivalHint.candidateCountNoIncomingLinks} archivable rows in ${v.tableName} — archiving may reduce this view`
-                  )}
-                style={{ marginLeft: 6 }}>
-                <i
-                  className="dtable-font dtable-icon-archive-view"
-                  style={{ fontSize: 14, color: '#888' }}
-                />
-              </span>
-            )}
-            {isStaged && (
-              <span
-                style={{
-                  fontSize: 11,
-                  color: '#dc3545',
-                  fontStyle: 'italic',
-                  marginLeft: 6,
-                }}>
-                · {intl.get('performance.marked_delete').d('marked for deletion')}
-              </span>
-            )}
-          </td>
-          <td
-            title={intl
-              .get('performance.view_rows_tooltip')
-              .d('Rows returned by this view, out of total rows in the table.')}
-            style={{ padding: '6px 12px', color: '#666' }}>
-            {v.rowCount}
-            {tableRowsByTableId.has(v.tableId) && (
-              <span style={{ color: '#aaa' }}> / {tableRowsByTableId.get(v.tableId)}</span>
-            )}
-          </td>
-          <td
-            title={intl
-              .get('performance.view_weight_tooltip')
-              .d(
-                "Share of total view-load time (rowCount × ms). Deleting removes this view as a switching destination but doesn't reduce overall base compute work."
-              )}
-            style={{ padding: '6px 12px' }}>
-            <PercentBar pct={weightPct} />
-          </td>
-          <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-            {!isDeleted &&
-              (() => {
-                const isStaged = viewRemediations.has(keyStr);
-                const stageDeleteLabel = isStaged
-                  ? intl.get('performance.unstage_delete_view').d('Unstage delete view')
-                  : intl.get('performance.stage_delete_view').d('Stage delete view');
-                const directLabel = v.privateFor
-                  ? intl.get('performance.delete_private_view_now').d('Delete private view now')
-                  : intl.get('performance.delete_view_now').d('Delete view now');
-                const extras: any[] = [];
-                if (expandable) {
-                  extras.push({
-                    label: intl.get('performance.stage_update_view').d('Stage update view'),
-                    icon: 'dtable-icon-gauge',
-                    color: isDirty ? '#dc3545' : '#999',
-                    disabled: !isDirty,
-                    disabledTooltip: intl
-                      .get('performance.no_unsaved_visibility')
-                      .d('Toggle the column sliders first.'),
-                    onClick: () => onStageVisibility(v.tableId, v.tableName, v.viewId, v.viewName),
-                  });
-                }
-                extras.push({
-                  label: stageDeleteLabel,
-                  icon: 'dtable-icon-gauge',
-                  color: isStaged ? '#999' : '#dc3545',
-                  onClick: () =>
-                    onToggleStage({
-                      tableId: v.tableId,
-                      tableName: v.tableName,
-                      viewId: v.viewId,
-                      viewName: v.viewName,
-                      privateFor: v.privateFor ?? null,
-                    }),
-                });
-                extras.push({ divider: true, label: '', onClick: () => {} });
-                if (expandable) {
-                  extras.push({
-                    label: intl.get('performance.update_view_now').d('Update view now'),
-                    icon: 'dtable-icon-eye',
-                    color: isDirty ? '#0066cc' : '#999',
-                    disabled: !isDirty,
-                    disabledTooltip: intl
-                      .get('performance.no_unsaved_visibility')
-                      .d('Toggle the column sliders first.'),
-                    onClick: () => onApplyVisibility(v.tableId, v.tableName, v.viewId, v.viewName),
-                  });
-                }
-                return (
-                  <ContextMenu
-                    onDelete={() => onDelete(v.tableName, v.viewName, keyStr)}
-                    label={directLabel}
-                    extraActions={extras}
-                  />
-                );
-              })()}
-          </td>
-        </tr>
-        {isExpanded &&
-          (() => {
-            const t = liveValue?.tables?.find((tt: any) => tt._id === v.tableId);
-            const liveView = t?.views?.find((vv: any) => vv._id === v.viewId);
-            if (!liveView) return null;
-            const cols = (t?.columns ?? []) as any[];
-            const effectiveHidden = getEffectiveHiddenForView(v.tableId, v.viewId);
-            return (
-              <tr style={{ backgroundColor: '#fafbfc' }}>
-                <td colSpan={4} style={{ padding: 0, borderBottom: '1px solid #eee' }}>
-                  <ViewVisibilityDrill
-                    tableId={v.tableId}
-                    viewId={v.viewId}
-                    liveView={liveView}
-                    liveColumns={cols}
-                    candidateColumnKeys={candidateColumnKeys}
-                    effectiveHidden={effectiveHidden}
-                    onToggleColumn={(colKey) => toggleColumnInView(v.tableId, v.viewId, colKey)}
-                  />
-                </td>
-              </tr>
-            );
-          })()}
-      </React.Fragment>
-    );
-  };
-
-  const head = (
-    <thead>
-      <tr style={{ borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-        <th style={{ padding: '8px 12px', ...SORTABLE_TH }} onClick={() => toggleSort('view')}>
-          {intl.get('common.view').d('View')}
-          {sortIndicator(sortKey === 'view', sortDir)}
-        </th>
-        <th
-          style={{ padding: '8px 12px', ...SORTABLE_TH }}
-          title={intl
-            .get('performance.view_rows_tooltip')
-            .d('Rows returned by this view, out of total rows in the table.')}
-          onClick={() => toggleSort('rows')}>
-          {intl.get('common.rows').d('Rows')}
-          {sortIndicator(sortKey === 'rows', sortDir)}
-        </th>
-        <th
-          style={{ padding: '8px 12px', ...SORTABLE_TH }}
-          title={intl
-            .get('performance.view_weight_tooltip')
-            .d("This view's share of total view-load time (rowCount × ms) before the remediation.")}
-          onClick={() => toggleSort('weight')}>
-          {intl.get('performance.weight').d('Weight')}
-          {sortIndicator(sortKey === 'weight', sortDir)}
-        </th>
-        <th />
-      </tr>
-    </thead>
-  );
-
-  const tableStyle: React.CSSProperties = {
-    width: '100%',
-    tableLayout: 'fixed',
-    borderCollapse: 'collapse',
-    fontSize: 14,
-  };
-  const colgroup = (
-    <colgroup>
-      <col />
-      <col style={{ width: 130 }} />
-      <col style={{ width: 140 }} />
-      <col style={{ width: 32 }} />
-    </colgroup>
-  );
-
-  if (mode === 'flat') {
-    const sorted = sortViews(views);
-    return (
-      <table className="audit-table" style={tableStyle}>
-        {colgroup}
-        {head}
-        <tbody>{sorted.map((v, i) => renderRow(v, true, i))}</tbody>
-      </table>
-    );
-  }
-
-  // Grouped: preserve the ordering of tables by their first-appearing (heaviest) view.
-  // Sorting (when active) applies within each group.
-  const tableNames: string[] = [];
-  for (const v of views) {
-    if (!tableNames.includes(v.tableName)) tableNames.push(v.tableName);
-  }
-  const isViewStaged = (v: PerformanceAuditView) =>
-    viewRemediations.has(`${v.tableId}:${v.viewId}`);
-  const isViewRelevant = (v: PerformanceAuditView) =>
-    totalLoadMs > 0 && (v.loadMs / totalLoadMs) * 100 >= MIN_RELEVANT_PCT;
-  return (
-    <table className="audit-table" style={tableStyle}>
-      {colgroup}
-      {head}
-      {tableNames.map((tName) => {
-        const inTable = sortViews(views.filter((v) => v.tableName === tName));
-        return (
-          <ViewsTableGroupBody
-            key={tName}
-            tableName={tName}
-            views={inTable}
-            renderRow={renderRow}
-            isViewStaged={isViewStaged}
-            isViewRelevant={isViewRelevant}
-            onToggleStage={onToggleStage}
-            onDelete={onDelete}
-          />
-        );
-      })}
-    </table>
-  );
-};
-
-// Renders a collapsible group inside the views <table>: a header row with the table
-// name + view count, and the per-view rows when open. Each group has its own open
-// state, so the user can collapse big tables independently.
-const ViewsTableGroupBody: React.FC<{
-  tableName: string;
-  views: PerformanceAuditView[];
-  renderRow: (v: PerformanceAuditView, showTableName: boolean, rowIdx: number) => React.ReactNode;
-  isViewStaged: (v: PerformanceAuditView) => boolean;
-  isViewRelevant: (v: PerformanceAuditView) => boolean;
-  onToggleStage: (payload: RemediatedView) => void;
-  onDelete: (tableName: string, viewName: string, keyStr: string) => void;
-}> = ({ tableName, views, renderRow, isViewStaged, isViewRelevant, onToggleStage, onDelete }) => {
-  const [open, setOpen] = useState(true);
-  // Group-level batch helpers. Stage-all toggles: if every relevant view is already
-  // staged, "Stage all" becomes "Unstage all"; otherwise it stages every relevant
-  // unstaged view in this group. Non-relevant views are skipped both ways.
-  const relevantViews = views.filter(isViewRelevant);
-  const allRelevantStaged = relevantViews.length > 0 && relevantViews.every(isViewStaged);
-  const someUnstagedRelevant = relevantViews.some((v) => !isViewStaged(v));
-  const handleStageAll = () => {
-    if (allRelevantStaged) {
-      // Unstage everything currently staged in this group.
-      for (const v of views) {
-        if (isViewStaged(v)) {
-          onToggleStage({
-            tableId: v.tableId,
-            tableName: v.tableName,
-            viewId: v.viewId,
-            viewName: v.viewName,
-            privateFor: v.privateFor ?? null,
-          });
-        }
-      }
-    } else {
-      // Stage every relevant unstaged view.
-      for (const v of relevantViews) {
-        if (!isViewStaged(v)) {
-          onToggleStage({
-            tableId: v.tableId,
-            tableName: v.tableName,
-            viewId: v.viewId,
-            viewName: v.viewName,
-            privateFor: v.privateFor ?? null,
-          });
-        }
-      }
-    }
-  };
-  const handleDeleteAll = () => {
-    for (const v of views) {
-      onDelete(v.tableName, v.viewName, `${v.tableId}:${v.viewId}`);
-    }
-  };
-  return (
-    <tbody>
-      <tr className="asset-audit-group" style={{ userSelect: 'none' }}>
-        <td
-          colSpan={3}
-          style={{ padding: '6px 12px', cursor: 'pointer' }}
-          onClick={() => setOpen(!open)}>
-          <i
-            className={`dtable-font ${open ? 'dtable-icon-down' : 'dtable-icon-right'}`}
-            style={{ fontSize: 10, color: '#666', marginRight: 6 }}
-          />
-          <span style={{ fontWeight: 700 }}>{tableName}</span>
-          <span style={{ color: '#888', fontSize: 12, marginLeft: 6 }}>
-            ({views.length} view{views.length !== 1 ? 's' : ''})
-          </span>
-        </td>
-        <td style={{ padding: '6px 4px', textAlign: 'center' }}>
-          <ContextMenu
-            onDelete={handleDeleteAll}
-            label={intl
-              .get('performance.delete_all_views_now', { table: tableName })
-              .d(`Delete all views in "${tableName}" now`)}
-            extraActions={[
-              {
-                label: allRelevantStaged
-                  ? intl.get('performance.unstage_all_views').d('Unstage all views in this table')
-                  : intl
-                      .get('performance.stage_all_views')
-                      .d('Stage all relevant views in this table'),
-                icon: 'dtable-icon-gauge',
-                color: allRelevantStaged ? '#999' : '#dc3545',
-                disabled: !allRelevantStaged && !someUnstagedRelevant,
-                disabledTooltip: intl
-                  .get('performance.stage_all_views_no_relevant')
-                  .d('No views in this table are significant enough to stage.'),
-                onClick: handleStageAll,
-              },
-              { divider: true, label: '', onClick: () => {} },
-            ]}
-          />
-        </td>
-      </tr>
-      {open && views.map((v, i) => renderRow(v, false, i))}
-    </tbody>
-  );
-};
-
 // Rows section — per-table archival analysis list. Only surfaces tables with at
 // least one archival candidate. The safe-to-archive count (rows with no incoming
 // links) is shown in parens next to the total candidate count.
@@ -4710,29 +3574,8 @@ const CandidateRow: React.FC<{
   costPerRowTag?: 'structural' | 'volume';
   showTableName?: boolean;
   rowIdx: number;
-  // Hide-in-view drill props. Pass live value (for current hidden_columns +
-  // view rules), viewLoadsByKey (for visibleRows), costByKey (for per-cell),
-  // and the shared per-view edit map + setter. Stage/Apply column-level
-  // commit handlers are passed in too for the menu.
   liveValue: any;
   costByKey: Map<string, number>;
-  viewEdits: Map<string, Set<string>>;
-  onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
-  // Read-only view of staged hides — included in the drill's effective state
-  // so freshly-staged hides show as toggled-off immediately.
-  stagedHides: Map<string, RemediatedColumnHide>;
-  onStageColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
-  onApplyColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
   onFreezeNow: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }> = ({
   c,
@@ -4747,12 +3590,7 @@ const CandidateRow: React.FC<{
   rowIdx,
   liveValue,
   costByKey,
-  viewEdits,
-  onSetViewEdit,
-  stagedHides,
   onFreezeNow,
-  onStageColumnVisibility,
-  onApplyColumnVisibility,
 }) => {
   const [expandedChain, setExpandedChain] = useState(false);
   const [expandedRules, setExpandedRules] = useState(false);
@@ -4764,42 +3602,12 @@ const CandidateRow: React.FC<{
   const isDeletedNow = deletedCandidateKeys.has(key);
   const isFrozenNow = frozenNowKeys.has(key);
 
-  // The (col, view) pairs currently staged-hidden for this column. Used by
-  // the dirty check below to know whether viewEdits' state matches the
-  // committed state.
-  const stagedViewIdsForCol = (() => {
-    const entry = stagedHides.get(`${c.tableId}:${c.columnKey}`);
-    if (!entry) return new Set<string>();
-    return new Set(entry.views.map((v) => v.viewId));
-  })();
-
   // Whether the chevron should be available — either chain or drill content.
   const expandable =
     !isSelected &&
     !isDeletedNow &&
     !isFrozenNow &&
     hasCandidateExpansionContent(c, liveValue, false);
-
-  // True iff this column has uncommitted visibility edits in any view.
-  // Compares viewEdits against `(base ∪ staged)` — once Stage commits a hide
-  // into stagedHides, the column is no longer dirty against the committed
-  // state and the "(unsaved)" mention disappears.
-  const isColumnDirty = (() => {
-    if (isSelected || isDeletedNow) return false;
-    const tables: any[] = liveValue?.tables || [];
-    const t = tables.find((tt: any) => tt._id === c.tableId);
-    if (!t) return false;
-    for (const v of t.views || []) {
-      const edits = viewEdits.get(v._id);
-      if (!edits) continue;
-      const baseHas = (v.hidden_columns || []).includes(c.columnKey);
-      const stagedHas = stagedViewIdsForCol.has(v._id);
-      const committed = baseHas || stagedHas;
-      const editsHas = edits.has(c.columnKey);
-      if (editsHas !== committed) return true;
-    }
-    return false;
-  })();
 
   // Multi-value LFs are no longer hard-blocked: the freeze mechanism handles
   // multi-array via long-text snapshot, and the apply-time modal warns about
@@ -4943,28 +3751,10 @@ const CandidateRow: React.FC<{
               · {actionLabel}
             </span>
           )}
-          {isColumnDirty && (
-            <span
-              style={{
-                marginLeft: 6,
-                fontSize: 11,
-                color: '#e6a117',
-                fontStyle: 'italic',
-              }}>
-              {intl.get('performance.unsaved_visibility').d('(unsaved)')}
-            </span>
-          )}
         </div>
 
         {expandedChain && (
-          <CandidateExpansion
-            candidate={c}
-            liveValue={liveValue}
-            viewEdits={viewEdits}
-            onSetViewEdit={onSetViewEdit}
-            stagedHides={stagedHides}
-            showHideDrill={false}
-          />
+          <CandidateExpansion candidate={c} liveValue={liveValue} showHideDrill={false} />
         )}
 
         {!isSelected &&
@@ -5048,9 +3838,7 @@ const CandidateRow: React.FC<{
             const extras = buildCandidateMenuExtras({
               candidate: c,
               remediations,
-              isColumnDirty,
               onToggleAction,
-              onApplyColumnVisibility,
               onFreezeNow,
             });
             return (
@@ -5083,21 +3871,6 @@ const CandidateTableGroup: React.FC<{
   costPerRowTags: Map<string, 'structural' | 'volume'>;
   liveValue: any;
   costByKey: Map<string, number>;
-  viewEdits: Map<string, Set<string>>;
-  onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
-  stagedHides: Map<string, RemediatedColumnHide>;
-  onStageColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
-  onApplyColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
   onFreezeNow: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }> = ({
   tableName,
@@ -5111,11 +3884,6 @@ const CandidateTableGroup: React.FC<{
   costPerRowTags,
   liveValue,
   costByKey,
-  viewEdits,
-  onSetViewEdit,
-  stagedHides,
-  onStageColumnVisibility,
-  onApplyColumnVisibility,
   onFreezeNow,
 }) => {
   const [open, setOpen] = useState(true);
@@ -5183,11 +3951,6 @@ const CandidateTableGroup: React.FC<{
             rowIdx={i}
             liveValue={liveValue}
             costByKey={costByKey}
-            viewEdits={viewEdits}
-            onSetViewEdit={onSetViewEdit}
-            stagedHides={stagedHides}
-            onStageColumnVisibility={onStageColumnVisibility}
-            onApplyColumnVisibility={onApplyColumnVisibility}
             onFreezeNow={onFreezeNow}
           />
         ))}
@@ -5212,21 +3975,6 @@ const CandidateBandGroup: React.FC<{
   costPerRowTags: Map<string, 'structural' | 'volume'>;
   liveValue: any;
   costByKey: Map<string, number>;
-  viewEdits: Map<string, Set<string>>;
-  onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
-  stagedHides: Map<string, RemediatedColumnHide>;
-  onStageColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
-  onApplyColumnVisibility: (
-    tableId: string,
-    tableName: string,
-    columnKey: string,
-    columnName: string
-  ) => void;
   onFreezeNow: (tableId: string, tableName: string, columnKey: string, columnName: string) => void;
 }> = ({
   band,
@@ -5240,11 +3988,6 @@ const CandidateBandGroup: React.FC<{
   costPerRowTags,
   liveValue,
   costByKey,
-  viewEdits,
-  onSetViewEdit,
-  stagedHides,
-  onStageColumnVisibility,
-  onApplyColumnVisibility,
   onFreezeNow,
 }) => {
   const [open, setOpen] = useState(true);
@@ -5315,11 +4058,6 @@ const CandidateBandGroup: React.FC<{
             rowIdx={i}
             liveValue={liveValue}
             costByKey={costByKey}
-            viewEdits={viewEdits}
-            onSetViewEdit={onSetViewEdit}
-            stagedHides={stagedHides}
-            onStageColumnVisibility={onStageColumnVisibility}
-            onApplyColumnVisibility={onApplyColumnVisibility}
             onFreezeNow={onFreezeNow}
           />
         ))}
@@ -5637,12 +4375,10 @@ function groupAffectedRules(rules: AffectedRule[]): { label: string; kinds: stri
 const RemediatedColumnsList: React.FC<{
   cols: RemediatedColumn[];
   views?: RemediatedView[];
-  hides?: RemediatedColumnHide[];
   verbose?: boolean;
   onRemove?: (tableName: string, columnKey: string) => void;
   onRemoveView?: (tableId: string, viewId: string) => void;
-  onRemoveHide?: (tableId: string, columnKey: string, viewId: string) => void;
-}> = ({ cols, views, hides, verbose, onRemove, onRemoveView, onRemoveHide }) => {
+}> = ({ cols, views, verbose, onRemove, onRemoveView }) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
     setExpanded((prev) => {
@@ -5652,25 +4388,23 @@ const RemediatedColumnsList: React.FC<{
       return next;
     });
 
-  // Combine columns, deleted views, and hide-in-view stages into per-table
-  // groups so a single test renders as one section per table.
+  // Combine columns and deleted views into per-table groups so a single test
+  // renders as one section per table.
   const grouped: {
     tableName: string;
     cols: RemediatedColumn[];
     views: RemediatedView[];
-    hides: RemediatedColumnHide[];
   }[] = [];
   const idxByTable: Record<string, number> = {};
   const ensure = (tableName: string) => {
     if (idxByTable[tableName] === undefined) {
       idxByTable[tableName] = grouped.length;
-      grouped.push({ tableName, cols: [], views: [], hides: [] });
+      grouped.push({ tableName, cols: [], views: [] });
     }
     return grouped[idxByTable[tableName]];
   };
   for (const c of cols) ensure(c.tableName).cols.push(c);
   for (const v of views || []) ensure(v.tableName).views.push(v);
-  for (const h of hides || []) ensure(h.tableName).hides.push(h);
   return (
     <div>
       {grouped.map((grp) => (
@@ -5678,7 +4412,7 @@ const RemediatedColumnsList: React.FC<{
           <div style={{ fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 2 }}>
             {grp.tableName}
             <span style={{ fontWeight: 400, color: '#999', marginLeft: 6 }}>
-              ({grp.cols.length + grp.views.length + grp.hides.length})
+              ({grp.cols.length + grp.views.length})
             </span>
           </div>
           {grp.cols.map((c) => {
@@ -5839,51 +4573,6 @@ const RemediatedColumnsList: React.FC<{
               </div>
             </div>
           ))}
-          {grp.hides.map((h) =>
-            h.views.map((v) => (
-              <div
-                key={`hide:${h.columnKey}:${v.viewId}`}
-                className={verbose ? undefined : 'asset-audit-row'}
-                style={{ paddingLeft: 14, borderRadius: 4 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 12,
-                    lineHeight: '20px',
-                  }}>
-                  <span style={{ width: 10, flexShrink: 0 }} />
-                  <i
-                    className="dtable-font dtable-icon-eye-slash"
-                    style={{ fontSize: 13, color: '#aaa' }}
-                  />
-                  <span style={{ color: '#555' }}>{h.columnName}</span>
-                  <span style={{ color: '#888' }}>›</span>
-                  <span style={{ color: '#555' }}>{v.viewName}</span>
-                  <span
-                    style={{
-                      marginLeft: 4,
-                      fontSize: 11,
-                      fontStyle: 'italic',
-                      color: '#0066cc',
-                    }}>
-                    {intl.get('performance.action_hidden_pair').d('hidden in view')}
-                  </span>
-                  {onRemoveHide && !verbose && (
-                    <span
-                      style={{ marginLeft: 'auto', flexShrink: 0 }}
-                      onClick={(e) => e.stopPropagation()}>
-                      <ContextMenu
-                        onDelete={() => onRemoveHide(h.tableId, h.columnKey, v.viewId)}
-                        label={intl.get('performance.remove_from_test').d('Remove from test')}
-                      />
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
         </div>
       ))}
     </div>
@@ -5959,7 +4648,6 @@ const TestBlock: React.FC<{
   onCopyToSandbox?: () => void;
   onRemoveRemediation: (tableName: string, columnKey: string) => void;
   onRemoveRemediationView: (tableId: string, viewId: string) => void;
-  onRemoveRemediationHide: (tableId: string, columnKey: string, viewId: string) => void;
 }> = ({
   test,
   index,
@@ -5973,7 +4661,6 @@ const TestBlock: React.FC<{
   onCopyToSandbox,
   onRemoveRemediation,
   onRemoveRemediationView,
-  onRemoveRemediationHide,
 }) => {
   const hasResult = !!(test.beforeBenchmark && test.afterBenchmark);
   const runLabel = hasResult
@@ -6002,7 +4689,6 @@ const TestBlock: React.FC<{
           {(() => {
             const colCount = test.remediations.length;
             const viewCount = test.remediationViews?.length || 0;
-            const hideCount = (test.remediationHides || []).reduce((s, h) => s + h.views.length, 0);
             const parts: string[] = [];
             if (colCount > 0) {
               parts.push(
@@ -6012,11 +4698,6 @@ const TestBlock: React.FC<{
             if (viewCount > 0) {
               parts.push(
                 intl.get('performance.views_part', { count: viewCount }).d(`${viewCount} view(s)`)
-              );
-            }
-            if (hideCount > 0) {
-              parts.push(
-                intl.get('performance.hides_part', { count: hideCount }).d(`${hideCount} hide(s)`)
               );
             }
             if (parts.length === 0) {
@@ -6105,10 +4786,8 @@ const TestBlock: React.FC<{
         <RemediatedColumnsList
           cols={test.remediations}
           views={test.remediationViews}
-          hides={test.remediationHides}
           onRemove={isBusy ? undefined : onRemoveRemediation}
           onRemoveView={isBusy ? undefined : onRemoveRemediationView}
-          onRemoveHide={isBusy ? undefined : onRemoveRemediationHide}
         />
       </div>
 
@@ -6350,7 +5029,6 @@ function useRemediationModalBody(test: PerformanceTest): {
       <RemediatedColumnsList
         cols={test.remediations}
         views={test.remediationViews}
-        hides={test.remediationHides}
         verbose
       />
       {rulelessViews.length > 0 && (

@@ -5,18 +5,24 @@ import {
   getColumnRuleKindsInView,
   RULE_KIND_LABEL_SHORT,
 } from '../../../utils/custom-utils/performanceAuditRunner';
-import {
-  PerformanceCandidateColumn,
-  RemediatedColumnHide,
-} from '../../../utils/custom-interfaces/AuditTypes';
+import { PerformanceCandidateColumn } from '../../../utils/custom-interfaces/AuditTypes';
 import ChainGraph, { ChainGraphRoot } from './ChainGraph';
 
 interface CandidateExpansionProps {
   candidate: PerformanceCandidateColumn;
   liveValue: any;
-  viewEdits: Map<string, Set<string>>;
-  onSetViewEdit: (viewId: string, hidden: Set<string>) => void;
-  stagedHides: Map<string, RemediatedColumnHide>;
+  // Direct hide-toggle handler. Called when the user clicks a per-view slider
+  // in the drill — commits to the base immediately (no staging). Optional:
+  // when omitted the drill is rendered read-only-ish (toggles still call but
+  // the parent can no-op).
+  onToggleHideInView?: (
+    tableId: string,
+    tableName: string,
+    viewId: string,
+    viewName: string,
+    columnKey: string,
+    columnName: string
+  ) => void;
   // When false, suppress the per-view hide drill — only the chain graph is
   // rendered. Used by Overview (perf-focused), where hiding columns has no
   // measurable effect on view-load time and the drill is more misleading than
@@ -46,10 +52,9 @@ function candidateRoot(c: PerformanceCandidateColumn): ChainGraphRoot {
  * Renders two stacked sections:
  *   1. Chain graph (when the candidate has a chain).
  *   2. Per-view drill — every view that displays this column in base, with a
- *      slider toggling hide-in-view. Slider state factors viewEdits if set,
- *      otherwise (base ∪ stagedHides_for_view), so freshly-staged hides
- *      mirror across surfaces and the candidate drill stays in sync with
- *      the per-view slider expansion.
+ *      slider that hides/shows the column in that view. The slider commits
+ *      directly to the base on click (no staging) so the plugin's behavior
+ *      mirrors SeaTable's native UI.
  *
  * Returns null when neither section has content, so callers can detect
  * "nothing to expand" and suppress the chevron.
@@ -57,17 +62,10 @@ function candidateRoot(c: PerformanceCandidateColumn): ChainGraphRoot {
 const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
   candidate: c,
   liveValue,
-  viewEdits,
-  onSetViewEdit,
-  stagedHides,
+  onToggleHideInView,
   showHideDrill = true,
 }) => {
   const hasChain = !!c.chain && c.chain.length > 0;
-  const stagedViewIdsForCol = (() => {
-    const entry = stagedHides.get(`${c.tableId}:${c.columnKey}`);
-    if (!entry) return new Set<string>();
-    return new Set(entry.views.map((v) => v.viewId));
-  })();
 
   const drillRows = (() => {
     const tables: any[] = liveValue?.tables || [];
@@ -86,10 +84,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
       isHidden: boolean;
     }> = [];
     for (const v of t.views || []) {
-      const baseHidden = new Set<string>(v.hidden_columns || []);
-      if (baseHidden.has(c.columnKey)) continue;
-      const edits = viewEdits.get(v._id);
-      const isHidden = edits ? edits.has(c.columnKey) : stagedViewIdsForCol.has(v._id);
+      const isHidden = (v.hidden_columns || []).includes(c.columnKey);
       const ruleKinds = getColumnRuleKindsInView(v, c.columnKey);
       out.push({
         viewId: v._id,
@@ -103,21 +98,9 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
   const hasDrill = showHideDrill && drillRows.length > 0;
   if (!hasChain && !hasDrill) return null;
 
-  const handleToggle = (viewId: string) => {
-    const tables: any[] = liveValue?.tables || [];
-    const t = tables.find((tt: any) => tt._id === c.tableId);
-    const v = t?.views?.find((vv: any) => vv._id === viewId);
-    const baseHidden = new Set<string>(v?.hidden_columns || []);
-    // Merge in committed staged-hides for this view (any column in the table).
-    const stagedForView = new Set<string>(baseHidden);
-    stagedHides.forEach((h) => {
-      if (h.tableId !== c.tableId) return;
-      if (h.views.some((vv) => vv.viewId === viewId)) stagedForView.add(h.columnKey);
-    });
-    const current = new Set(viewEdits.get(viewId) ?? stagedForView);
-    if (current.has(c.columnKey)) current.delete(c.columnKey);
-    else current.add(c.columnKey);
-    onSetViewEdit(viewId, current);
+  const handleToggle = (viewId: string, viewName: string) => {
+    if (!onToggleHideInView) return;
+    onToggleHideInView(c.tableId, c.tableName, viewId, viewName, c.columnKey, c.columnName);
   };
 
   return (
@@ -152,7 +135,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
                     <td style={{ padding: '3px 8px 3px 0' }}>
                       <button
                         type="button"
-                        onClick={() => handleToggle(row.viewId)}
+                        onClick={() => handleToggle(row.viewId, row.viewName)}
                         title={
                           row.isHidden
                             ? intl.get('performance.toggle_show_col').d('Show in this view')
@@ -224,9 +207,5 @@ export function hasCandidateExpansionContent(
   const tables: any[] = liveValue?.tables || [];
   const t = tables.find((tt: any) => tt._id === candidate.tableId);
   if (!t) return false;
-  for (const v of t.views || []) {
-    const baseHidden = new Set<string>(v.hidden_columns || []);
-    if (!baseHidden.has(candidate.columnKey)) return true;
-  }
-  return false;
+  return (t.views || []).length > 0;
 }

@@ -37,15 +37,86 @@ function normalizeValue(val: any): string {
   return String(val);
 }
 
+function colByKey(columns: any[], key: string): any | undefined {
+  return columns.find((c: any) => c.key === key);
+}
+
 function colNameByKey(columns: any[], key: string): string {
-  const col = columns.find((c: any) => c.key === key);
+  const col = colByKey(columns, key);
   return col ? col.name : key;
+}
+
+// Predicates that don't need a filter_term (SeaTable shows them with no
+// value field in the UI). All others require a term/modifier to be active.
+const TERMLESS_PREDICATES = new Set([
+  'is_empty',
+  'is_not_empty',
+  'is_current_user',
+  'is_not_current_user',
+]);
+
+// Resolve a single-/multiple-select option id to its displayed name. Returns
+// the original id when the option isn't found (deleted option referenced by a
+// stale filter).
+function resolveSelectOption(col: any, id: any): string {
+  const idStr = String(id);
+  const opt = col?.data?.options?.find((o: any) => o.id === idStr || o.id === id);
+  return opt?.name ?? idStr;
+}
+
+// Render a filter's term for display. Handles select option-id lookup,
+// arrayed terms, date filter modifiers, and the empty-but-modified date case
+// (e.g. filter_predicate "is" + filter_term_modifier "the_current_day").
+function renderFilterTerm(col: any, f: any): string {
+  const term = f.filter_term;
+  const termArr = (f as any).filter_term_array;
+  const modifier = f.filter_term_modifier;
+  const colType = col?.type;
+
+  // Multi-value select / collaborator-ish: id arrays in either field.
+  const arr: any[] | undefined = Array.isArray(termArr)
+    ? termArr
+    : Array.isArray(term)
+      ? term
+      : undefined;
+  if (arr) {
+    if (arr.length === 0) return '';
+    if (colType === 'single-select' || colType === 'multiple-select') {
+      return arr.map((id) => resolveSelectOption(col, id)).join(', ');
+    }
+    return arr.map((v) => String(v)).join(', ');
+  }
+
+  // Scalar single-select id.
+  if ((colType === 'single-select' || colType === 'multiple-select') && term != null && term !== '') {
+    return resolveSelectOption(col, term);
+  }
+
+  // Date columns: filter_term carries the absolute date, modifier carries
+  // the relative semantics (e.g. "the_current_day"). Either may be present
+  // alone; render whichever has content.
+  if (colType === 'date' || colType === 'ctime' || colType === 'mtime') {
+    const termStr = term != null && term !== '' ? String(term) : '';
+    const modStr = modifier ? String(modifier) : '';
+    return [modStr, termStr].filter(Boolean).join(' ');
+  }
+
+  // Generic fallback. Modifier is rare on non-date columns, but include it
+  // when present so nothing meaningful is dropped.
+  if (term != null && term !== '') {
+    return modifier ? `${modifier} ${term}` : String(term);
+  }
+  return modifier ? String(modifier) : '';
 }
 
 /**
  * Recursively summarize a filter list. Filters can be leaves ({column_key, filter_predicate,
  * filter_term}) or nested groups ({filter_conjunction, filters: [...]}). Groups are rendered
  * in parens with their own conjunction so the boolean structure is readable.
+ *
+ * Filters whose term/modifier are empty AND whose predicate isn't one of the
+ * termless predicates are skipped entirely — SeaTable's UI treats those as
+ * inactive/incomplete and hides them.
  */
 function summarizeFilterItems(
   items: any[],
@@ -57,7 +128,12 @@ function summarizeFilterItems(
     .map((f: any) => {
       if (!f) return '';
       if (f.column_key) {
-        return `${colNameByKey(columns, f.column_key)} ${f.filter_predicate || ''} ${f.filter_term || ''}`.trim();
+        const col = colByKey(columns, f.column_key);
+        const predicate = f.filter_predicate || '';
+        const term = renderFilterTerm(col, f);
+        if (!term && !TERMLESS_PREDICATES.has(predicate)) return '';
+        const colName = col ? col.name : f.column_key;
+        return `${colName} ${predicate} ${term}`.trim();
       }
       if (Array.isArray(f.filters)) {
         const inner = summarizeFilterItems(f.filters, f.filter_conjunction, columns);
@@ -72,6 +148,26 @@ function summarizeFilterItems(
 function summarizeFilters(filters: any[], conjunction: string | undefined, columns: any[]): string {
   if (!filters || filters.length === 0) return '';
   return summarizeFilterItems(filters, conjunction, columns);
+}
+
+// Counts only leaves that would render in the summary — incomplete filters
+// (empty term + non-termless predicate) are excluded so the row's "filter
+// count" badge agrees with the displayed summary string.
+function countActiveFilterItems(items: any[], columns: any[]): number {
+  if (!Array.isArray(items)) return 0;
+  let n = 0;
+  for (const f of items) {
+    if (!f) continue;
+    if (Array.isArray(f.filters)) {
+      n += countActiveFilterItems(f.filters, columns);
+      continue;
+    }
+    if (!f.column_key) continue;
+    const col = colByKey(columns, f.column_key);
+    const term = renderFilterTerm(col, f);
+    if (term || TERMLESS_PREDICATES.has(f.filter_predicate || '')) n++;
+  }
+  return n;
 }
 
 function summarizeSorts(sorts: any[], columns: any[]): string {
@@ -281,7 +377,7 @@ export async function auditAllTables(
       return {
         name: view.name,
         viewId: view._id,
-        filterCount: filters.length,
+        filterCount: countActiveFilterItems(filters, allColumns),
         filterSummary: summarizeFilters(filters, view.filter_conjunction, allColumns),
         sortCount: sorts.length,
         sortSummary: summarizeSorts(sorts, allColumns),

@@ -7,7 +7,6 @@ import {
   PerformanceAuditResult,
   RemediationAction,
   RemediatedView,
-  RemediatedColumnHide,
 } from '../../../utils/custom-interfaces/AuditTypes';
 import { auditAllTables } from '../../../utils/custom-utils/tableAuditor';
 import { formatNow } from '../../../utils/custom-utils/formatters';
@@ -93,17 +92,28 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
   // labels reactively in their three-dots menus.
   const [stagedColumns, setStagedColumns] = useState<Map<string, RemediationAction>>(new Map());
   const [stagedViews, setStagedViews] = useState<Map<string, RemediatedView>>(new Map());
-  const [stagedHides, setStagedHides] = useState<Map<string, RemediatedColumnHide>>(new Map());
-  // Mirrors the embedded PerformanceAudit's viewEdits — the shared per-view
-  // local desired hidden_columns set. Both the per-candidate drill (Overview)
-  // and per-view slider expansion (TableTab + Overview Views) read/write it.
-  const [viewEdits, setViewEditsState] = useState<Map<string, Set<string>>>(new Map());
 
   // Mirror running-state up to the App so PluginSettings can disable the
   // "Threshold changed — rerun performance analysis" link while a run is in flight.
   useEffect(() => {
     if (onPerfRunningChange) onPerfRunningChange(perfStatus === 'running');
   }, [perfStatus, onPerfRunningChange]);
+
+  // Listen for the "Run performance analysis" entry in this preset's dropdown
+  // (PresetItem dispatches the event with the active preset id). Decoupled
+  // wiring so PluginPresets / PresetItem don't need to know about TablesAudit.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.presetId && detail.presetId === presetId) {
+        if (perfStatus === 'running' || perfBusy) return;
+        setActiveTab(0);
+        perfAuditRef.current?.run();
+      }
+    };
+    window.addEventListener('audit:run-perf', handler);
+    return () => window.removeEventListener('audit:run-perf', handler);
+  }, [presetId, perfStatus, perfBusy]);
 
   // Track the active tab by name so we can restore it after refresh. activeTab === 0
   // is the Overview tab; table tabs start at 1, so we offset by -1 to index `results`.
@@ -380,13 +390,40 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
       `}</style>
 
       {/* Header: two lines.
-          Line 1: structural audit date (Tables audit)
+          Line 1: structural audit date (Tables audit) + base-wide figures
           Line 2: performance test date + Run/Rerun button */}
       {(auditDate || perfAuditDate || status === 'done') && (
         <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
           {auditDate && (
             <div>
               {intl.get('tables.last_audit', { date: auditDate }).d(`Last audit: ${auditDate}`)}
+              {results.length > 0 &&
+                (() => {
+                  const totalTables = results.length;
+                  const totalRows = results.reduce((s, t) => s + (t.rowCount || 0), 0);
+                  const totalColumns = results.reduce((s, t) => s + (t.columnCount || 0), 0);
+                  const totalViews = results.reduce((s, t) => s + (t.viewCount || 0), 0);
+                  return (
+                    <>
+                      <span style={{ color: '#bbb', margin: '0 8px' }}>·</span>
+                      {intl
+                        .get('tables.figures_tables', { count: totalTables })
+                        .d(`${totalTables} tables`)}
+                      <span style={{ color: '#bbb', margin: '0 8px' }}>·</span>
+                      {intl
+                        .get('tables.figures_rows', { count: totalRows })
+                        .d(`${totalRows} rows`)}
+                      <span style={{ color: '#bbb', margin: '0 8px' }}>·</span>
+                      {intl
+                        .get('tables.figures_columns', { count: totalColumns })
+                        .d(`${totalColumns} columns`)}
+                      <span style={{ color: '#bbb', margin: '0 8px' }}>·</span>
+                      {intl
+                        .get('tables.figures_views', { count: totalViews })
+                        .d(`${totalViews} views`)}
+                    </>
+                  );
+                })()}
             </div>
           )}
           <div
@@ -407,11 +444,21 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
             )}
             {!perfAuditDate && perfStatus !== 'running' && !perfBusy && (
               <span
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent('audit:open-preset-menu', { detail: { presetId } })
+                  )
+                }
+                title={intl
+                  .get('tables.no_perf_yet_open_menu')
+                  .d('Open the preset menu (•••) above to run the performance analysis.')}
                 style={{
                   fontStyle: 'italic',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
+                  cursor: 'pointer',
+                  color: '#ff8000',
                 }}>
                 <PerfIcon size={13} />
                 {intl.get('tables.no_perf_yet').d('Performance test: not run yet')}
@@ -433,36 +480,10 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 <span style={{ color: '#666' }}>{perfProgressMsg}</span>
               </span>
             )}
-            <button
-              onClick={() => {
-                setActiveTab(0); // Overview tab shows the running state + progress
-                perfAuditRef.current?.run();
-              }}
-              disabled={perfStatus === 'running' || perfBusy}
-              style={{
-                padding: '4px 12px',
-                fontSize: 12,
-                fontWeight: 500,
-                border: '1px solid #ff8000',
-                borderRadius: 4,
-                backgroundColor: perfStatus === 'running' || perfBusy ? '#e9ecef' : '#ff8000',
-                color: perfStatus === 'running' || perfBusy ? '#999' : '#fff',
-                cursor: perfStatus === 'running' || perfBusy ? 'default' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}>
-              <PerfIcon size={12} color={perfStatus === 'running' || perfBusy ? '#999' : '#fff'} />
-              {perfStatus === 'running'
-                ? intl.get('performance.running').d('Running...')
-                : perfAuditDate
-                  ? intl.get('performance.rerun_analysis').d('Rerun performance analysis')
-                  : intl.get('performance.run_analysis').d('Run performance analysis')}
-            </button>
           </div>
           {/* First-run hint about what the performance analysis does. Hidden once
-              the audit has produced a result — the dates + Rerun button above are
-              enough context for repeat users. */}
+              the audit has produced a result — the date mention + dropdown entry
+              are enough context for repeat users. */}
           {perfStatus === 'idle' && !perfAuditDate && (
             <div style={{ marginTop: 6, fontSize: 13, color: '#888' }}>
               {intl
@@ -512,9 +533,9 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                   style={
                     perfStatus === 'running' ? { cursor: 'not-allowed', opacity: 0.5 } : undefined
                   }
-                  title={intl.get('tables.overview_tab').d('Overview')}>
+                  title={intl.get('tables.performance_tab').d('Performance')}>
                   <span style={{ fontWeight: 500 }}>
-                    {intl.get('tables.overview_tab').d('Overview')}
+                    {intl.get('tables.performance_tab').d('Performance')}
                   </span>
                 </div>
                 {results.map((r, i) => (
@@ -574,8 +595,6 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 onProgressChange={setPerfProgressMsg}
                 onStagedColumnsChange={setStagedColumns}
                 onStagedViewsChange={setStagedViews}
-                onStagedHidesChange={setStagedHides}
-                onViewEditsChange={setViewEditsState}
                 onRequestTablesAuditRerun={(onProgress) => runAudit(false, onProgress)}
               />
             </div>
@@ -611,39 +630,8 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                 onUnstageView={(tableId, viewId) =>
                   perfAuditRef.current?.unstageView(tableId, viewId)
                 }
-                onStageColumnVisibility={(tableId, tableName, columnKey, columnName) =>
-                  perfAuditRef.current?.stageColumnVisibility(
-                    tableId,
-                    tableName,
-                    columnKey,
-                    columnName
-                  )
-                }
-                onApplyColumnVisibility={(tableId, tableName, columnKey, columnName) =>
-                  perfAuditRef.current?.applyColumnVisibility(
-                    tableId,
-                    tableName,
-                    columnKey,
-                    columnName
-                  )
-                }
-                onToggleHideInView={(tableId, tableName, columnKey, columnName, view) => {
-                  perfAuditRef.current?.toggleHideInView(
-                    tableId,
-                    tableName,
-                    columnKey,
-                    columnName,
-                    view
-                  );
-                }}
-                viewEdits={viewEdits}
-                onSetViewEdit={(viewId, hidden) =>
-                  perfAuditRef.current?.setViewEdit(viewId, hidden)
-                }
-                onClearViewEdit={(viewId) => perfAuditRef.current?.clearViewEdit(viewId)}
                 stagedColumns={stagedColumns}
                 stagedViews={stagedViews}
-                stagedHides={stagedHides}
                 frozenKeys={perfFrozenKeys}
                 deletedArchivalTableIds={perfDeletedArchivalIds}
                 onRequestPerfRerun={() => perfAuditRef.current?.run()}

@@ -12,6 +12,7 @@ const PresetDropdown: React.FC<IPresetDropdownProps> = ({
   dropdownRef,
   pluginPresets,
   presetName,
+  hasPerfRun,
 }) => {
   return (
     <ul ref={dropdownRef} className={styles.preset_dropdown}>
@@ -28,6 +29,17 @@ const PresetDropdown: React.FC<IPresetDropdownProps> = ({
         className="d-flex align-items-center">
         <i className="item-icon dtable-font dtable-icon-refresh"></i>
         <p className="ml-2 mb-0">{intl.get('preset_reset').d(`${d.preset_reset}`)}</p>
+      </li>
+      <li
+        onClick={togglePresetsUpdatePopUp}
+        id={PresetHandleAction.runPerf}
+        className="d-flex align-items-center">
+        <i className="item-icon dtable-font dtable-icon-gauge"></i>
+        <p className="ml-2 mb-0">
+          {hasPerfRun
+            ? intl.get('preset_rerun_perf').d('Rerun performance analysis')
+            : intl.get('preset_run_perf').d('Run performance analysis')}
+        </p>
       </li>
     </ul>
   );

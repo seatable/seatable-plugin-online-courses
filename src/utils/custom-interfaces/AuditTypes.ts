@@ -306,18 +306,6 @@ export interface RemediatedView {
   privateFor?: string | null;
 }
 
-// Staged "hide this column in these views". One entry per (column, view set);
-// `viewIds` carries the views to flip into hidden_columns. Mutually exclusive
-// with delete / replace-static for the same column at staging time.
-export interface RemediatedColumnHide {
-  tableId: string;
-  tableName: string;
-  columnKey: string;
-  columnName: string;
-  // Each entry carries `viewId` for the staging key and `viewName` for display.
-  views: Array<{ viewId: string; viewName: string }>;
-}
-
 // Per-view sizing for the audit's Views section and the test before/after delta.
 // Migrated 2026-05-05: this used to carry the wall-clock time of a single
 // `Views.getViewRows` call. That signal was retired (HTTP correlation R²~0.1,
@@ -360,8 +348,6 @@ export interface PerformanceTest {
   // Staged view deletions. Optional for backwards-compatibility with tests
   // serialized before view-staging existed.
   remediationViews?: RemediatedView[];
-  // Staged column-in-view hides. Optional, same back-compat reason.
-  remediationHides?: RemediatedColumnHide[];
   // Both timings use the same HTTP-benchmark path. beforeBenchmark is measured against the
   // original base immediately before afterBenchmark against the sandbox, so short-term
   // network drift cancels out. Both undefined until the test has been run.
