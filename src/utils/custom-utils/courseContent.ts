@@ -38,6 +38,12 @@ export interface CourseStep {
   hint?: string;
   /** Answer key — present on exercises. Omitted on pure lesson pages. */
   grade?: GradeRule;
+  /**
+   * Optional demo hook — swaps the exercise's Verify flow for a scripted plugin
+   * action. 'live-modify' runs a sequence of learner edits so you can watch the
+   * grid update and inspect how the edits are attributed in row history.
+   */
+  demo?: 'live-modify';
 }
 
 export interface CourseManifest {
@@ -149,6 +155,12 @@ const EXERCISE_HTML = `
   <b>Marketing</b> flagged that <b>James Bennett</b>'s account status is out of date.
   Update <b>James Bennett</b>'s <b>Status</b> to <b>"Client"</b> to keep everyone in sync.`;
 
+const LIVE_MODIFY_HTML = `
+  <b>Live modify example.</b> Watch the plugin edit the base for you: it steps
+  <b>James Bennett</b>'s <b>Status</b> through a few values. Keep the Customers table in
+  view, click <b>Run live edits</b>, then open that row's history to see how the edits
+  are attributed.`;
+
 export function buildFallbackManifest(courseId: string): CourseManifest {
   const table = getTableByName('Customers');
   const row = table ? findRowByMatch(table, 'Full Name', 'James Bennett') : null;
@@ -168,6 +180,13 @@ export function buildFallbackManifest(courseId: string): CourseManifest {
           table_name: 'Customers',
           expected: [{ row_id: bennettId, row: { Status: 'Client' } }],
         },
+      },
+      {
+        id: 'lm01',
+        type: 'exercise',
+        title: 'Live modify example',
+        html: LIVE_MODIFY_HTML,
+        demo: 'live-modify',
       },
     ],
   };

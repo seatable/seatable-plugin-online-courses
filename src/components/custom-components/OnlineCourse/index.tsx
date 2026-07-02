@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  authoredUpdateRow,
-  deleteColleagueToken,
-  findRowId,
-  learnerUpdateRow,
-} from '../../../utils/custom-utils/authoredWrite';
+import { learnerUpdateRow } from '../../../utils/custom-utils/learnerWrite';
 import {
   CourseManifest,
   CourseStep,
@@ -25,46 +20,31 @@ import { findRowByMatch, getTableByName } from '../../../utils/custom-utils/sdkR
  * `onSelectStep`, which also persists progress (courseProgress.ts).
  *
  * Step types drive the layout: 'course' = full-height lesson page; 'exercise' =
- * compact bottom banner. The plugin window is height-resized to match.
+ * compact bottom banner. The plugin window is height-resized to match. An exercise
+ * flagged `demo: 'live-modify'` swaps the Verify flow for a scripted plugin action.
  */
 
-// --- dev benches (authorship testing) — gated, kept from the v0 demonstrator ---
+// --- live-modify demo (rendered only on a `demo: 'live-modify'` exercise step) --
 
-const SHOW_DEV_BENCH = true; // flip off to hide the authorship test benches
+// Target table + the column used to locate the demo row.
+const LIVE_DEMO_TABLE = 'Customers';
+const LIVE_DEMO_MATCH_COLUMN = 'Full Name';
 
-// A scripted sequence of real learner writes (via the dtable-store op, see writeCell),
-// spaced out, so we can watch cells change and inspect how SeaTable attributes the
-// edits in row history — and confirm the op matches a manual edit (singular
-// modify_row with a populated old_row, so it's restorable).
+// A scripted sequence of learner writes (via the dtable-store op, see writeCell),
+// spaced out, so we can watch cells change and inspect how the edits are attributed
+// in row history — confirming the op matches a manual UI edit (singular modify_row
+// with a populated old_row, so it's restorable).
 const LIVE_DEMO: { matchValue: string; column: string; value: string; delayMs: number }[] = [
   { matchValue: 'James Bennett', column: 'Status', value: 'Lead', delayMs: 0 },
   { matchValue: 'James Bennett', column: 'Status', value: 'Prospect', delayMs: 900 },
   { matchValue: 'James Bennett', column: 'Status', value: 'Client', delayMs: 900 },
 ];
 
-// Authored-write test: edit a row AS this named colleague (via a session-created
-// API token), so Last-modifier shows the colleague rather than the learner.
-const COLLEAGUE = {
-  appName: 'Marie (Marketing)',
-  tableName: 'Customers',
-  // Target the row directly by _id (deterministic for testing). Leave '' to fall
-  // back to matching by matchColumnName/matchValue — required after re-importing the
-  // regenerated base, which assigns fresh row ids.
-  rowId: '',
-  matchColumnName: 'Full Name',
-  matchValue: 'James Bennett',
-  column: 'Status',
-  // Distinct from the LIVE_DEMO end value (Client) so the authored edit is a real
-  // change on top of the learner's edit — the mixed-edit history smoke-test.
-  value: 'Churned',
-};
-
-// Write a single cell authored as the learner via learnerUpdateRow, which drives
-// dtable-store directly so the op is identical to a manual UI edit (singular
-// modify_row + populated old_row) — NOT dtableSDK.modifyRow (old_row:null, crashes
-// history) and NOT the REST gateway (plural modify_rows, empty old_rows, non-
-// restorable). `setValue` is a display value (column NAME → label). Resolves the
-// row by a match column/value, then writes by row _id.
+// Write a single cell as the learner via learnerUpdateRow, which drives dtable-store
+// directly so the op is identical to a manual UI edit (singular modify_row +
+// populated old_row) — NOT dtableSDK.modifyRow (old_row:null, crashes history).
+// `setValue` is a display value (column NAME → label). Resolves the row by a match
+// column/value, then writes by row _id.
 async function writeCell(
   tableName: string,
   matchColumnName: string,
@@ -115,16 +95,15 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
   const [showHint, setShowHint] = useState(false);
 
-  // dev-bench state
+  // live-modify demo state
   const [demoStatus, setDemoStatus] = useState('');
   const [demoRunning, setDemoRunning] = useState(false);
-  const [colleagueStatus, setColleagueStatus] = useState('');
-  const [colleagueRunning, setColleagueRunning] = useState(false);
 
   const step: CourseStep | undefined = manifest ? findStep(manifest, stepId) : undefined;
   const mode = step?.type ?? 'course';
+  const isLiveDemo = step?.demo === 'live-modify';
 
-  // Give the loading view (with dev benches) room before the manifest resolves.
+  // Give the loading view room before the manifest resolves.
   useEffect(() => {
     setPluginHeight(0.95, 320);
   }, []);
@@ -135,6 +114,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     if (!manifest || !step || !stepId) return;
     setOutcome({ kind: 'idle' });
     setShowHint(false);
+    setDemoStatus('');
     if (mode === 'course') setPluginHeight(0.95, 320);
     else setPluginHeight(0.22, 130);
 
@@ -159,7 +139,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const onVerify = () => step?.grade && setOutcome(grade(step.grade));
   const passed = outcome.kind === 'pass';
 
-  // --- dev benches ----------------------------------------------------------
+  // --- live-modify demo action ----------------------------------------------
   const runLiveDemo = async () => {
     if (demoRunning) return;
     setDemoRunning(true);
@@ -168,8 +148,8 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       for (const s of LIVE_DEMO) {
         if (s.delayMs) await new Promise((res) => setTimeout(res, s.delayMs));
         const r = await writeCell(
-          COLLEAGUE.tableName,
-          COLLEAGUE.matchColumnName,
+          LIVE_DEMO_TABLE,
+          LIVE_DEMO_MATCH_COLUMN,
           s.matchValue,
           s.column,
           s.value
@@ -188,92 +168,12 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setDemoRunning(false);
   };
 
-  const runColleagueEdit = async () => {
-    if (colleagueRunning) return;
-    setColleagueRunning(true);
-    setColleagueStatus('Running…');
-    try {
-      const rowId =
-        COLLEAGUE.rowId ||
-        findRowId(COLLEAGUE.tableName, COLLEAGUE.matchColumnName, COLLEAGUE.matchValue);
-      if (!rowId) {
-        setColleagueStatus(`⚠️ Couldn't find row "${COLLEAGUE.matchValue}".`);
-        setColleagueRunning(false);
-        return;
-      }
-      await authoredUpdateRow(COLLEAGUE.appName, COLLEAGUE.tableName, rowId, {
-        [COLLEAGUE.column]: COLLEAGUE.value,
-      });
-      setColleagueStatus(
-        `✅ Edited as "${COLLEAGUE.appName}". Last modifier should show this name.`
-      );
-    } catch (err: any) {
-      setColleagueStatus(`❌ ${err?.message || 'Authored write failed.'}`);
-    }
-    setColleagueRunning(false);
-  };
-
-  const runDeleteToken = async () => {
-    setColleagueStatus('Deleting token…');
-    try {
-      await deleteColleagueToken(COLLEAGUE.appName);
-      setColleagueStatus(`🧹 Deleted token "${COLLEAGUE.appName}".`);
-    } catch (err: any) {
-      setColleagueStatus(`❌ ${err?.message || 'Delete failed.'}`);
-    }
-  };
-
   // --- render ---------------------------------------------------------------
-  // Authorship test benches — independent of the course manifest / network, so
-  // they're usable even while (or if) the manifest fetch is pending or failing.
-  const devBench = SHOW_DEV_BENCH ? (
-    <>
-      <div style={S.demoBox}>
-        <div style={S.demoTitle}>Live-modify test</div>
-        <p style={S.demoDesc}>
-          Edit <b>{LIVE_DEMO[0]?.matchValue}</b>'s <b>{LIVE_DEMO[0]?.column}</b> a few times; watch
-          the grid, then open the row history to see attribution.
-        </p>
-        <button
-          style={{ ...S.secondaryBtn, ...(demoRunning ? S.btnDisabled : null) }}
-          onClick={runLiveDemo}
-          disabled={demoRunning}>
-          {demoRunning ? 'Running…' : '▶ Run live edits'}
-        </button>
-        {demoStatus && <div style={S.demoStatus}>{demoStatus}</div>}
-      </div>
-
-      <div style={S.demoBox}>
-        <div style={S.demoTitle}>Authored-write test (colleague)</div>
-        <p style={S.demoDesc}>
-          Edit <b>{COLLEAGUE.matchValue}</b>'s <b>{COLLEAGUE.column}</b> → <b>{COLLEAGUE.value}</b>{' '}
-          authored as <b>{COLLEAGUE.appName}</b>.
-        </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            style={{ ...S.secondaryBtn, ...(colleagueRunning ? S.btnDisabled : null) }}
-            onClick={runColleagueEdit}
-            disabled={colleagueRunning}>
-            {colleagueRunning ? 'Running…' : `▶ Edit as ${COLLEAGUE.appName}`}
-          </button>
-          <button
-            style={{ ...S.secondaryBtn, ...(colleagueRunning ? S.btnDisabled : null) }}
-            onClick={runDeleteToken}
-            disabled={colleagueRunning}>
-            🧹 Delete token
-          </button>
-        </div>
-        {colleagueStatus && <div style={S.demoStatus}>{colleagueStatus}</div>}
-      </div>
-    </>
-  ) : null;
-
   if (!manifest || !step) {
     return (
       <div style={S.coursePage}>
         <div style={S.courseInner}>
           <div style={{ marginBottom: 16 }}>Loading…</div>
-          {devBench}
         </div>
       </div>
     );
@@ -294,8 +194,37 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           <button style={S.primaryBtn} onClick={goNext} disabled={!nextStep}>
             {nextLabel}
           </button>
+        </div>
+      </div>
+    );
+  }
 
-          {devBench}
+  // Live-modify demo exercise (compact banner): a scripted plugin action instead
+  // of the Verify flow.
+  if (isLiveDemo) {
+    return (
+      <div style={S.banner}>
+        <div style={S.bannerMain}>
+          <div style={S.instruction} dangerouslySetInnerHTML={{ __html: html }} />
+          {demoStatus && <div style={S.demoStatus}>{demoStatus}</div>}
+        </div>
+
+        <div style={S.bottomRow}>
+          <div style={S.feedbackWrap} />
+          <div style={S.bannerActions}>
+            <button style={S.ghostBtn} onClick={goPrev} disabled={!prevStep}>
+              ← Back
+            </button>
+            <button
+              style={{ ...S.actionPrimaryBtn, ...(demoRunning ? S.btnDisabled : null) }}
+              onClick={runLiveDemo}
+              disabled={demoRunning}>
+              {demoRunning ? 'Running…' : '▶ Run live edits'}
+            </button>
+            <button style={S.ghostBtn} onClick={goNext} disabled={!nextStep}>
+              {nextStep ? 'Next →' : 'Finish'}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -385,34 +314,8 @@ const S: Record<string, React.CSSProperties> = {
     borderRadius: 6,
     cursor: 'pointer',
   },
-  secondaryBtn: {
-    padding: '8px 16px',
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#444',
-    background: '#fff',
-    border: '1px solid #d0d0d0',
-    borderRadius: 6,
-    cursor: 'pointer',
-  },
   btnDisabled: { opacity: 0.6, cursor: 'default' },
-  demoBox: {
-    marginTop: 28,
-    padding: '14px 16px',
-    border: '1px dashed #d0d0d0',
-    borderRadius: 8,
-    background: '#fafafa',
-  },
-  demoTitle: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#888',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    margin: '0 0 6px',
-  },
-  demoDesc: { fontSize: 14, lineHeight: 1.5, color: '#444', margin: '0 0 10px' },
-  demoStatus: { marginTop: 10, fontSize: 13, color: '#333' },
+  demoStatus: { marginTop: 8, fontSize: 13, color: '#333' },
   banner: {
     height: '100%',
     boxSizing: 'border-box',

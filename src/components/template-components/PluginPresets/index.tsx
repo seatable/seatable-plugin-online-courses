@@ -371,7 +371,7 @@ const treeStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 22,
+    width: 28,
     padding: 0,
     background: 'transparent',
     border: 'none',
@@ -379,7 +379,7 @@ const treeStyles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 15,
   },
-  stepsWrap: { display: 'flex', flexDirection: 'column', margin: '2px 8px 8px 22px' },
+  stepsWrap: { display: 'flex', flexDirection: 'column', margin: '2px 8px 8px 40px' },
   stepRow: {
     display: 'flex',
     alignItems: 'center',

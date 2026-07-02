@@ -7,7 +7,7 @@
  *
  * A rule reuses the API-Gateway Update-Row payload shape: it lists, for a table,
  * the rows that must hold given cell values. The SAME `{ row_id, row: { Col: val } }`
- * objects that seed/write a row (see authoredWrite.ts / writeCell) also ASSERT it —
+ * objects that seed/write a row (see learnerWrite.ts / writeCell) also ASSERT it —
  * a course author can copy a seeding payload and turn it into the answer key.
  *
  * `row_id` is the base `_id`. Each course ships as a fixed imported base, so the

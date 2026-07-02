@@ -5,7 +5,7 @@
  *
  * Content does NOT live here (that's Hugo, see courseContent.ts). The datastore
  * only stores the resume pointer. Persisted via updatePluginSettings, the same
- * pattern as the colleague-token cache in authoredWrite.ts.
+ * same updatePluginSettings pattern used elsewhere in the plugin datastore.
  */
 
 import { PLUGIN_NAME } from '../template-constants';
