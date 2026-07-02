@@ -1,15 +1,15 @@
 {
-  "name": "audit",
+  "name": "online-courses",
   "version": "0.1.0",
   "display_type": "overlay",
   "display_name": {
-    "de": "Audit",
-    "en": "Audit",
-    "fr": "Audit",
-    "es": "Audit",
-    "pt": "Audit",
-    "ru": "Audit",
-    "zh-cn": "Audit"
+    "de": "Online courses",
+    "en": "Online courses",
+    "fr": "Online courses",
+    "es": "Online courses",
+    "pt": "Online courses",
+    "ru": "Online courses",
+    "zh-cn": "Online courses"
   },
   "description": {
     "de": "Prüfung der Assets und Tabellennutzung in einer Base.",

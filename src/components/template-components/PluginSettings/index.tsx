@@ -5,7 +5,6 @@ import { IPluginSettingsProps } from '../../../utils/template-interfaces/PluginS
 import { HiOutlineChevronDoubleRight } from 'react-icons/hi2';
 import intl from 'react-intl-universal';
 import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
-import PerfIcon from '../../custom-components/shared/PerfIcon';
 const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
 
 // ---------------------------------------------------------------------------
@@ -334,73 +333,13 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
   onToggleSettings,
   onSaveAccountToken,
   accountToken,
-  verifyUrls,
-  onVerifyUrlsChange,
-  pluginPresets,
-  appActiveState,
-  allTables,
-  auditTableDisplay,
-  onAuditTableDisplayChange,
-  autoRerun,
-  onAutoRerunChange,
-  perfRunning,
 }) => {
-  const activePreset = pluginPresets?.[appActiveState?.activePresetIdx];
-  const presetName = activePreset?.name?.toLowerCase() || '';
-  const isLinksAudit = presetName.includes('link');
-  const isTablesAudit = !isLinksAudit && presetName.includes('table');
-  const isAssetsAudit = !isLinksAudit && !isTablesAudit;
-
-  // Account token is needed by Assets audit (URL verification) and by the on-demand
-  // Performance analysis embedded in Tables audit (sandbox creation).
-  const needsToken = isAssetsAudit || isTablesAudit;
-
-  // Tables audit settings helpers
-  const display = auditTableDisplay;
-
-  // Performance analysis staleness detection — compare the row archival threshold
-  // currently set against the one that was used at the time of the last performance
-  // run. When they differ, the Rows section of the previous result no longer
-  // reflects the user's current threshold, so we surface a clickable notification
-  // inviting them to rerun.
-  const savedPerf: any = activePreset?.customSettings?.savedPerformanceAudit;
-  const lastRunThreshold: number | undefined = savedPerf?.rowArchivalThresholdDaysAtRun;
-  const currentThreshold: number | undefined = display?.rowArchivalThresholdDays;
-  const rowArchivalStale =
-    savedPerf != null &&
-    lastRunThreshold != null &&
-    currentThreshold != null &&
-    lastRunThreshold !== currentThreshold;
-  const triggerPerfRerun = () => {
-    if (!display || !onAuditTableDisplayChange) return;
-    onAuditTableDisplayChange({ ...display, perfRerunAt: Date.now() });
-  };
-
-  const toggleTable = (tableId: string) => {
-    if (!display || !onAuditTableDisplayChange) return;
-    const selected = display.selectedTables.includes(tableId)
-      ? display.selectedTables.filter((id) => id !== tableId)
-      : [...display.selectedTables, tableId];
-    onAuditTableDisplayChange({
-      ...display,
-      selectedTables: selected,
-      isAllSelected: selected.length === allTables.length,
-    });
-  };
-
-  const toggleAll = () => {
-    if (!display || !onAuditTableDisplayChange) return;
-    if (display.isAllSelected) {
-      onAuditTableDisplayChange({ ...display, selectedTables: [], isAllSelected: false });
-    } else {
-      onAuditTableDisplayChange({
-        ...display,
-        selectedTables: allTables.map((t) => t._id),
-        isAllSelected: true,
-      });
-    }
-  };
-
+  // v0: all audit-specific settings (verify-URLs toggle, links/tables audit
+  // options, row-archival threshold, per-table selection) have been removed.
+  // The panel currently has no trigger (see PresetItem) and is kept only as a
+  // future home for course settings. The account-token field is preserved on
+  // purpose — we may need a user-scoped token later to mint JWTs for authored
+  // colleague-comment injection.
   return (
     <div
       className={`bg-white ${
@@ -420,199 +359,9 @@ const PluginSettings: React.FC<IPluginSettingsProps> = ({
           </button>
         </div>
         <div>
-          {/* Account token — shared by assets & performance audits */}
-          {needsToken && onSaveAccountToken && (
+          {onSaveAccountToken && (
             <div style={{ marginTop: 16 }}>
               <AccountTokenField accountToken={accountToken || ''} onSave={onSaveAccountToken} />
-            </div>
-          )}
-
-          {/* Assets audit extra settings */}
-          {isAssetsAudit && (
-            <div>
-              <div className="mt-3 mb-2 d-flex align-items-center justify-content-between">
-                <p style={{ margin: 0 }}>
-                  {intl.get('settings.verify_urls').d('Verify external URLs')}
-                </p>
-                <button
-                  onClick={() => onVerifyUrlsChange && onVerifyUrlsChange(!verifyUrls)}
-                  className={
-                    verifyUrls
-                      ? stylesPSettings.settings_fields_toggle_btns_active
-                      : stylesPSettings.settings_fields_toggle_btns
-                  }
-                />
-              </div>
-              <p style={{ fontSize: 11, color: '#999', margin: '0 0 8px' }}>
-                {intl
-                  .get('settings.verify_urls_desc')
-                  .d(
-                    'When enabled, external URLs are checked via HEAD requests during the audit. This can significantly increase audit time.'
-                  )}
-              </p>
-            </div>
-          )}
-
-          {/* Links audit settings */}
-          {isLinksAudit && (
-            <div style={{ marginTop: 16 }}>
-              <div className="mb-2 d-flex align-items-center justify-content-between">
-                <p style={{ margin: 0 }}>
-                  {intl.get('settings.auto_rerun').d('Rerun audit on preset change')}
-                </p>
-                <button
-                  onClick={() => onAutoRerunChange && onAutoRerunChange(!autoRerun)}
-                  className={
-                    autoRerun
-                      ? stylesPSettings.settings_fields_toggle_btns_active
-                      : stylesPSettings.settings_fields_toggle_btns
-                  }
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Tables audit settings. The autoRerun toggle applies to the fast
-              structural audit only; the on-demand performance analysis always
-              requires a manual trigger. */}
-          {isTablesAudit && display && (
-            <div style={{ marginTop: 8 }}>
-              {/* Auto rerun toggle */}
-              <div className="mb-2 d-flex align-items-center justify-content-between">
-                <p style={{ margin: 0 }}>
-                  {intl.get('settings.auto_rerun').d('Rerun audit on preset change')}
-                </p>
-                <button
-                  onClick={() => onAutoRerunChange && onAutoRerunChange(!autoRerun)}
-                  className={
-                    autoRerun
-                      ? stylesPSettings.settings_fields_toggle_btns_active
-                      : stylesPSettings.settings_fields_toggle_btns
-                  }
-                />
-              </div>
-
-              {/* Row archival threshold — rows with _ctime AND _mtime older than this
-                  many days are flagged as candidates in the Rows section. */}
-              <div className="mb-2">
-                <p
-                  style={{
-                    margin: '0 0 4px 0',
-                    color: '#808080',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}>
-                  <PerfIcon size={12} />
-                  {intl.get('settings.row_archival_threshold').d('Row archival threshold (days)')}
-                </p>
-                <label
-                  style={{
-                    fontSize: 12,
-                    color: '#333',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}>
-                  {intl.get('settings.row_archival_label').d('Older than')}
-                  <input
-                    type="number"
-                    min={1}
-                    value={display.rowArchivalThresholdDays ?? 730}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!onAuditTableDisplayChange || Number.isNaN(v) || v <= 0) return;
-                      onAuditTableDisplayChange({
-                        ...display,
-                        rowArchivalThresholdDays: v,
-                      });
-                    }}
-                    style={{
-                      width: 80,
-                      padding: '2px 4px',
-                      fontSize: 12,
-                      border: '1px solid #ccc',
-                      borderRadius: 3,
-                    }}
-                  />
-                  {intl.get('settings.row_archival_unit').d('days')}
-                </label>
-                {rowArchivalStale && (
-                  <div
-                    onClick={perfRunning ? undefined : triggerPerfRerun}
-                    style={{
-                      marginTop: 6,
-                      fontSize: 11,
-                      color: perfRunning ? '#999' : '#ff8000',
-                      cursor: perfRunning ? 'default' : 'pointer',
-                      textDecoration: 'underline',
-                      userSelect: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                    title={
-                      perfRunning
-                        ? intl
-                            .get('settings.row_archival_stale_running')
-                            .d('Performance analysis is running…')
-                        : intl
-                            .get('settings.row_archival_stale_tooltip')
-                            .d('Click to rerun — or use the button above the Tables audit.')
-                    }>
-                    <PerfIcon size={11} color={perfRunning ? '#999' : '#ff8000'} />
-                    {intl
-                      .get('settings.row_archival_stale')
-                      .d('Threshold changed — rerun performance analysis')}
-                  </div>
-                )}
-              </div>
-
-              {/* Tables to audit header + Select all */}
-              <div className="mb-2 d-flex align-items-center justify-content-between">
-                <p style={{ margin: 0, color: '#808080' }}>
-                  {intl.get('settings.tables_to_audit').d('Tables to audit')}
-                </p>
-                <button
-                  onClick={toggleAll}
-                  className={stylesPSettings.settings_fields_show_all_btn}>
-                  {display.isAllSelected
-                    ? intl.get('settings.unselect_all').d('Unselect all')
-                    : intl.get('settings.select_all').d('Select all')}
-                </button>
-              </div>
-
-              {/* Table list — single row per table: name + selection toggle */}
-              {allTables.map((table) => {
-                const isSelected = display.selectedTables.includes(table._id);
-                return (
-                  <div
-                    key={table._id}
-                    className={stylesPSettings.settings_fields_columns}
-                    style={{ padding: '3px' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        width: '100%',
-                        gap: 4,
-                      }}>
-                      <p className="ml-1 mb-0" style={{ flex: 1 }}>
-                        {table.name}
-                      </p>
-                      <button
-                        onClick={() => toggleTable(table._id)}
-                        className={
-                          isSelected
-                            ? stylesPSettings.settings_fields_toggle_btns_active
-                            : stylesPSettings.settings_fields_toggle_btns
-                        }
-                        style={{ marginLeft: 'auto' }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
         </div>

@@ -410,9 +410,7 @@ const TablesAudit: React.FC<TablesAuditProps> = ({
                         .get('tables.figures_tables', { count: totalTables })
                         .d(`${totalTables} tables`)}
                       <span style={{ color: '#bbb', margin: '0 8px' }}>·</span>
-                      {intl
-                        .get('tables.figures_rows', { count: totalRows })
-                        .d(`${totalRows} rows`)}
+                      {intl.get('tables.figures_rows', { count: totalRows }).d(`${totalRows} rows`)}
                       <span style={{ color: '#bbb', margin: '0 8px' }}>·</span>
                       {intl
                         .get('tables.figures_columns', { count: totalColumns })

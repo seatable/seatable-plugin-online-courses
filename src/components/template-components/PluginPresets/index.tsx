@@ -53,8 +53,6 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   isShowState,
   setIsShowState,
 }) => {
-  const [dragItemIndex, setDragItemIndex] = useState<number | null>(null);
-  const [dragOverItemIndex, setDragOverItemIndex] = useState<number | null>(null);
   const [presetName, setPresetName] = useState('');
   const [presetNameAlreadyExists, setPresetNameAlreadyExists] = useState(false);
   const [_pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
@@ -256,39 +254,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
     // TODO: Implement export functionality for your custom plugin
   };
 
-  // drag and drop logic
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    e.stopPropagation();
-    setDragItemIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    e.stopPropagation();
-    setDragOverItemIndex(index);
-  };
-
-  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>, v_id: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    const __pluginPresets = [...pluginPresets];
-    if (dragItemIndex !== null && dragOverItemIndex !== null) {
-      const dragItem = __pluginPresets.splice(dragItemIndex, 1)[0];
-      __pluginPresets.splice(dragOverItemIndex, 0, dragItem);
-      setPluginPresets(__pluginPresets);
-      setDragItemIndex(null);
-      setDragOverItemIndex(null);
-      let newIdx = __pluginPresets.findIndex((preset) => preset._id === v_id);
-      let _pluginDataStore = { ...pluginDataStore, presets: __pluginPresets };
-
-      updatePresets(newIdx, __pluginPresets, _pluginDataStore, v_id);
-    }
-  };
+  // v0: drag-and-drop reordering removed — single fixed course preset.
 
   return (
     <div
@@ -301,21 +267,10 @@ const PluginPresets: React.FC<IPresetsProps> = ({
           <img src={icon} alt="Plugin Icon" className={stylesPresets.presets_icon} />
           <div className={stylesPresets.presets_name}>{PLUGIN_NAME}</div>
         </div>
+        {/* v0: single fixed course preset — drag-to-reorder is intentionally
+            disabled (no draggable attr / drag handlers). */}
         {pluginPresets?.map((preset, i) => (
-          <div
-            style={
-              dragOverItemIndex === i && i === 0
-                ? { borderTop: '2px solid #A9A9A9' }
-                : dragOverItemIndex === i
-                  ? { borderBottom: '2px solid #A9A9A9' }
-                  : {}
-            }
-            key={preset._id}
-            draggable="true"
-            onDragStart={(e) => handleDragStart(e, i)}
-            onDragEnter={(e) => handleDragEnter(e, i)}
-            onDragEnd={(e) => handleDragEnd(e, preset._id)}
-            onDragOver={handleDragOver}>
+          <div key={preset._id}>
             <PresetItem
               p={preset}
               activePresetIdx={activePresetIdx}

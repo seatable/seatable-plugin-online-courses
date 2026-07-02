@@ -1144,12 +1144,7 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
 
     // Snapshot the current remediations draft into a new pending Test; reset the draft.
     const handleCreateTestCase = () => {
-      if (
-        !result ||
-        (remediations.size === 0 && viewRemediations.size === 0) ||
-        isBusy
-      )
-        return;
+      if (!result || (remediations.size === 0 && viewRemediations.size === 0) || isBusy) return;
 
       // Scan once; reuse for all remediations.
       const dtableSDK = (window as any).dtableSDK;
@@ -2364,60 +2359,64 @@ const PerformanceAudit = forwardRef<PerformanceAuditHandle, PerformanceAuditProp
                   1. tablesAuditResults (host-provided) — refreshes on tables-audit rerun.
                   2. result.archival + live SDK — fallback for standalone mode and the
                      pre-tables-audit case where the host hasn't passed results yet. */}
-            {!embedded && (() => {
-              let totalTables: number;
-              let totalRows: number;
-              let totalColumns: number;
-              let totalViews: number;
-              if (tablesAuditResults && tablesAuditResults.length > 0) {
-                totalTables = tablesAuditResults.length;
-                totalRows = tablesAuditResults.reduce((s, t) => s + (t.rowCount || 0), 0);
-                totalColumns = tablesAuditResults.reduce((s, t) => s + (t.columnCount || 0), 0);
-                totalViews = tablesAuditResults.reduce((s, t) => s + (t.viewCount || 0), 0);
-              } else {
-                totalTables = result.archival?.length ?? 0;
-                totalRows = (result.archival || []).reduce((s, a) => s + (a.totalRows || 0), 0);
-                totalViews = result.views?.length ?? 0;
-                try {
-                  const sdkTables: any[] = (window as any).dtableSDK?.getTables() || [];
-                  totalColumns = sdkTables.reduce((s, t) => s + ((t.columns || []).length || 0), 0);
-                } catch {
-                  totalColumns = 0;
+            {!embedded &&
+              (() => {
+                let totalTables: number;
+                let totalRows: number;
+                let totalColumns: number;
+                let totalViews: number;
+                if (tablesAuditResults && tablesAuditResults.length > 0) {
+                  totalTables = tablesAuditResults.length;
+                  totalRows = tablesAuditResults.reduce((s, t) => s + (t.rowCount || 0), 0);
+                  totalColumns = tablesAuditResults.reduce((s, t) => s + (t.columnCount || 0), 0);
+                  totalViews = tablesAuditResults.reduce((s, t) => s + (t.viewCount || 0), 0);
+                } else {
+                  totalTables = result.archival?.length ?? 0;
+                  totalRows = (result.archival || []).reduce((s, a) => s + (a.totalRows || 0), 0);
+                  totalViews = result.views?.length ?? 0;
+                  try {
+                    const sdkTables: any[] = (window as any).dtableSDK?.getTables() || [];
+                    totalColumns = sdkTables.reduce(
+                      (s, t) => s + ((t.columns || []).length || 0),
+                      0
+                    );
+                  } catch {
+                    totalColumns = 0;
+                  }
                 }
-              }
-              return (
-                <div style={{ marginBottom: 16, fontSize: 14, lineHeight: 1.8 }}>
-                  <table style={{ borderCollapse: 'collapse' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ paddingRight: 12, color: '#555' }}>
-                          {intl.get('common.tables').d('Tables')}
-                        </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalTables}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ paddingRight: 12, color: '#555' }}>
-                          {intl.get('common.rows').d('Rows')}
-                        </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalRows}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ paddingRight: 12, color: '#555' }}>
-                          {intl.get('common.columns').d('Columns')}
-                        </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalColumns}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ paddingRight: 12, color: '#555' }}>
-                          {intl.get('common.views').d('Views')}
-                        </td>
-                        <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalViews}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
+                return (
+                  <div style={{ marginBottom: 16, fontSize: 14, lineHeight: 1.8 }}>
+                    <table style={{ borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ paddingRight: 12, color: '#555' }}>
+                            {intl.get('common.tables').d('Tables')}
+                          </td>
+                          <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalTables}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ paddingRight: 12, color: '#555' }}>
+                            {intl.get('common.rows').d('Rows')}
+                          </td>
+                          <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalRows}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ paddingRight: 12, color: '#555' }}>
+                            {intl.get('common.columns').d('Columns')}
+                          </td>
+                          <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalColumns}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ paddingRight: 12, color: '#555' }}>
+                            {intl.get('common.views').d('Views')}
+                          </td>
+                          <td style={{ paddingRight: 8, textAlign: 'right' }}>{totalViews}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
 
             {/* ---- Archival candidates umbrella ----
                 Separate top-level section because archival uses a different mechanism
@@ -5026,11 +5025,7 @@ function useRemediationModalBody(test: PerformanceTest): {
 
   const body = (
     <>
-      <RemediatedColumnsList
-        cols={test.remediations}
-        views={test.remediationViews}
-        verbose
-      />
+      <RemediatedColumnsList cols={test.remediations} views={test.remediationViews} verbose />
       {rulelessViews.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>

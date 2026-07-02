@@ -162,9 +162,7 @@ const CandidateExpansion: React.FC<CandidateExpansionProps> = ({
                             .get('performance.hide_rule_bound_tooltip', {
                               kinds: localizedKinds,
                             })
-                            .d(
-                              `Referenced by ${localizedKinds} in this view.`
-                            )}
+                            .d(`Referenced by ${localizedKinds} in this view.`)}
                           style={{
                             fontSize: 12,
                             color: '#aaa',

@@ -25,11 +25,7 @@ interface ViewVisibilityDrillProps {
 // owned by someone else.
 function getCurrentUsername(): string {
   const w = window as any;
-  return (
-    w.dtableSDK?.dtableStore?.dtableSettings?.username ||
-    w.dtable?.username ||
-    ''
-  );
+  return w.dtableSDK?.dtableStore?.dtableSettings?.username || w.dtable?.username || '';
 }
 
 // SeaTable's primary column key is always '0000'. It can't be hidden — the

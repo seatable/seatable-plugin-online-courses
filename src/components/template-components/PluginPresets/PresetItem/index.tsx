@@ -1,11 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useState } from 'react';
-import { BsThreeDots } from 'react-icons/bs';
 // External dependencies
 import useClickOut from '../../../../hooks/useClickOut';
 // Internal dependencies
-import PresetDropdown from '../PresetDropdown';
 import PresetInput from '../PresetInput';
 // Constants
 import { PresetHandleAction } from '../../../../utils/template-constants';
@@ -107,9 +105,7 @@ const PresetItem: React.FC<IPresetItemProps> = ({
         // Fire-and-forget — TablesAudit listens for this event on its active
         // preset id and triggers the run. PresetItem doesn't import / depend
         // on TablesAudit's state.
-        window.dispatchEvent(
-          new CustomEvent('audit:run-perf', { detail: { presetId: p?._id } })
-        );
+        window.dispatchEvent(new CustomEvent('audit:run-perf', { detail: { presetId: p?._id } }));
         setShowPresetDropdown(false);
         break;
       case PresetHandleAction.export:
@@ -121,12 +117,10 @@ const PresetItem: React.FC<IPresetItemProps> = ({
     }
   };
 
-  const onClickPreset = (e: React.MouseEvent<HTMLElement>) => {
-    if (e.detail === 2) {
-      onToggleSettings();
-    } else {
-      onSelectPreset(p?._id);
-    }
+  const onClickPreset = (_e: React.MouseEvent<HTMLElement>) => {
+    // v0: double-click-to-open-settings disabled — selecting the course is the
+    // only action. Settings panel is kept in code but has no trigger for now.
+    onSelectPreset(p?._id);
   };
 
   return (
@@ -158,29 +152,12 @@ const PresetItem: React.FC<IPresetItemProps> = ({
           <div className="d-flex align-items-center">
             <p className="mb-0">{pName}</p>
           </div>
-          <span className="d-flex align-items-center">
-            <span>
-              <i
-                className={`dtable-font dtable-icon-drag mr-1 ${styles.plugin_header_viewBtn_icons}`}></i>
-            </span>
-            <span
-              className={`dtable-font dtable-icon-set-up ${styles.plugin_header_viewBtn_settings}`}
-              onClick={onToggleSettings}></span>
-            <BsThreeDots
-              className={`ml-1 ${styles.plugin_header_viewBtn_icons}`}
-              onClick={togglePresetDropdown}
-            />
-          </span>
+          {/* v0: single fixed course preset — drag handle, settings gear and the
+              "..." dropdown menu are intentionally removed. The settings panel code
+              is kept (see app.tsx / PluginSettings) but has no trigger for now.
+              (Re-add the gear span here temporarily if you need to inspect the
+              account-token field again.) */}
         </div>
-        {showPresetDropdown && (
-          <PresetDropdown
-            dropdownRef={popupDomNode}
-            pluginPresets={pluginPresets}
-            togglePresetsUpdatePopUp={handlePresetsUpdate}
-            presetName={p.name}
-            hasPerfRun={!!(p as any)?.customSettings?.savedPerformanceAudit?.date}
-          />
-        )}
       </div>
     </div>
   );

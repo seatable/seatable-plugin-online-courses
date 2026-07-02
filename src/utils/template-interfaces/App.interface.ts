@@ -42,6 +42,21 @@ export interface IPluginDataStore extends Pick<
   presets: PresetsArray;
   pluginName: string;
   accountToken?: string;
+  // Cache of named-API-token credentials used for authored ("colleague") row
+  // edits, keyed by the token's app_name. Created on demand, reused across the
+  // course, regenerated when the base token expires, deleted at course end.
+  colleagueTokens?: { [appName: string]: IColleagueToken };
+  // Course progress: the id of the last-reached step, keyed by courseId. One
+  // plugin serves all seven courses, so it's a per-course map. Content lives in
+  // Hugo (not here) — the datastore only remembers where to resume.
+  courseProgress?: { [courseId: string]: string };
+}
+
+export interface IColleagueToken {
+  apiToken: string;
+  baseToken?: string;
+  baseTokenExpiresAt?: number; // epoch ms
+  dtableUuid?: string;
 }
 
 export interface AvailableLocales {

@@ -1293,7 +1293,9 @@ export async function freezeColumnViaIndirection(
         selfLinkColumnKey = fallback.key;
         selfLinkId = fallback.linkId;
         if (onProgress) {
-          onProgress(`Reusing existing self-link "${selfLinkColumnName}" (resolved via /metadata/)`);
+          onProgress(
+            `Reusing existing self-link "${selfLinkColumnName}" (resolved via /metadata/)`
+          );
         }
         // Hide is skipped in this branch for the same reason as the normal
         // reuse path: a prior freeze hid the column already. (If the column

@@ -88,7 +88,11 @@ function renderFilterTerm(col: any, f: any): string {
   }
 
   // Scalar single-select id.
-  if ((colType === 'single-select' || colType === 'multiple-select') && term != null && term !== '') {
+  if (
+    (colType === 'single-select' || colType === 'multiple-select') &&
+    term != null &&
+    term !== ''
+  ) {
     return resolveSelectOption(col, term);
   }
 

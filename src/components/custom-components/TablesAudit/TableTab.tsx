@@ -395,7 +395,12 @@ const TableTab: React.FC<TableTabProps> = ({
     }
   };
 
-  const toggleColumnInView = (viewId: string, viewName: string, colKey: string, colName: string) => {
+  const toggleColumnInView = (
+    viewId: string,
+    viewName: string,
+    colKey: string,
+    colName: string
+  ) => {
     const current = new Set<string>(getBaseHidden(viewId));
     if (current.has(colKey)) current.delete(colKey);
     else current.add(colKey);
@@ -634,25 +639,39 @@ const TableTab: React.FC<TableTabProps> = ({
               </th>
               <th
                 style={{ padding: '8px 12px' }}
-                title={perfResult
-                  ? intl.get('tables.view_filters_perf_hint').d('Filtering reduces the number of rows evaluated, which speeds up view loading.')
-                  : undefined}>
+                title={
+                  perfResult
+                    ? intl
+                        .get('tables.view_filters_perf_hint')
+                        .d(
+                          'Filtering reduces the number of rows evaluated, which speeds up view loading.'
+                        )
+                    : undefined
+                }>
                 {perfResult && <PerfIcon size={12} style={{ marginRight: 4 }} />}
                 {intl.get('tables.view_filters').d('Filters')}
               </th>
               <th
                 style={{ padding: '8px 12px' }}
-                title={perfResult
-                  ? intl.get('tables.view_sorting_perf_hint').d('Sorting adds a small overhead to view loading time.')
-                  : undefined}>
+                title={
+                  perfResult
+                    ? intl
+                        .get('tables.view_sorting_perf_hint')
+                        .d('Sorting adds a small overhead to view loading time.')
+                    : undefined
+                }>
                 {perfResult && <PerfIcon size={12} style={{ marginRight: 4 }} />}
                 {intl.get('tables.view_sorting').d('Sorting')}
               </th>
               <th
                 style={{ padding: '8px 12px' }}
-                title={perfResult
-                  ? intl.get('tables.view_grouping_perf_hint').d('Grouping adds a small overhead to view loading time.')
-                  : undefined}>
+                title={
+                  perfResult
+                    ? intl
+                        .get('tables.view_grouping_perf_hint')
+                        .d('Grouping adds a small overhead to view loading time.')
+                    : undefined
+                }>
                 {perfResult && <PerfIcon size={12} style={{ marginRight: 4 }} />}
                 {intl.get('tables.view_grouping').d('Grouping')}
               </th>
