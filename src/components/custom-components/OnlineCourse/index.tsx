@@ -244,7 +244,9 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       <div style={S.bottomRow}>
         <div style={S.feedbackWrap}>
           {outcome.kind !== 'idle' && (
-            <span style={feedbackStyle(outcome.kind)}>{feedbackText(outcome, step.successMessage)}</span>
+            <span style={feedbackStyle(outcome.kind)}>
+              {feedbackText(outcome, step.successMessage)}
+            </span>
           )}
         </div>
 

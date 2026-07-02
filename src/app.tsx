@@ -109,9 +109,9 @@ const App: React.FC<IAppProps> = (props) => {
   // (e.g. localStorage left over from the old single-preset build).
   const activeCourseId = courses.some((c) => c.courseId === activePresetId)
     ? activePresetId
-    : courses[0]?.courseId ?? '';
+    : (courses[0]?.courseId ?? '');
   const activeManifest = courses.find((c) => c.courseId === activeCourseId) ?? null;
-  const activeStepId = activeCourseId ? stepByCourse[activeCourseId] ?? null : null;
+  const activeStepId = activeCourseId ? (stepByCourse[activeCourseId] ?? null) : null;
   const activeStep = activeManifest?.steps.find((s) => s.id === activeStepId) ?? null;
 
   // Plugin window sizing. Each page has a natural size (lesson → full height,

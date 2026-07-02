@@ -351,13 +351,19 @@ function course3DummySteps(): CourseStep[] {
       id: 'd1',
       type: 'course',
       title: 'Sharing & permissions',
-      html: placeholder('Sharing & permissions', 'Share a base or a view, and control what collaborators can see and edit.'),
+      html: placeholder(
+        'Sharing & permissions',
+        'Share a base or a view, and control what collaborators can see and edit.'
+      ),
     },
     {
       id: 'd2',
       type: 'course',
       title: 'Comments & @mentions',
-      html: placeholder('Comments & @mentions', 'Discuss rows in context and notify teammates with @mentions.'),
+      html: placeholder(
+        'Comments & @mentions',
+        'Discuss rows in context and notify teammates with @mentions.'
+      ),
     },
     {
       id: 'd3',
