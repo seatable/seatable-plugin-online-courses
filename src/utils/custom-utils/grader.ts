@@ -73,6 +73,21 @@ function gradeRow(table: any, exp: ExpectedRow): RowResult {
     const col = getColumn(table, colName);
     if (!col) return { ok: false, missing: true, what: `column "${colName}" in "${table.name}"` };
 
+    // Checkbox: compare as booleans (unchecked can be false, '' or absent, so a
+    // label comparison won't do). Expected `true`/`'true'` = checked, else unchecked.
+    if (col.type === 'checkbox') {
+      const actualBool = row[col.key] === true;
+      const expectedBool = expectedRaw === true || expectedRaw === 'true';
+      if (actualBool !== expectedBool) {
+        return {
+          ok: false,
+          missing: false,
+          reason: `${table.name} · ${colName} is ${actualBool ? 'checked' : 'unchecked'}, expected ${expectedBool ? 'checked' : 'unchecked'}`,
+        };
+      }
+      continue;
+    }
+
     const actual = cellLabel(col, row[col.key]);
     const expected = expectedRaw === null || expectedRaw === undefined ? null : String(expectedRaw);
     if (actual !== expected) {

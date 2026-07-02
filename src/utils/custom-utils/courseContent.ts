@@ -37,6 +37,8 @@ export interface CourseStep {
   hint?: string;
   /** Answer key — present on exercises. Omitted on pure lesson pages. */
   grade?: AnyGradeRule;
+  /** Custom message shown when the exercise passes (else a generic one). */
+  successMessage?: string;
   /**
    * Optional demo hook — swaps the exercise's Verify flow for a scripted plugin
    * action. 'live-modify' runs a sequence of learner edits so you can watch the grid
@@ -143,9 +145,9 @@ const LESSON_HTML = `
   <p>Let's start with something concrete — a teammate has flagged a record that's out of date.</p>`;
 
 const EXERCISE_HTML = `
-  A quality check flagged this delivery line: the goods arrived <b>damaged</b>, but its
-  <b>Status</b> still reads <b>"As expected"</b>. Update the line's <b>Status</b> to
-  <b>"Damaged"</b> so the record matches what was actually received.`;
+  A quality check flagged this delivery line (<b>To check</b> is ticked): the goods arrived
+  <b>damaged</b>, but its <b>Status</b> still reads <b>"As expected"</b>. Set the line's
+  <b>Status</b> to <b>"Damaged"</b>, then untick <b>To check</b> to validate the line.`;
 
 const LIVE_MODIFY_HTML = `
   <b>Live modify example.</b> Watch the plugin edit the base for you: it steps a
@@ -297,11 +299,12 @@ function course4ContentSteps(): CourseStep[] {
       type: 'exercise',
       title: 'Fix the stale status',
       html: EXERCISE_HTML,
-      hint: 'Open the Line items table, find the flagged delivery line, and set its Status cell to Damaged.',
+      hint: 'In the Line items table, set the flagged line’s Status to Damaged and untick its To check box.',
       grade: {
         table_name: 'Line items',
-        expected: [{ row_id: LINE_ITEM_ROW_ID, row: { Status: 'Damaged' } }],
+        expected: [{ row_id: LINE_ITEM_ROW_ID, row: { Status: 'Damaged', 'To check': false } }],
       },
+      successMessage: 'Well done — the status has been updated and your line item validated.',
     },
     {
       id: 'lm01',

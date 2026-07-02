@@ -244,7 +244,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       <div style={S.bottomRow}>
         <div style={S.feedbackWrap}>
           {outcome.kind !== 'idle' && (
-            <span style={feedbackStyle(outcome.kind)}>{feedbackText(outcome)}</span>
+            <span style={feedbackStyle(outcome.kind)}>{feedbackText(outcome, step.successMessage)}</span>
           )}
         </div>
 
@@ -269,10 +269,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   );
 };
 
-function feedbackText(o: Outcome): string {
+function feedbackText(o: Outcome, successMessage?: string): string {
   switch (o.kind) {
     case 'pass':
-      return '✅ Well done — the shared master is back in sync.';
+      return `✅ ${successMessage ?? 'Well done — the shared master is back in sync.'}`;
     case 'fail':
       return `❌ Not yet — ${o.reason}.`;
     case 'missing':
