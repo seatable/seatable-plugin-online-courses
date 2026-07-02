@@ -181,19 +181,18 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
   // Course page (full height). Content HTML comes from Hugo (trusted source).
   if (mode === 'course') {
-    const nextLabel = !nextStep
-      ? 'Finish'
-      : nextStep.type === 'exercise'
-        ? "Let's practice →"
-        : 'Continue →';
+    const nextLabel = nextStep?.type === 'exercise' ? "Let's practice →" : 'Continue →';
     return (
       <div style={S.coursePage}>
         <div style={S.courseInner}>
           {loadNote && <div style={S.loadNote}>{loadNote}</div>}
           <div dangerouslySetInnerHTML={{ __html: html }} />
-          <button style={S.primaryBtn} onClick={goNext} disabled={!nextStep}>
-            {nextLabel}
-          </button>
+          {/* No forward button on the last / only page of a course. */}
+          {nextStep && (
+            <button style={S.primaryBtn} onClick={goNext}>
+              {nextLabel}
+            </button>
+          )}
         </div>
       </div>
     );

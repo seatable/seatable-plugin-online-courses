@@ -50,8 +50,7 @@ import {
 } from './utils/template-utils/utils';
 import {
   CourseManifest,
-  loadManifest,
-  resolveCourseId,
+  loadAllCourses,
   resolveInitialStepId,
 } from './utils/custom-utils/courseContent';
 import { setCurrentStepId } from './utils/custom-utils/courseProgress';
@@ -75,14 +74,21 @@ const App: React.FC<IAppProps> = (props) => {
   const { activeTable, activePresetId, activePresetIdx } = appActiveState;
 
   // Course navigation state — source of truth for BOTH the left-panel tree and
-  // the (controlled) OnlineCourse runner, so clicking a step in the panel and the
-  // runner's Back/Next stay in sync. The `qid` URL deep-link is dead in prod
-  // (dtable-web strips unknown params), so navigation is entirely in-plugin.
-  const [courseId] = useState<string>(() => resolveCourseId());
-  const [courseManifest, setCourseManifest] = useState<CourseManifest | null>(null);
-  const [courseStepId, setCourseStepId] = useState<string | null>(null);
-  const [courseLoadNote, setCourseLoadNote] = useState<string>('');
+  // the (controlled) OnlineCourse runner. The active course is the selected preset
+  // (preset _id === courseId); we hold every course's manifest + the current step
+  // per course. The `qid`/`cid` URL params are dead in prod (dtable-web strips
+  // unknown params), so navigation is entirely in-plugin.
+  const [courses, setCourses] = useState<CourseManifest[]>([]);
+  const [stepByCourse, setStepByCourse] = useState<Record<string, string>>({});
   const manifestLoaded = useRef(false);
+
+  // Active course follows the selected preset; guard against a stale/unknown id
+  // (e.g. localStorage left over from the old single-preset build).
+  const activeCourseId = courses.some((c) => c.courseId === activePresetId)
+    ? activePresetId
+    : courses[0]?.courseId ?? '';
+  const activeManifest = courses.find((c) => c.courseId === activeCourseId) ?? null;
+  const activeStepId = activeCourseId ? stepByCourse[activeCourseId] ?? null : null;
 
   useEffect(() => {
     initPluginDTableData();
@@ -98,29 +104,32 @@ const App: React.FC<IAppProps> = (props) => {
     }
   }, []);
 
-  // Load the course manifest once the base data is ready (the offline fallback
-  // reads the SDK tables), then pick the initial step (resume > first). Loads
-  // once — see courseContent.ts.
+  // Load all demo courses once base data is ready (the offline fallback reads the
+  // SDK tables), then set each course's initial step (resume > first). Loads once.
   useEffect(() => {
     if (isLoading || manifestLoaded.current) return;
     manifestLoaded.current = true;
     let cancelled = false;
     (async () => {
-      const { manifest, loadNote } = await loadManifest(courseId);
+      const all = await loadAllCourses();
       if (cancelled) return;
-      setCourseManifest(manifest);
-      setCourseLoadNote(loadNote);
-      setCourseStepId(resolveInitialStepId(manifest, courseId));
+      const initial: Record<string, string> = {};
+      all.forEach((m) => {
+        initial[m.courseId] = resolveInitialStepId(m, m.courseId);
+      });
+      setCourses(all);
+      setStepByCourse(initial);
     })();
     return () => {
       cancelled = true;
     };
-  }, [isLoading, courseId]);
+  }, [isLoading]);
 
-  // Navigate to a step — from the runner's Back/Next OR the left-panel tree — and
-  // remember it so the learner resumes here next time.
-  const onSelectStep = (stepId: string) => {
-    setCourseStepId(stepId);
+  // Navigate to a step, from the runner (active course) or the tree (any course):
+  // activate that course and remember the step so the learner resumes there.
+  const onSelectStep = (courseId: string, stepId: string) => {
+    if (courseId !== activePresetId) onSelectPreset(courseId);
+    setStepByCourse((prev) => ({ ...prev, [courseId]: stepId }));
     setCurrentStepId(courseId, stepId);
   };
 
@@ -161,9 +170,13 @@ const App: React.FC<IAppProps> = (props) => {
     let pluginPresets: PresetsArray = pluginDataStore.presets;
 
     let localActivePresetId = localStorage.getItem(ACTIVE_PRESET_ID);
-    if (!localActivePresetId) {
-      localActivePresetId = pluginPresets[0]._id;
-      localStorage.setItem(ACTIVE_PRESET_ID, localActivePresetId);
+    // Repair a missing OR stale active-preset id (e.g. left over from the old
+    // single-preset build) by falling back to the first seeded preset.
+    const isValidActive =
+      !!localActivePresetId && pluginPresets.some((p) => p._id === localActivePresetId);
+    if (!isValidActive) {
+      localActivePresetId = pluginPresets[0]?._id ?? null;
+      if (localActivePresetId) localStorage.setItem(ACTIVE_PRESET_ID, localActivePresetId);
     }
     setPluginDataStore(pluginDataStore);
     setAllTables(allTables);
@@ -415,8 +428,9 @@ const App: React.FC<IAppProps> = (props) => {
         updateActiveData={updateActiveData}
         isShowState={isShowState}
         setIsShowState={setIsShowState}
-        courseManifest={courseManifest}
-        courseStepId={courseStepId}
+        courses={courses}
+        activeCourseId={activeCourseId}
+        activeStepId={activeStepId}
         onSelectStep={onSelectStep}
       />
       <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
@@ -444,10 +458,9 @@ const App: React.FC<IAppProps> = (props) => {
               auditTableDisplay={getAuditTableDisplay()}
               autoRerun={getAutoRerun()}
               onPerfRunningChange={setPerfRunning}
-              courseManifest={courseManifest}
-              courseStepId={courseStepId}
-              courseLoadNote={courseLoadNote}
-              onSelectStep={onSelectStep}
+              courseManifest={activeManifest}
+              courseStepId={activeStepId}
+              onSelectStep={(stepId) => onSelectStep(activeCourseId, stepId)}
             />
           </div>
 

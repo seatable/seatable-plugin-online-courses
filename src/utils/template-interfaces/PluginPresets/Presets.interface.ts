@@ -8,10 +8,12 @@ export interface IPresetsProps {
   pluginPresets: PresetsArray;
   activePresetIdx: number;
   onSelectPreset: (presetId: string, newPresetActiveState?: AppActiveState) => void;
-  // Course navigation tree: level-2 steps rendered under each course preset.
-  courseManifest?: CourseManifest | null;
-  courseStepId?: string | null;
-  onSelectStep?: (stepId: string) => void;
+  // Course navigation tree: each preset (id = courseId) expands to its manifest's
+  // steps (level 2). `courses` holds every course's manifest.
+  courses?: CourseManifest[];
+  activeCourseId?: string;
+  activeStepId?: string | null;
+  onSelectStep?: (courseId: string, stepId: string) => void;
   updatePresets: (
     currentIdx: number,
     presets: PresetsArray,

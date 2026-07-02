@@ -11,9 +11,9 @@ export interface IPluginTRProps {
   auditTableDisplay?: AuditTableDisplayState;
   autoRerun?: boolean;
   onPerfRunningChange?: (running: boolean) => void;
-  // Course navigation (owned by App; the runner is controlled).
+  // Active course, owned by App; the runner is controlled. `onSelectStep` is
+  // pre-bound to the active course (the runner only navigates within it).
   courseManifest?: CourseManifest | null;
   courseStepId?: string | null;
-  courseLoadNote?: string;
   onSelectStep?: (stepId: string) => void;
 }

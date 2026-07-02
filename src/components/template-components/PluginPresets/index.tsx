@@ -52,8 +52,9 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   updateActiveData,
   isShowState,
   setIsShowState,
-  courseManifest,
-  courseStepId,
+  courses,
+  activeCourseId,
+  activeStepId,
   onSelectStep,
 }) => {
   const [presetName, setPresetName] = useState('');
@@ -61,10 +62,17 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   const [_pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
   const [showNewPresetPopUp, setShowNewPresetPopUp] = useState<boolean>(false);
   const [showEditPresetPopUp, setShowEditPresetPopUp] = useState<boolean>(false);
-  // Left-panel tree: which course rows are collapsed (default = expanded).
-  const [collapsedCourses, setCollapsedCourses] = useState<Record<string, boolean>>({});
-  const toggleCourse = (id: string) =>
-    setCollapsedCourses((prev) => ({ ...prev, [id]: !prev[id] }));
+  // Left-panel tree: accordion — one course expanded at a time, defaulting to the
+  // active course. The chevron toggles; selecting a course also opens it.
+  const [openCourseId, setOpenCourseId] = useState<string>(activeCourseId ?? '');
+  useEffect(() => {
+    if (activeCourseId) setOpenCourseId(activeCourseId);
+  }, [activeCourseId]);
+  const toggleOpen = (id: string) => setOpenCourseId((cur) => (cur === id ? '' : id));
+  const handleSelectPreset = (presetId: string, st?: AppActiveState) => {
+    onSelectPreset(presetId, st);
+    setOpenCourseId(presetId);
+  };
 
   useEffect(() => {
     setPluginPresets(pluginPresets);
@@ -279,21 +287,22 @@ const PluginPresets: React.FC<IPresetsProps> = ({
             level-1 tree node; its manifest steps render as level-2 children (the
             in-plugin navigation that replaces the dead `qid` URL deep-link). */}
         {pluginPresets?.map((preset, i) => {
-          const steps = courseManifest?.steps ?? [];
+          const manifest = courses?.find((c) => c.courseId === preset._id);
+          const steps = manifest?.steps ?? [];
           const showTree = steps.length > 0 && !!onSelectStep;
-          const expanded = !collapsedCourses[preset._id];
+          const expanded = openCourseId === preset._id;
+          const isActiveCourse = preset._id === activeCourseId;
           return (
             <div key={preset._id}>
               <div style={treeStyles.courseRow}>
-                {showTree && (
-                  <button
-                    type="button"
-                    onClick={() => toggleCourse(preset._id)}
-                    style={treeStyles.chevronBtn}
-                    aria-label={expanded ? 'Collapse course' : 'Expand course'}>
-                    {expanded ? <HiChevronDown /> : <HiChevronRight />}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => showTree && toggleOpen(preset._id)}
+                  disabled={!showTree}
+                  style={{ ...treeStyles.chevronBtn, ...(showTree ? null : treeStyles.chevronHidden) }}
+                  aria-label={expanded ? 'Collapse course' : 'Expand course'}>
+                  {showTree && (expanded ? <HiChevronDown /> : <HiChevronRight />)}
+                </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <PresetItem
                     p={preset}
@@ -304,7 +313,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                     onChangePresetName={(e: React.FormEvent<HTMLInputElement>) =>
                       onChangePresetName(e, PresetHandleAction.edit)
                     }
-                    onSelectPreset={onSelectPreset}
+                    onSelectPreset={handleSelectPreset}
                     deletePreset={deletePreset}
                     exportPreset={exportPreset}
                     resetPreset={resetPreset}
@@ -320,12 +329,12 @@ const PluginPresets: React.FC<IPresetsProps> = ({
               {showTree && expanded && (
                 <div style={treeStyles.stepsWrap}>
                   {steps.map((s) => {
-                    const active = s.id === courseStepId;
+                    const active = isActiveCourse && s.id === activeStepId;
                     return (
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => onSelectStep!(s.id)}
+                        onClick={() => onSelectStep!(preset._id, s.id)}
                         style={{
                           ...treeStyles.stepRow,
                           ...(active ? treeStyles.stepRowActive : null),
@@ -379,6 +388,7 @@ const treeStyles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 15,
   },
+  chevronHidden: { cursor: 'default', color: 'transparent' },
   stepsWrap: { display: 'flex', flexDirection: 'column', margin: '2px 8px 8px 40px' },
   stepRow: {
     display: 'flex',
