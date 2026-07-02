@@ -135,14 +135,16 @@ export function resolveInitialStepId(manifest: CourseManifest, courseId: string)
 // base — letting the row_id grader work against the current test base with no host.
 
 const LESSON_HTML = `
-  <h1>Collaboration</h1>
-  <p class="lead">Work together on shared data — share it, keep it in sync, and build the
-  habits that keep everyone on the same page.</p>
-  <p>Your company has three customer-facing teams — <b>Commercial</b>, <b>Marketing</b> and
-  <b>Support</b>. Each kept its own copy of the customer list, and the copies drifted out of
-  sync: wrong contacts, duplicates, stale statuses. You're on Commercial, and you own the
-  <b>customer master</b>. Your job: make it the single source of truth for the whole company.</p>
-  <p>Let's start with something concrete — a teammate has flagged a record that's out of date.</p>`;
+  <h1>Checking a delivery</h1>
+  <p class="lead">Automate the busywork and connect your tools — let the base handle the
+  repetitive steps so you only deal with the exceptions.</p>
+  <p>You work in <b>receiving</b>. When a delivery arrives, its <b>delivery note</b> is scanned
+  and the goods land in the base as <b>Line items</b> — one row per product, with the quantity
+  ordered and the quantity received. Automations do the legwork: they read the note, create the
+  lines, and flag anything that needs a human eye by ticking <b>To check</b>.</p>
+  <p>Your job is to handle those exceptions — confirm what actually arrived, mark short or
+  damaged deliveries, and let the automations carry the rest through. Let's start with a line
+  that's been flagged for review.</p>`;
 
 const EXERCISE_HTML = `
   A quality check flagged this delivery line (<b>To check</b> is ticked): the goods arrived
@@ -293,7 +295,7 @@ function introHtml(c: CourseMeta): string {
 // exercises act on a fixed Line items row (LINE_ITEM_ROW_ID) in the imported base.
 function course4ContentSteps(): CourseStep[] {
   return [
-    { id: 'le01', type: 'course', title: 'Collaboration', html: LESSON_HTML },
+    { id: 'le01', type: 'course', title: 'Checking a delivery', html: LESSON_HTML },
     {
       id: 'ex01',
       type: 'exercise',
