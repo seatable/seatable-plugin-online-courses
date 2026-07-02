@@ -7,7 +7,8 @@ import {
   findStep,
   stepIndex,
 } from '../../../utils/custom-utils/courseContent';
-import { grade, Outcome } from '../../../utils/custom-utils/grader';
+import { Outcome } from '../../../utils/custom-utils/grader';
+import { gradeStep } from '../../../utils/custom-utils/opLogGrade';
 import { findRowByMatch, getTableByName } from '../../../utils/custom-utils/sdkRead';
 
 /**
@@ -81,6 +82,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const [html, setHtml] = useState<string>('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
   const [showHint, setShowHint] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   // live-modify demo state
   const [demoStatus, setDemoStatus] = useState('');
@@ -117,7 +119,16 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
   const goNext = () => nextStep && onSelectStep(nextStep.id);
   const goPrev = () => prevStep && onSelectStep(prevStep.id);
-  const onVerify = () => step?.grade && setOutcome(grade(step.grade));
+  // Grading may be async (op-log rules hit the activity-log REST endpoint).
+  const onVerify = async () => {
+    if (!step?.grade || verifying) return;
+    setVerifying(true);
+    try {
+      setOutcome(await gradeStep(step.grade));
+    } finally {
+      setVerifying(false);
+    }
+  };
   const passed = outcome.kind === 'pass';
 
   // --- live-modify demo action ----------------------------------------------
@@ -280,10 +291,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
             </button>
           )}
           <button
-            style={S.actionPrimaryBtn}
+            style={{ ...S.actionPrimaryBtn, ...(verifying ? S.btnDisabled : null) }}
             onClick={passed ? goNext : onVerify}
-            disabled={passed && !nextStep}>
-            {passed ? (nextStep ? 'Next →' : 'Finish') : 'Verify'}
+            disabled={(passed && !nextStep) || verifying}>
+            {passed ? (nextStep ? 'Next →' : 'Finish') : verifying ? 'Checking…' : 'Verify'}
           </button>
         </div>
       </div>

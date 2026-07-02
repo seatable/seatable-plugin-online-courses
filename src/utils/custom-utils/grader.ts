@@ -32,11 +32,30 @@ export interface ExpectedRow {
 }
 
 export interface GradeRule {
+  kind?: 'cells';
   table_name: string;
   expected: ExpectedRow[];
   /** 'all' (default): every expected row must match. 'any': at least one must. */
   match?: 'all' | 'any';
 }
+
+/**
+ * "Open-ended" rule: pass if an AUTOMATION set `column` (to a non-empty value) on a
+ * row of `table_name` — optionally only on rows meeting `condition`. Grades the
+ * METHOD (was it done by an automation?), not just the resulting cell state. Checked
+ * against the per-row activity log (see opLogGrade.ts) — needs a REST call, so it's
+ * async and only works inside a real base (cross-origin in dev).
+ */
+export interface AutomationSetRule {
+  kind: 'automation-set';
+  table_name: string;
+  column: string;
+  /** Only rows where this column equals this display value are checked. */
+  condition?: { column: string; equals: any };
+}
+
+/** Any grade rule a manifest step can carry. */
+export type AnyGradeRule = GradeRule | AutomationSetRule;
 
 type RowResult =
   | { ok: true }

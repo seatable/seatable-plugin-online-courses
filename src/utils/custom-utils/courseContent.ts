@@ -15,7 +15,7 @@
  * keeps the plugin demonstrable before/without the Hugo host.
  */
 
-import { GradeRule } from './grader';
+import { AnyGradeRule } from './grader';
 import { findRowByMatch, getTableByName } from './sdkRead';
 import { getCurrentStepId } from './courseProgress';
 
@@ -37,7 +37,7 @@ export interface CourseStep {
   /** Optional hint, shown behind the exercise "Help" toggle. */
   hint?: string;
   /** Answer key — present on exercises. Omitted on pure lesson pages. */
-  grade?: GradeRule;
+  grade?: AnyGradeRule;
   /**
    * Optional demo hook — swaps the exercise's Verify flow for a scripted plugin
    * action. 'live-modify' runs a sequence of learner edits so you can watch the grid
@@ -158,6 +158,12 @@ const LOAD_EXAMPLE_HTML = `
   you're never blocked: the plugin can inject the expected <b>Line items</b> for you.
   Click <b>Load the example</b> to add the three delivery lines, then continue with the
   exercise.`;
+
+const AUTOMATION_HTML = `
+  <b>Automation review.</b> Build an <b>automation rule</b> on <b>Documents</b> that fills the
+  <b>Reviewer</b> column whenever a document needs review (<b>Review needed</b> = true), then run
+  it on a document. Click <b>Verify</b>: the plugin checks the activity log to confirm the
+  Reviewer was set <em>by an automation</em> — grading the method, not just the value.`;
 
 // The canonical example rows the plugin injects into "Line items" when the AI OCR
 // extraction misfires — the learner is never blocked (grading targets rows exist +
@@ -310,6 +316,21 @@ function course4ContentSteps(): CourseStep[] {
       html: LOAD_EXAMPLE_HTML,
       demo: 'load-example',
       example: { table_name: 'Line items', rows: LINE_ITEMS_EXAMPLE },
+    },
+    {
+      id: 'au01',
+      type: 'exercise',
+      title: 'Automation review',
+      html: AUTOMATION_HTML,
+      hint: 'Add an automation on Documents: when Review needed becomes true, set the Reviewer column to a colleague. Trigger it on at least one document, then Verify.',
+      // Open-ended (method) grade: pass only if an AUTOMATION set Reviewer on a
+      // Documents row that needs review — graded from the op-log, not the cell state.
+      grade: {
+        kind: 'automation-set',
+        table_name: 'Documents',
+        column: 'Reviewer',
+        condition: { column: 'Review needed', equals: true },
+      },
     },
   ];
 }
