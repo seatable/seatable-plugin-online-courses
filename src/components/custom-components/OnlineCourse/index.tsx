@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { learnerUpdateRow } from '../../../utils/custom-utils/learnerWrite';
+import { learnerAppendRows, learnerUpdateRow } from '../../../utils/custom-utils/learnerWrite';
 import {
   CourseManifest,
   CourseStep,
@@ -89,6 +89,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const step: CourseStep | undefined = manifest ? findStep(manifest, stepId) : undefined;
   const mode = step?.type ?? 'course';
   const isLiveDemo = step?.demo === 'live-modify';
+  const isLoadExample = step?.demo === 'load-example';
 
   // On step change: fetch its HTML, reset UI. Progress persistence and window
   // resizing both live in App — the source of truth for the active step.
@@ -148,6 +149,20 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setDemoRunning(false);
   };
 
+  // --- load-example action (AI safety net) ----------------------------------
+  const runLoadExample = async () => {
+    if (demoRunning || !step?.example) return;
+    setDemoRunning(true);
+    setDemoStatus('Loading…');
+    try {
+      const n = await learnerAppendRows(step.example.table_name, step.example.rows);
+      setDemoStatus(`✅ Added ${n} line${n === 1 ? '' : 's'} to "${step.example.table_name}".`);
+    } catch (err: any) {
+      setDemoStatus(`❌ ${err?.message || 'Could not load the example.'}`);
+    }
+    setDemoRunning(false);
+  };
+
   // --- render ---------------------------------------------------------------
   if (!manifest || !step) {
     return (
@@ -199,6 +214,37 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
               onClick={runLiveDemo}
               disabled={demoRunning}>
               {demoRunning ? 'Running…' : '▶ Run live edits'}
+            </button>
+            <button style={S.ghostBtn} onClick={goNext} disabled={!nextStep}>
+              {nextStep ? 'Next →' : 'Finish'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Load-example demo exercise (compact banner): inject the canonical rows so the
+  // learner is never blocked when the AI extraction misfires.
+  if (isLoadExample) {
+    return (
+      <div style={S.banner}>
+        <div style={S.bannerMain}>
+          <div style={S.instruction} dangerouslySetInnerHTML={{ __html: html }} />
+          {demoStatus && <div style={S.demoStatus}>{demoStatus}</div>}
+        </div>
+
+        <div style={S.bottomRow}>
+          <div style={S.feedbackWrap} />
+          <div style={S.bannerActions}>
+            <button style={S.ghostBtn} onClick={goPrev} disabled={!prevStep}>
+              ← Back
+            </button>
+            <button
+              style={{ ...S.actionPrimaryBtn, ...(demoRunning ? S.btnDisabled : null) }}
+              onClick={runLoadExample}
+              disabled={demoRunning}>
+              {demoRunning ? 'Loading…' : '⬇ Load the example'}
             </button>
             <button style={S.ghostBtn} onClick={goNext} disabled={!nextStep}>
               {nextStep ? 'Next →' : 'Finish'}

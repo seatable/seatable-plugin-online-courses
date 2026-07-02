@@ -40,10 +40,14 @@ export interface CourseStep {
   grade?: GradeRule;
   /**
    * Optional demo hook — swaps the exercise's Verify flow for a scripted plugin
-   * action. 'live-modify' runs a sequence of learner edits so you can watch the
-   * grid update and inspect how the edits are attributed in row history.
+   * action. 'live-modify' runs a sequence of learner edits so you can watch the grid
+   * update and inspect how the edits are attributed in row history. 'load-example'
+   * injects the canonical example rows (`example` below) so the learner is never
+   * blocked when the AI extraction misfires.
    */
-  demo?: 'live-modify';
+  demo?: 'live-modify' | 'load-example';
+  /** Rows injected by the 'load-example' action (column NAME → display value). */
+  example?: { table_name: string; rows: Record<string, any>[] };
 }
 
 export interface CourseManifest {
@@ -148,6 +152,42 @@ const LIVE_MODIFY_HTML = `
   <b>James Bennett</b>'s <b>Status</b> through a few values. Keep the Customers table in
   view, click <b>Run live edits</b>, then open that row's history to see how the edits
   are attributed.`;
+
+const LOAD_EXAMPLE_HTML = `
+  <b>Load the example.</b> When the automatic extraction of the delivery note misfires,
+  you're never blocked: the plugin can inject the expected <b>Line items</b> for you.
+  Click <b>Load the example</b> to add the three delivery lines, then continue with the
+  exercise.`;
+
+// The canonical example rows the plugin injects into "Line items" when the AI OCR
+// extraction misfires — the learner is never blocked (grading targets rows exist +
+// validated, never AI success). Column NAME → display value; blank columns (links /
+// formulas / automation-filled) are intentionally omitted. From line_items.csv.
+const LINE_ITEMS_DOC_URL =
+  'https://cloud.st-next.de/apps/custom/delivery-check/?page_id=XSyG&record_id=Vtf2nXaAQKWMzdT-pYDSGA';
+const LINE_ITEMS_EXAMPLE: Record<string, any>[] = [
+  {
+    'Product reference': '098765',
+    Qty: 1,
+    'Document reference': 'DNINT-001',
+    'To check': true,
+    'Document URL': LINE_ITEMS_DOC_URL,
+  },
+  {
+    'Product reference': '567890',
+    Qty: 2,
+    'Document reference': 'DNINT-001',
+    'To check': true,
+    'Document URL': LINE_ITEMS_DOC_URL,
+  },
+  {
+    'Product reference': '345678',
+    Qty: 3,
+    'Document reference': 'DNINT-001',
+    'To check': true,
+    'Document URL': LINE_ITEMS_DOC_URL,
+  },
+];
 
 // The demo course roster. Each entry becomes a left-panel preset (id = preset _id)
 // AND a fallback manifest. Content is bundled here (no Hugo host yet). Only
@@ -262,6 +302,14 @@ function course4ContentSteps(): CourseStep[] {
       title: 'Live modify example',
       html: LIVE_MODIFY_HTML,
       demo: 'live-modify',
+    },
+    {
+      id: 'le02',
+      type: 'exercise',
+      title: 'Load the example',
+      html: LOAD_EXAMPLE_HTML,
+      demo: 'load-example',
+      example: { table_name: 'Line items', rows: LINE_ITEMS_EXAMPLE },
     },
   ];
 }

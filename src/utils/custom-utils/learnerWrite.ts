@@ -55,3 +55,22 @@ export async function learnerUpdateRow(
   if (JSON.stringify(oldData) === JSON.stringify(newUpdated)) return;
   s.dtableStore.modifyRow(tableIndex, rowId, newUpdated, oldData);
 }
+
+/**
+ * Append rows to a table as the learner. Drives the dtable-store insert op (via the
+ * SDK's appendRow, which name→key + display→stored converts each row), so the result
+ * is identical to a manual "new row" — an INSERT op needs no old_row, so it's clean
+ * and restorable, and works on the dev server too. `rows` are keyed by column NAME
+ * with display values (e.g. { 'Qty': 3, 'To check': true }).
+ */
+export async function learnerAppendRows(
+  tableName: string,
+  rows: Record<string, any>[]
+): Promise<number> {
+  const s = sdk();
+  const tables: any[] = s?.getTables?.() || [];
+  const table = tables.find((t) => t.name === tableName);
+  if (!table) throw new Error(`learnerAppendRows: table "${tableName}" not found`);
+  rows.forEach((cellsByName) => s.appendRow(table, cellsByName, undefined));
+  return rows.length;
+}

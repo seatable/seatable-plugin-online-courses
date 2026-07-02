@@ -86,15 +86,28 @@ Grading targets **"rows exist + validated", never AI success.**
 
 ---
 
-## 4. Scenario staging + [GRADE] for course 4 — coordination to validate
-Confirm (or build) that the plugin can:
-1. **Stage** the restock scenario: 3 tables `Products` / `Deliveries` / `Ordered quantities`
-   + a delivery-note PDF + seeded `Order` lines + a reset.
-2. **Grade the data deltas** (`grader.ts` scores DATA, not config):
-   - Step 2 — status + link on the received line,
-   - Step 3 — `In Stock` updated on the linked product,
-   - Step 4 — lines created from OCR,
-   - Step 7 — inbound API row appended.
+## 4. What the plugin owns for course 4 — [GRADE] + fallback (updated 2026-07-02)
+Current terminology: tables `Products` / `Documents` / `Line items`; stock column `Stock`.
+
+**Staging is now mostly handled by imports, not the plugin.** The learner imports the base
+from a `.dtable` (Step 1) and the delivery lines from a CSV (Step 2); the delivery-note PDF
+ships inside the `.dtable`. So the plugin does NOT build the whole scenario. What it owns:
+- **[GRADE]** the data deltas (`grader.ts` scores DATA, not config).
+- **"Load the example" fallback** (§3) — inject the canonical `Line items` if the AI
+  extraction misfires (Step 5).
+- Optionally a **reset** to replay a step.
+
+**[GRADE] points, mapped to the current 9-step split:**
+- **Step 2 — Import & link** → imported lines are linked to their `Product` and `Document`.
+- **Step 3 — Receive & stock** → `Stock` updated on the linked product (status-aware:
+  `As expected`→`Qty`, `Missing`/`Damaged`→0, else `Received qty`).
+- **Step 4 — Close & alert** (NEW) → a `Reviewer` is assigned when `Review needed`. This is
+  also the **showcase exercise** of §5 (grade-by-attribution: last-modifier = `Automation Rule`).
+- **Step 5 — AI extracts lines** → lines exist and are validated (grade the RESULT, never the
+  AI's success; the "Load the example" fallback covers misfires).
+- **Step 8 — API inbound** → an `Order` row is appended via `append_rows`.
+
+(Steps 6 webhooks / 7 n8n are [GUIDE] — fire-and-look, not graded.)
 
 ---
 

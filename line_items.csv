@@ -1,0 +1,4 @@
+Product reference,Product,Description,Qty,Received qty,Document,Document reference,Status,To check,Validate,Document summary,Document URL
+098765,,,1,,,DNINT-001,,True,,,https://cloud.st-next.de/apps/custom/delivery-check/?page_id=XSyG&record_id=Vtf2nXaAQKWMzdT-pYDSGA
+567890,,,2,,,DNINT-001,,True,,,https://cloud.st-next.de/apps/custom/delivery-check/?page_id=XSyG&record_id=Vtf2nXaAQKWMzdT-pYDSGA
+345678,,,3,,,DNINT-001,,True,,,https://cloud.st-next.de/apps/custom/delivery-check/?page_id=XSyG&record_id=Vtf2nXaAQKWMzdT-pYDSGA
