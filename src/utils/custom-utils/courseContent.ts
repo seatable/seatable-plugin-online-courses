@@ -16,7 +16,6 @@
  */
 
 import { AnyGradeRule } from './grader';
-import { findRowByMatch, getTableByName } from './sdkRead';
 import { getCurrentStepId } from './courseProgress';
 
 // Base URL of the Hugo-built course content. One sub-directory per courseId,
@@ -144,14 +143,19 @@ const LESSON_HTML = `
   <p>Let's start with something concrete — a teammate has flagged a record that's out of date.</p>`;
 
 const EXERCISE_HTML = `
-  <b>Marketing</b> flagged that <b>James Bennett</b>'s account status is out of date.
-  Update <b>James Bennett</b>'s <b>Status</b> to <b>"Client"</b> to keep everyone in sync.`;
+  A quality check flagged this delivery line: the goods arrived <b>damaged</b>, but its
+  <b>Status</b> still reads <b>"As expected"</b>. Update the line's <b>Status</b> to
+  <b>"Damaged"</b> so the record matches what was actually received.`;
 
 const LIVE_MODIFY_HTML = `
-  <b>Live modify example.</b> Watch the plugin edit the base for you: it steps
-  <b>James Bennett</b>'s <b>Status</b> through a few values. Keep the Customers table in
-  view, click <b>Run live edits</b>, then open that row's history to see how the edits
-  are attributed.`;
+  <b>Live modify example.</b> Watch the plugin edit the base for you: it steps a
+  <b>Line items</b> row's <b>Status</b> through a few values. Keep the Line items table in
+  view, click <b>Run live edits</b>, then open that row's history to see how the edits are
+  attributed.`;
+
+// The delivery line the Course-4 status exercises (Fix-the-stale-status + Live-modify)
+// act on — a fixed row in the imported base.
+const LINE_ITEM_ROW_ID = 'LK228TKwQW-uRMzT26obqw';
 
 const LOAD_EXAMPLE_HTML = `
   <b>Load the example.</b> When the automatic extraction of the delivery note misfires,
@@ -282,13 +286,10 @@ function introHtml(c: CourseMeta): string {
   return `<h1>${c.name}</h1><p class="lead">${c.intro}</p>${note}`;
 }
 
-// Course 4 (active): the collaboration lesson/exercise/live-modify content, moved
-// here from Course 3 while Course 4 is built. The grade rule is row_id-based, so we
-// resolve the demo row's _id from the live base.
+// Course 4 (active): the lesson + the status exercises (fix-the-stale-status +
+// live-modify demo) + load-example + the op-log automation exercise. The status
+// exercises act on a fixed Line items row (LINE_ITEM_ROW_ID) in the imported base.
 function course4ContentSteps(): CourseStep[] {
-  const table = getTableByName('Customers');
-  const row = table ? findRowByMatch(table, 'Full Name', 'James Bennett') : null;
-  const bennettId = row?._id ?? '__SET_DEMO_ROW_ID__';
   return [
     { id: 'le01', type: 'course', title: 'Collaboration', html: LESSON_HTML },
     {
@@ -296,10 +297,10 @@ function course4ContentSteps(): CourseStep[] {
       type: 'exercise',
       title: 'Fix the stale status',
       html: EXERCISE_HTML,
-      hint: 'Open the Customers table, find the James Bennett row, and set its Status cell to Client.',
+      hint: 'Open the Line items table, find the flagged delivery line, and set its Status cell to Damaged.',
       grade: {
-        table_name: 'Customers',
-        expected: [{ row_id: bennettId, row: { Status: 'Client' } }],
+        table_name: 'Line items',
+        expected: [{ row_id: LINE_ITEM_ROW_ID, row: { Status: 'Damaged' } }],
       },
     },
     {

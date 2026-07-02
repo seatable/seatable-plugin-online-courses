@@ -9,7 +9,6 @@ import {
 } from '../../../utils/custom-utils/courseContent';
 import { Outcome } from '../../../utils/custom-utils/grader';
 import { gradeStep } from '../../../utils/custom-utils/opLogGrade';
-import { findRowByMatch, getTableByName } from '../../../utils/custom-utils/sdkRead';
 
 /**
  * Online courses plugin — manifest-driven runner (Course 3 — Collaboration + others).
@@ -27,39 +26,18 @@ import { findRowByMatch, getTableByName } from '../../../utils/custom-utils/sdkR
 
 // --- live-modify demo (rendered only on a `demo: 'live-modify'` exercise step) --
 
-// Target table + the column used to locate the demo row.
-const LIVE_DEMO_TABLE = 'Customers';
-const LIVE_DEMO_MATCH_COLUMN = 'Full Name';
-
-// A scripted sequence of learner writes (via the dtable-store op, see writeCell),
-// spaced out, so we can watch cells change and inspect how the edits are attributed
-// in row history — confirming the op matches a manual UI edit (singular modify_row
-// with a populated old_row, so it's restorable).
-const LIVE_DEMO: { matchValue: string; column: string; value: string; delayMs: number }[] = [
-  { matchValue: 'James Bennett', column: 'Status', value: 'Lead', delayMs: 0 },
-  { matchValue: 'James Bennett', column: 'Status', value: 'Prospect', delayMs: 900 },
-  { matchValue: 'James Bennett', column: 'Status', value: 'Client', delayMs: 900 },
+// The demo steps a fixed Line items row's Status through a few values (spaced out),
+// so you can watch the grid update and inspect how the edits are attributed in row
+// history. Each write is a clean dtable-store op via learnerUpdateRow — identical to
+// a manual UI edit (singular modify_row + populated old_row, so it's restorable).
+const LIVE_DEMO_TABLE = 'Line items';
+const LIVE_DEMO_ROW_ID = 'LK228TKwQW-uRMzT26obqw';
+const LIVE_DEMO_COLUMN = 'Status';
+const LIVE_DEMO: { value: string; delayMs: number }[] = [
+  { value: 'Too many', delayMs: 0 },
+  { value: 'Too few', delayMs: 900 },
+  { value: 'Damaged', delayMs: 900 },
 ];
-
-// Write a single cell as the learner via learnerUpdateRow, which drives dtable-store
-// directly so the op is identical to a manual UI edit (singular modify_row +
-// populated old_row) — NOT dtableSDK.modifyRow (old_row:null, crashes history).
-// `setValue` is a display value (column NAME → label). Resolves the row by a match
-// column/value, then writes by row _id.
-async function writeCell(
-  tableName: string,
-  matchColumnName: string,
-  matchValue: string,
-  setColumnName: string,
-  setValue: string
-): Promise<{ ok: true } | { ok: false; what: string }> {
-  const table = getTableByName(tableName);
-  if (!table) return { ok: false, what: `table "${tableName}"` };
-  const row = findRowByMatch(table, matchColumnName, matchValue);
-  if (!row) return { ok: false, what: `row "${matchValue}"` };
-  await learnerUpdateRow(tableName, row._id, { [setColumnName]: setValue });
-  return { ok: true };
-}
 
 // ----------------------------------------------------------------------------
 // Plugin-window height (full lesson view vs compact exercise banner) is driven by
@@ -139,21 +117,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     try {
       for (const s of LIVE_DEMO) {
         if (s.delayMs) await new Promise((res) => setTimeout(res, s.delayMs));
-        const r = await writeCell(
-          LIVE_DEMO_TABLE,
-          LIVE_DEMO_MATCH_COLUMN,
-          s.matchValue,
-          s.column,
-          s.value
-        );
-        if (!r.ok) {
-          setDemoStatus(`⚠️ Couldn't find ${r.what} — check the demo base.`);
-          setDemoRunning(false);
-          return;
-        }
-        setDemoStatus(`✏️ ${s.matchValue} · ${s.column} → ${s.value}`);
+        await learnerUpdateRow(LIVE_DEMO_TABLE, LIVE_DEMO_ROW_ID, { [LIVE_DEMO_COLUMN]: s.value });
+        setDemoStatus(`✏️ ${LIVE_DEMO_COLUMN} → ${s.value}`);
       }
-      setDemoStatus(`✅ Done. Open ${LIVE_DEMO[0].matchValue}'s row history to see attribution.`);
+      setDemoStatus(`✅ Done. Open the row's history to see how the edits are attributed.`);
     } catch (err: any) {
       setDemoStatus(`❌ ${err?.message || 'Live edit failed.'}`);
     }
