@@ -54,6 +54,26 @@ import {
   resolveInitialStepId,
 } from './utils/custom-utils/courseContent';
 import { setCurrentStepId } from './utils/custom-utils/courseProgress';
+
+// Plugin-window height presets (fraction of viewport, with a px floor): the full
+// lesson view vs the compact exercise banner at the bottom of the window.
+const HEIGHT_EXPANDED = { ratio: 0.95, minPx: 320 };
+const HEIGHT_REDUCED = { ratio: 0.22, minPx: 130 };
+
+// Resize the plugin window, mirroring ResizableWrapper: set the modal height and
+// anchor the host to the bottom of the viewport.
+function setPluginHeight({ ratio, minPx }: { ratio: number; minPx: number }) {
+  const host = document.querySelector('#plugin-wrapper') as HTMLElement | null;
+  if (!host) return;
+  const modal = host.firstElementChild as HTMLElement | null;
+  const px = Math.max(Math.round(window.innerHeight * ratio), minPx);
+  if (modal) {
+    modal.style.transition = 'height 0.2s ease';
+    modal.style.height = `${px}px`;
+  }
+  host.style.top = `calc(100% - ${px}px)`;
+}
+
 const App: React.FC<IAppProps> = (props) => {
   const { isDevelopment, lang } = props;
 
@@ -89,6 +109,13 @@ const App: React.FC<IAppProps> = (props) => {
     : courses[0]?.courseId ?? '';
   const activeManifest = courses.find((c) => c.courseId === activeCourseId) ?? null;
   const activeStepId = activeCourseId ? stepByCourse[activeCourseId] ?? null : null;
+  const activeStep = activeManifest?.steps.find((s) => s.id === activeStepId) ?? null;
+
+  // Plugin window sizing. Each page has a natural size (lesson → expanded, exercise
+  // → reduced banner); a manual header toggle overrides it (null = follow the page)
+  // so learners can shrink/grow the plugin instead of closing and reopening it.
+  const [heightOverride, setHeightOverride] = useState<boolean | null>(null);
+  const expanded = heightOverride ?? (activeStep?.type !== 'exercise');
 
   useEffect(() => {
     initPluginDTableData();
@@ -132,6 +159,20 @@ const App: React.FC<IAppProps> = (props) => {
     setStepByCourse((prev) => ({ ...prev, [courseId]: stepId }));
     setCurrentStepId(courseId, stepId);
   };
+
+  // Each new page starts at its natural size (drop any manual override).
+  useEffect(() => {
+    setHeightOverride(null);
+  }, [activeStepId, activeCourseId]);
+
+  // Apply the plugin-window height whenever the effective size changes.
+  useEffect(() => {
+    if (!activeStep) return;
+    setPluginHeight(expanded ? HEIGHT_EXPANDED : HEIGHT_REDUCED);
+  }, [expanded, activeStepId, activeStep]);
+
+  // Header expand/collapse toggle — flip the current effective size.
+  const onToggleExpanded = () => setHeightOverride(!expanded);
 
   const initPluginDTableData = async () => {
     if (isDevelopment) {
@@ -432,6 +473,7 @@ const App: React.FC<IAppProps> = (props) => {
         activeCourseId={activeCourseId}
         activeStepId={activeStepId}
         onSelectStep={onSelectStep}
+        compact={!expanded}
       />
       <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
         <Header
@@ -441,6 +483,8 @@ const App: React.FC<IAppProps> = (props) => {
           onTogglePresets={togglePresets}
           toggleSettings={toggleSettings}
           togglePlugin={onPluginToggle}
+          expanded={expanded}
+          onToggleExpanded={onToggleExpanded}
         />
         {/* main body  */}
         <div

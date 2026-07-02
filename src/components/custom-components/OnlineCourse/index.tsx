@@ -60,23 +60,10 @@ async function writeCell(
   return { ok: true };
 }
 
-// --- window resize ----------------------------------------------------------
-
-// Resize the plugin window to a fraction of the viewport height (with a px floor),
-// mirroring ResizableWrapper: set the modal height and anchor the host to the bottom.
-function setPluginHeight(ratio: number, minPx: number) {
-  const host = document.querySelector('#plugin-wrapper') as HTMLElement | null;
-  if (!host) return;
-  const modal = host.firstElementChild as HTMLElement | null;
-  const px = Math.max(Math.round(window.innerHeight * ratio), minPx);
-  if (modal) {
-    modal.style.transition = 'height 0.2s ease';
-    modal.style.height = `${px}px`;
-  }
-  host.style.top = `calc(100% - ${px}px)`;
-}
-
 // ----------------------------------------------------------------------------
+// Plugin-window height (full lesson view vs compact exercise banner) is driven by
+// App now, so the header expand/collapse toggle stays in sync — see setPluginHeight
+// in app.tsx.
 
 interface OnlineCourseProps {
   manifest: CourseManifest | null;
@@ -103,20 +90,13 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const mode = step?.type ?? 'course';
   const isLiveDemo = step?.demo === 'live-modify';
 
-  // Give the loading view room before the manifest resolves.
-  useEffect(() => {
-    setPluginHeight(0.95, 320);
-  }, []);
-
-  // On step change: fetch its HTML, resize the window, reset UI. Progress
-  // persistence lives in App (onSelectStep) — the source of truth for the step.
+  // On step change: fetch its HTML, reset UI. Progress persistence and window
+  // resizing both live in App — the source of truth for the active step.
   useEffect(() => {
     if (!manifest || !step || !stepId) return;
     setOutcome({ kind: 'idle' });
     setShowHint(false);
     setDemoStatus('');
-    if (mode === 'course') setPluginHeight(0.95, 320);
-    else setPluginHeight(0.22, 130);
 
     let cancelled = false;
     setHtml('');

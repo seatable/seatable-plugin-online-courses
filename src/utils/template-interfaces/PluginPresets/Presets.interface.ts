@@ -14,6 +14,9 @@ export interface IPresetsProps {
   activeCourseId?: string;
   activeStepId?: string | null;
   onSelectStep?: (courseId: string, stepId: string) => void;
+  // Compact mode (reduced/exercise view): show only the active course, scrollable,
+  // auto-scrolled to the current step.
+  compact?: boolean;
   updatePresets: (
     currentIdx: number,
     presets: PresetsArray,
