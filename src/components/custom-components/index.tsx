@@ -8,7 +8,13 @@ import OnlineCourse from './OnlineCourse';
 // seeded here and not meant to be created/edited/reordered by the user.
 const COURSE_PRESET = { _id: 'course3', name: PRESET_COURSE_3, settings: {} };
 
-const CustomPlugin: React.FC<IPluginTRProps> = ({ allTables, pluginDataStore }) => {
+const CustomPlugin: React.FC<IPluginTRProps> = ({
+  pluginDataStore,
+  courseManifest,
+  courseStepId,
+  courseLoadNote,
+  onSelectStep,
+}) => {
   const initialized = useRef(false);
 
   // On first mount, force the preset list to our single course preset.
@@ -28,7 +34,16 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({ allTables, pluginDataStore }) 
     }
   }, [pluginDataStore]);
 
-  return <OnlineCourse allTables={allTables} />;
+  // Manifest/step are owned by App so the left-panel tree and the runner stay in
+  // sync; the runner is a controlled component.
+  return (
+    <OnlineCourse
+      manifest={courseManifest ?? null}
+      stepId={courseStepId ?? null}
+      loadNote={courseLoadNote}
+      onSelectStep={onSelectStep ?? (() => {})}
+    />
+  );
 };
 
 export default CustomPlugin;

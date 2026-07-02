@@ -1,12 +1,17 @@
 import { AppActiveState, AppIsShowState, IPluginDataStore } from '../App.interface';
 import { SelectOption } from '../PluginSettings.interface';
 import { TableArray } from '../Table.interface';
+import { CourseManifest } from '../../custom-utils/courseContent';
 
 export interface IPresetsProps {
   appActiveState: AppActiveState;
   pluginPresets: PresetsArray;
   activePresetIdx: number;
   onSelectPreset: (presetId: string, newPresetActiveState?: AppActiveState) => void;
+  // Course navigation tree: level-2 steps rendered under each course preset.
+  courseManifest?: CourseManifest | null;
+  courseStepId?: string | null;
+  onSelectStep?: (stepId: string) => void;
   updatePresets: (
     currentIdx: number,
     presets: PresetsArray,

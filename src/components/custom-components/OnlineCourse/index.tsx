@@ -8,113 +8,25 @@ import {
 import {
   CourseManifest,
   CourseStep,
-  fetchManifest,
   fetchStepHtml,
   findStep,
   stepIndex,
 } from '../../../utils/custom-utils/courseContent';
 import { grade, Outcome } from '../../../utils/custom-utils/grader';
-import { getCurrentStepId, setCurrentStepId } from '../../../utils/custom-utils/courseProgress';
 import { findRowByMatch, getTableByName } from '../../../utils/custom-utils/sdkRead';
 
 /**
  * Online courses plugin — manifest-driven runner (Course 3 — Collaboration + others).
  *
- * Content/grading are NOT hardcoded here: the plugin fetches a per-course manifest
- * (ordered steps + answer keys) from the Hugo course site (courseContent.ts),
- * renders each step's HTML, grades exercises declaratively (grader.ts), and stores
- * only the current step per course (courseProgress.ts) so learners resume where
- * they left off. One plugin serves all seven courses.
+ * The runner is CONTROLLED: the course manifest and the current step are owned by
+ * App (so the left-panel navigation tree and the runner stay in sync) and passed in
+ * as props. This component fetches each step's HTML, renders it, grades exercises
+ * (grader.ts) and resizes the plugin window. Navigation is delegated up to
+ * `onSelectStep`, which also persists progress (courseProgress.ts).
  *
  * Step types drive the layout: 'course' = full-height lesson page; 'exercise' =
  * compact bottom banner. The plugin window is height-resized to match.
  */
-
-// --- course / deep-link resolution ------------------------------------------
-
-// While the Hugo host doesn't exist yet, skip the remote manifest fetch entirely
-// (it would throw CORS/NetworkError noise in the console) and use the bundled
-// fallback. Flip to true once CONTENT_BASE points at a real, CORS-enabled host.
-const USE_REMOTE_CONTENT = false;
-
-const COURSE_PARAM = 'cid';
-const DEFAULT_COURSE_ID = 'course-3';
-// Deep-link a single step via `qid` (4 alphanumeric chars, like SeaTable's tid/vid).
-const QID_PARAM = 'qid';
-const QID_PATTERN = /^[a-zA-Z0-9]{4}$/;
-
-// TODO: ultimately the courseId should come from the imported base itself (each
-// course ships its own base). For now: `cid` URL param → default.
-function resolveCourseId(): string {
-  try {
-    const raw = new URLSearchParams(window.location.search).get(COURSE_PARAM);
-    return raw && /^[a-z0-9-]+$/i.test(raw) ? raw : DEFAULT_COURSE_ID;
-  } catch {
-    return DEFAULT_COURSE_ID;
-  }
-}
-
-function getQidFromUrl(): string | null {
-  try {
-    const raw = new URLSearchParams(window.location.search).get(QID_PARAM);
-    return raw && QID_PATTERN.test(raw) ? raw : null;
-  } catch {
-    return null;
-  }
-}
-
-// Initial step: a valid `qid` deep-link wins; else resume saved progress; else
-// the first step.
-function resolveInitialStepId(manifest: CourseManifest, courseId: string): string {
-  const qid = getQidFromUrl();
-  if (qid && findStep(manifest, qid)) return qid;
-  const saved = getCurrentStepId(courseId);
-  if (saved && findStep(manifest, saved)) return saved;
-  return manifest.steps[0].id;
-}
-
-// --- offline fallback (keeps the plugin demonstrable before/without Hugo) -----
-// Reproduces the original Course-3 demo. The grade rule is row_id-based (matching
-// the gateway Update-Row shape), so we resolve the demo row's _id from the live
-// base — letting the row_id grader work against the current test base with no host.
-
-const LESSON_HTML = `
-  <h1>Collaboration</h1>
-  <p class="lead">Work together on shared data — share it, keep it in sync, and build the
-  habits that keep everyone on the same page.</p>
-  <p>Your company has three customer-facing teams — <b>Commercial</b>, <b>Marketing</b> and
-  <b>Support</b>. Each kept its own copy of the customer list, and the copies drifted out of
-  sync: wrong contacts, duplicates, stale statuses. You're on Commercial, and you own the
-  <b>customer master</b>. Your job: make it the single source of truth for the whole company.</p>
-  <p>Let's start with something concrete — a teammate has flagged a record that's out of date.</p>`;
-
-const EXERCISE_HTML = `
-  <b>Marketing</b> flagged that <b>James Bennett</b>'s account status is out of date.
-  Update <b>James Bennett</b>'s <b>Status</b> to <b>"Client"</b> to keep everyone in sync.`;
-
-function buildFallbackManifest(courseId: string): CourseManifest {
-  const table = getTableByName('Customers');
-  const row = table ? findRowByMatch(table, 'Full Name', 'James Bennett') : null;
-  const bennettId = row?._id ?? '__SET_DEMO_ROW_ID__';
-  return {
-    courseId,
-    title: 'Collaboration (offline fallback)',
-    steps: [
-      { id: 'le01', type: 'course', title: 'Collaboration', html: LESSON_HTML },
-      {
-        id: 'ex01',
-        type: 'exercise',
-        title: 'Fix the stale status',
-        html: EXERCISE_HTML,
-        hint: 'Open the Customers table, find the James Bennett row, and set its Status cell to Client.',
-        grade: {
-          table_name: 'Customers',
-          expected: [{ row_id: bennettId, row: { Status: 'Client' } }],
-        },
-      },
-    ],
-  };
-}
 
 // --- dev benches (authorship testing) — gated, kept from the v0 demonstrator ---
 
@@ -186,11 +98,19 @@ function setPluginHeight(ratio: number, minPx: number) {
 
 // ----------------------------------------------------------------------------
 
-const OnlineCourse: React.FC<{ allTables: any[] }> = () => {
-  const [courseId] = useState<string>(() => resolveCourseId());
-  const [manifest, setManifest] = useState<CourseManifest | null>(null);
-  const [loadNote, setLoadNote] = useState<string>(''); // non-fatal: explains fallback
-  const [stepId, setStepId] = useState<string | null>(null);
+interface OnlineCourseProps {
+  manifest: CourseManifest | null;
+  stepId: string | null;
+  loadNote?: string;
+  onSelectStep: (stepId: string) => void;
+}
+
+const OnlineCourse: React.FC<OnlineCourseProps> = ({
+  manifest,
+  stepId,
+  loadNote = '',
+  onSelectStep,
+}) => {
   const [html, setHtml] = useState<string>('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
   const [showHint, setShowHint] = useState(false);
@@ -201,47 +121,26 @@ const OnlineCourse: React.FC<{ allTables: any[] }> = () => {
   const [colleagueStatus, setColleagueStatus] = useState('');
   const [colleagueRunning, setColleagueRunning] = useState(false);
 
-  // Load the course manifest (Hugo), fall back to the bundled demo on failure.
-  useEffect(() => {
-    let cancelled = false;
-    setPluginHeight(0.95, 320); // give the loading view (with dev benches) room
-    (async () => {
-      let m: CourseManifest;
-      if (USE_REMOTE_CONTENT) {
-        try {
-          m = await fetchManifest(courseId);
-        } catch (err: any) {
-          m = buildFallbackManifest(courseId);
-          if (!cancelled)
-            setLoadNote(`Using offline fallback (${err?.message || 'manifest unavailable'}).`);
-        }
-      } else {
-        m = buildFallbackManifest(courseId);
-      }
-      if (cancelled) return;
-      setManifest(m);
-      setStepId(resolveInitialStepId(m, courseId));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId]);
-
   const step: CourseStep | undefined = manifest ? findStep(manifest, stepId) : undefined;
   const mode = step?.type ?? 'course';
 
-  // On step change: fetch its HTML, resize the window, persist progress, reset UI.
+  // Give the loading view (with dev benches) room before the manifest resolves.
+  useEffect(() => {
+    setPluginHeight(0.95, 320);
+  }, []);
+
+  // On step change: fetch its HTML, resize the window, reset UI. Progress
+  // persistence lives in App (onSelectStep) — the source of truth for the step.
   useEffect(() => {
     if (!manifest || !step || !stepId) return;
     setOutcome({ kind: 'idle' });
     setShowHint(false);
-    setCurrentStepId(courseId, stepId);
     if (mode === 'course') setPluginHeight(0.95, 320);
     else setPluginHeight(0.22, 130);
 
     let cancelled = false;
     setHtml('');
-    fetchStepHtml(courseId, step)
+    fetchStepHtml(manifest.courseId, step)
       .then((h) => !cancelled && setHtml(h))
       .catch(() => !cancelled && setHtml('<p>⚠️ Couldn’t load this page.</p>'));
     return () => {
@@ -255,8 +154,8 @@ const OnlineCourse: React.FC<{ allTables: any[] }> = () => {
   const nextStep = manifest && idx >= 0 ? manifest.steps[idx + 1] : undefined;
   const prevStep = manifest && idx > 0 ? manifest.steps[idx - 1] : undefined;
 
-  const goNext = () => nextStep && setStepId(nextStep.id);
-  const goPrev = () => prevStep && setStepId(prevStep.id);
+  const goNext = () => nextStep && onSelectStep(nextStep.id);
+  const goPrev = () => prevStep && onSelectStep(prevStep.id);
   const onVerify = () => step?.grade && setOutcome(grade(step.grade));
   const passed = outcome.kind === 'pass';
 

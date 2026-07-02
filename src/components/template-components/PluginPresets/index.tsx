@@ -33,7 +33,7 @@ import {
 import PresetInput from './PresetInput';
 import useClickOut from '../../../hooks/useClickOut';
 import { AppActiveState } from '../../../utils/template-interfaces/App.interface';
-import { HiOutlineChevronDoubleLeft } from 'react-icons/hi2';
+import { HiChevronDown, HiChevronRight, HiOutlineChevronDoubleLeft } from 'react-icons/hi2';
 import intl from 'react-intl-universal';
 import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
 const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
@@ -52,12 +52,19 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   updateActiveData,
   isShowState,
   setIsShowState,
+  courseManifest,
+  courseStepId,
+  onSelectStep,
 }) => {
   const [presetName, setPresetName] = useState('');
   const [presetNameAlreadyExists, setPresetNameAlreadyExists] = useState(false);
   const [_pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
   const [showNewPresetPopUp, setShowNewPresetPopUp] = useState<boolean>(false);
   const [showEditPresetPopUp, setShowEditPresetPopUp] = useState<boolean>(false);
+  // Left-panel tree: which course rows are collapsed (default = expanded).
+  const [collapsedCourses, setCollapsedCourses] = useState<Record<string, boolean>>({});
+  const toggleCourse = (id: string) =>
+    setCollapsedCourses((prev) => ({ ...prev, [id]: !prev[id] }));
 
   useEffect(() => {
     setPluginPresets(pluginPresets);
@@ -268,31 +275,78 @@ const PluginPresets: React.FC<IPresetsProps> = ({
           <div className={stylesPresets.presets_name}>{PLUGIN_NAME}</div>
         </div>
         {/* v0: single fixed course preset — drag-to-reorder is intentionally
-            disabled (no draggable attr / drag handlers). */}
-        {pluginPresets?.map((preset, i) => (
-          <div key={preset._id}>
-            <PresetItem
-              p={preset}
-              activePresetIdx={activePresetIdx}
-              presetName={presetName}
-              pluginPresets={pluginPresets}
-              presetNameAlreadyExists={presetNameAlreadyExists && activePresetIdx === i}
-              onChangePresetName={(e: React.FormEvent<HTMLInputElement>) =>
-                onChangePresetName(e, PresetHandleAction.edit)
-              }
-              onSelectPreset={onSelectPreset}
-              deletePreset={deletePreset}
-              exportPreset={exportPreset}
-              resetPreset={resetPreset}
-              duplicatePreset={duplicatePreset}
-              togglePresetsUpdate={togglePresetsUpdate}
-              showEditPresetPopUp={showEditPresetPopUp}
-              onToggleSettings={onToggleSettings}
-              isShowState={isShowState}
-              setIsShowState={setIsShowState}
-            />
-          </div>
-        ))}
+            disabled (no draggable attr / drag handlers). Each course preset is a
+            level-1 tree node; its manifest steps render as level-2 children (the
+            in-plugin navigation that replaces the dead `qid` URL deep-link). */}
+        {pluginPresets?.map((preset, i) => {
+          const steps = courseManifest?.steps ?? [];
+          const showTree = steps.length > 0 && !!onSelectStep;
+          const expanded = !collapsedCourses[preset._id];
+          return (
+            <div key={preset._id}>
+              <div style={treeStyles.courseRow}>
+                {showTree && (
+                  <button
+                    type="button"
+                    onClick={() => toggleCourse(preset._id)}
+                    style={treeStyles.chevronBtn}
+                    aria-label={expanded ? 'Collapse course' : 'Expand course'}>
+                    {expanded ? <HiChevronDown /> : <HiChevronRight />}
+                  </button>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <PresetItem
+                    p={preset}
+                    activePresetIdx={activePresetIdx}
+                    presetName={presetName}
+                    pluginPresets={pluginPresets}
+                    presetNameAlreadyExists={presetNameAlreadyExists && activePresetIdx === i}
+                    onChangePresetName={(e: React.FormEvent<HTMLInputElement>) =>
+                      onChangePresetName(e, PresetHandleAction.edit)
+                    }
+                    onSelectPreset={onSelectPreset}
+                    deletePreset={deletePreset}
+                    exportPreset={exportPreset}
+                    resetPreset={resetPreset}
+                    duplicatePreset={duplicatePreset}
+                    togglePresetsUpdate={togglePresetsUpdate}
+                    showEditPresetPopUp={showEditPresetPopUp}
+                    onToggleSettings={onToggleSettings}
+                    isShowState={isShowState}
+                    setIsShowState={setIsShowState}
+                  />
+                </div>
+              </div>
+              {showTree && expanded && (
+                <div style={treeStyles.stepsWrap}>
+                  {steps.map((s) => {
+                    const active = s.id === courseStepId;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => onSelectStep!(s.id)}
+                        style={{
+                          ...treeStyles.stepRow,
+                          ...(active ? treeStyles.stepRowActive : null),
+                        }}>
+                        <span
+                          style={{
+                            ...treeStyles.stepDot,
+                            ...(s.type === 'exercise'
+                              ? treeStyles.stepDotExercise
+                              : treeStyles.stepDotLesson),
+                          }}
+                        />
+                        <span style={treeStyles.stepTitle}>{s.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {/* add new preset input  */}
         {showNewPresetPopUp && (
           <PresetInput
@@ -307,6 +361,44 @@ const PluginPresets: React.FC<IPresetsProps> = ({
       </div>
     </div>
   );
+};
+
+// Level-2 navigation-tree styling. The sidebar background is dark navy
+// ($preset-bgColor rgb(29,40,56)), so text/markers are light.
+const treeStyles: Record<string, React.CSSProperties> = {
+  courseRow: { display: 'flex', alignItems: 'stretch' },
+  chevronBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 22,
+    padding: 0,
+    background: 'transparent',
+    border: 'none',
+    color: '#b0b7c3',
+    cursor: 'pointer',
+    fontSize: 15,
+  },
+  stepsWrap: { display: 'flex', flexDirection: 'column', margin: '2px 8px 8px 22px' },
+  stepRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 10px',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: 4,
+    color: '#d5d8dd',
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontSize: 13,
+    width: '100%',
+  },
+  stepRowActive: { background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 600 },
+  stepDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
+  stepDotLesson: { background: '#8a94a6' },
+  stepDotExercise: { background: '#ff8000' },
+  stepTitle: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
 };
 
 export default PluginPresets;

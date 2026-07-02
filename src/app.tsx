@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // Import of Component
 import Header from './components/template-components/Header';
@@ -48,6 +48,13 @@ import {
   isMobile,
   parsePluginDataToActiveState,
 } from './utils/template-utils/utils';
+import {
+  CourseManifest,
+  loadManifest,
+  resolveCourseId,
+  resolveInitialStepId,
+} from './utils/custom-utils/courseContent';
+import { setCurrentStepId } from './utils/custom-utils/courseProgress';
 const App: React.FC<IAppProps> = (props) => {
   const { isDevelopment, lang } = props;
 
@@ -67,6 +74,16 @@ const App: React.FC<IAppProps> = (props) => {
   // Destructure properties from the app's active state for easier access
   const { activeTable, activePresetId, activePresetIdx } = appActiveState;
 
+  // Course navigation state — source of truth for BOTH the left-panel tree and
+  // the (controlled) OnlineCourse runner, so clicking a step in the panel and the
+  // runner's Back/Next stay in sync. The `qid` URL deep-link is dead in prod
+  // (dtable-web strips unknown params), so navigation is entirely in-plugin.
+  const [courseId] = useState<string>(() => resolveCourseId());
+  const [courseManifest, setCourseManifest] = useState<CourseManifest | null>(null);
+  const [courseStepId, setCourseStepId] = useState<string | null>(null);
+  const [courseLoadNote, setCourseLoadNote] = useState<string>('');
+  const manifestLoaded = useRef(false);
+
   useEffect(() => {
     initPluginDTableData();
     return () => {
@@ -80,6 +97,32 @@ const App: React.FC<IAppProps> = (props) => {
       setIsShowState((prevState) => ({ ...prevState, isShowPresets: false }));
     }
   }, []);
+
+  // Load the course manifest once the base data is ready (the offline fallback
+  // reads the SDK tables), then pick the initial step (resume > first). Loads
+  // once — see courseContent.ts.
+  useEffect(() => {
+    if (isLoading || manifestLoaded.current) return;
+    manifestLoaded.current = true;
+    let cancelled = false;
+    (async () => {
+      const { manifest, loadNote } = await loadManifest(courseId);
+      if (cancelled) return;
+      setCourseManifest(manifest);
+      setCourseLoadNote(loadNote);
+      setCourseStepId(resolveInitialStepId(manifest, courseId));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, courseId]);
+
+  // Navigate to a step — from the runner's Back/Next OR the left-panel tree — and
+  // remember it so the learner resumes here next time.
+  const onSelectStep = (stepId: string) => {
+    setCourseStepId(stepId);
+    setCurrentStepId(courseId, stepId);
+  };
 
   const initPluginDTableData = async () => {
     if (isDevelopment) {
@@ -372,6 +415,9 @@ const App: React.FC<IAppProps> = (props) => {
         updateActiveData={updateActiveData}
         isShowState={isShowState}
         setIsShowState={setIsShowState}
+        courseManifest={courseManifest}
+        courseStepId={courseStepId}
+        onSelectStep={onSelectStep}
       />
       <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
         <Header
@@ -398,6 +444,10 @@ const App: React.FC<IAppProps> = (props) => {
               auditTableDisplay={getAuditTableDisplay()}
               autoRerun={getAutoRerun()}
               onPerfRunningChange={setPerfRunning}
+              courseManifest={courseManifest}
+              courseStepId={courseStepId}
+              courseLoadNote={courseLoadNote}
+              onSelectStep={onSelectStep}
             />
           </div>
 
