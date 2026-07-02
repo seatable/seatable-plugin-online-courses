@@ -155,12 +155,12 @@ const LIVE_MODIFY_HTML = `
 // here while Course 4 is built); Courses 1–3 point learners to the website, and
 // Courses 5–7 are placeholders. Descriptions come from the marketing hotspots
 // (webservice-seatable-com .../data/en/hotspots-online-courses.yaml).
-export type CourseStatus = 'active' | 'external' | 'soon';
+export type CourseAccess = 'active' | 'external' | 'soon';
 
 export interface CourseMeta {
   id: string; // also the preset _id
   name: string; // preset display name
-  status: CourseStatus;
+  access: CourseAccess;
   intro: string; // HTML description
   helpUrl?: string; // external courses only
 }
@@ -169,7 +169,7 @@ export const COURSES: CourseMeta[] = [
   {
     id: 'course-1',
     name: 'Course 1 — Getting Started',
-    status: 'external',
+    access: 'external',
     helpUrl: 'https://seatable.com/help/online-course-1/',
     intro:
       'Build your first relational database and start collecting data.<br><br>Covers bases, views, columns, web forms, and links — everything you need to model and capture information in SeaTable.',
@@ -177,7 +177,7 @@ export const COURSES: CourseMeta[] = [
   {
     id: 'course-2',
     name: 'Course 2 — Inputs and Outputs',
-    status: 'external',
+    access: 'external',
     helpUrl: 'https://seatable.com/help/online-course-2/',
     intro:
       'Bring data in and send results out.<br><br>Learn imports and exports, generating PDF documents, statistics, action buttons, and sending e-mails straight from your base.',
@@ -185,7 +185,7 @@ export const COURSES: CourseMeta[] = [
   {
     id: 'course-3',
     name: 'Course 3 — Collaboration',
-    status: 'external',
+    access: 'external',
     helpUrl: 'https://seatable.com/help/online-course-3/',
     intro:
       'Work together on your data — share, co-edit, and keep everyone in sync.<br><br>Covers sharing and permissions, groups, comments and @mentions, the activity log, common datasets, and the whiteboard.',
@@ -193,28 +193,28 @@ export const COURSES: CourseMeta[] = [
   {
     id: 'course-4',
     name: 'Course 4 — Automation & Integration',
-    status: 'active',
+    access: 'active',
     intro:
       'Automate your workflows and connect external tools.<br><br>Will cover automations, scripts, API basics, webhooks, and integrations with n8n, Zapier, and Make.',
   },
   {
     id: 'course-5',
     name: 'Course 5 — Apps & Reporting',
-    status: 'soon',
+    access: 'soon',
     intro:
       'Turn your bases into apps and polished reports for end users.<br><br>Will cover the Universal App (page types, per-page permissions, custom pages), dashboards, and the report design plugin.',
   },
   {
     id: 'course-6',
     name: 'Course 6 — Data Mastery',
-    status: 'soon',
+    access: 'soon',
     intro:
       'Model, compute, and scale your data with formulas and relationships.<br><br>Will cover formulas, data processing, big data, and table relationships.',
   },
   {
     id: 'course-7',
     name: 'Course 7 — Maintenance & Hygiene',
-    status: 'soon',
+    access: 'soon',
     intro:
       'Keep your bases clean, organized, and auditable over time.<br><br>Will cover deduplication, file management, and audit logs.',
   },
@@ -227,10 +227,10 @@ const NOTE_STYLE =
 // status banner (external → follow on the website; soon → coming soon).
 function introHtml(c: CourseMeta): string {
   let note = '';
-  if (c.status === 'external') {
+  if (c.access === 'external') {
     const shown = (c.helpUrl || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
     note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">📌 This course is <b>currently not supported by the plugin</b>, but you can follow it on <a href="${c.helpUrl}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>.</div>`;
-  } else if (c.status === 'soon') {
+  } else if (c.access === 'soon') {
     note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">🚧 <b>Coming soon.</b></div>`;
   }
   return `<h1>${c.name}</h1><p class="lead">${c.intro}</p>${note}`;
