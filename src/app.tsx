@@ -59,6 +59,9 @@ import { setCurrentStepId } from './utils/custom-utils/courseProgress';
 // lesson view vs the compact exercise banner at the bottom of the window.
 const HEIGHT_EXPANDED = { ratio: 0.95, minPx: 320 };
 const HEIGHT_REDUCED = { ratio: 0.22, minPx: 130 };
+// Minimized: just the header bar, so the learner can see as much of their table as
+// possible without closing the plugin.
+const HEIGHT_HEADER = { ratio: 0, minPx: 56 };
 
 // Resize the plugin window, mirroring ResizableWrapper: set the modal height and
 // anchor the host to the bottom of the viewport.
@@ -111,11 +114,13 @@ const App: React.FC<IAppProps> = (props) => {
   const activeStepId = activeCourseId ? stepByCourse[activeCourseId] ?? null : null;
   const activeStep = activeManifest?.steps.find((s) => s.id === activeStepId) ?? null;
 
-  // Plugin window sizing. Each page has a natural size (lesson → expanded, exercise
-  // → reduced banner); a manual header toggle overrides it (null = follow the page)
-  // so learners can shrink/grow the plugin instead of closing and reopening it.
-  const [heightOverride, setHeightOverride] = useState<boolean | null>(null);
-  const expanded = heightOverride ?? (activeStep?.type !== 'exercise');
+  // Plugin window sizing. Each page has a natural size (lesson → full height,
+  // exercise → compact banner). The header chevron MINIMIZES the plugin to just its
+  // header bar — so the learner can see their table — and restores the natural size,
+  // instead of closing and reopening the plugin.
+  const [minimized, setMinimized] = useState(false);
+  const naturalExpanded = activeStep?.type !== 'exercise';
+  const compact = minimized || !naturalExpanded;
 
   useEffect(() => {
     initPluginDTableData();
@@ -160,19 +165,20 @@ const App: React.FC<IAppProps> = (props) => {
     setCurrentStepId(courseId, stepId);
   };
 
-  // Each new page starts at its natural size (drop any manual override).
+  // Each new page starts un-minimized at its natural size.
   useEffect(() => {
-    setHeightOverride(null);
+    setMinimized(false);
   }, [activeStepId, activeCourseId]);
 
   // Apply the plugin-window height whenever the effective size changes.
   useEffect(() => {
     if (!activeStep) return;
-    setPluginHeight(expanded ? HEIGHT_EXPANDED : HEIGHT_REDUCED);
-  }, [expanded, activeStepId, activeStep]);
+    const size = minimized ? HEIGHT_HEADER : naturalExpanded ? HEIGHT_EXPANDED : HEIGHT_REDUCED;
+    setPluginHeight(size);
+  }, [minimized, naturalExpanded, activeStepId, activeStep]);
 
-  // Header expand/collapse toggle — flip the current effective size.
-  const onToggleExpanded = () => setHeightOverride(!expanded);
+  // Header chevron — minimize the plugin to its header bar, or restore it.
+  const onToggleMinimized = () => setMinimized((m) => !m);
 
   const initPluginDTableData = async () => {
     if (isDevelopment) {
@@ -473,7 +479,7 @@ const App: React.FC<IAppProps> = (props) => {
         activeCourseId={activeCourseId}
         activeStepId={activeStepId}
         onSelectStep={onSelectStep}
-        compact={!expanded}
+        compact={compact}
       />
       <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
         <Header
@@ -483,8 +489,8 @@ const App: React.FC<IAppProps> = (props) => {
           onTogglePresets={togglePresets}
           toggleSettings={toggleSettings}
           togglePlugin={onPluginToggle}
-          expanded={expanded}
-          onToggleExpanded={onToggleExpanded}
+          minimized={minimized}
+          onToggleMinimized={onToggleMinimized}
         />
         {/* main body  */}
         <div

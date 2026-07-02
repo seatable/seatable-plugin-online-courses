@@ -8,7 +8,7 @@ import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
 const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
 
 const Header: React.FC<IHeaderProps> = (props) => {
-  const { presetName, isShowPresets, onTogglePresets, togglePlugin, expanded, onToggleExpanded } =
+  const { presetName, isShowPresets, onTogglePresets, togglePlugin, minimized, onToggleMinimized } =
     props;
 
   return (
@@ -24,17 +24,17 @@ const Header: React.FC<IHeaderProps> = (props) => {
         <div className={styles.plugin_header_pluginName}>
           <p className="font-weight-bold">{presetName}</p>
         </div>
-        {onToggleExpanded && (
-          // Toggle a full-height plugin vs the compact bottom banner, so learners
-          // don't have to close and reopen it. Arrow points down when expanded
-          // (click to shrink) and up when reduced (click to grow).
+        {onToggleMinimized && (
+          // Minimize the plugin down to just this header bar so learners can see
+          // their table, then restore it — no need to close and reopen. Arrow
+          // points down when open (click to minimize) and up when minimized.
           <span
             className={styles.plugin_header_icon_btn}
-            onClick={onToggleExpanded}
-            title={expanded ? 'Reduce' : 'Expand'}>
+            onClick={onToggleMinimized}
+            title={minimized ? 'Restore' : 'Minimize'}>
             <span
               className="dtable-font dtable-icon-down"
-              style={{ border: 'none', transform: expanded ? 'none' : 'rotate(180deg)' }}></span>
+              style={{ border: 'none', transform: minimized ? 'rotate(180deg)' : 'none' }}></span>
           </span>
         )}
       </div>
