@@ -57,6 +57,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   activeStepId,
   onSelectStep,
   compact,
+  onFloat,
 }) => {
   const [presetName, setPresetName] = useState('');
   const [presetNameAlreadyExists, setPresetNameAlreadyExists] = useState(false);
@@ -73,6 +74,12 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   const handleSelectPreset = (presetId: string, st?: AppActiveState) => {
     onSelectPreset(presetId, st);
     setOpenCourseId(presetId);
+    // Clicking a course TITLE jumps to that course's first (introduction) step — a
+    // full course page — so from a compact exercise view the plugin expands again
+    // and the whole nav tree comes back. (Its step rows still navigate per step.)
+    const manifest = courses?.find((c) => c.courseId === presetId);
+    const first = manifest?.steps[0];
+    if (first && onSelectStep) onSelectStep(presetId, first.id);
   };
 
   // Keep the current step visible when the panel is short (compact/exercise view).
@@ -287,7 +294,14 @@ const PluginPresets: React.FC<IPresetsProps> = ({
       </button>
       <div className="d-flex flex-column" style={{ height: '100%', minHeight: 0 }}>
         <div className={`d-flex align-items-center py-2 pb-4 ${stylesPresets.presets_logo}`}>
-          <img src={icon} alt="Plugin Icon" className={stylesPresets.presets_icon} />
+          <img
+            src={icon}
+            alt="Plugin Icon"
+            className={stylesPresets.presets_icon}
+            onClick={onFloat}
+            title={onFloat ? 'Shrink to a movable icon' : undefined}
+            style={onFloat ? { cursor: 'pointer' } : undefined}
+          />
           <div className={stylesPresets.presets_name}>{PLUGIN_NAME}</div>
         </div>
         {/* Scrollable course list, so the current step stays reachable when the
@@ -302,6 +316,10 @@ const PluginPresets: React.FC<IPresetsProps> = ({
             const manifest = courses?.find((c) => c.courseId === preset._id);
             const steps = manifest?.steps ?? [];
             const showTree = steps.length > 0 && !!onSelectStep;
+            // The "follow the rest on the website" caption only makes sense for a
+            // course whose steps actually hand off to the website (course 4), not
+            // the fully in-plugin Welcome tour or intro-only external courses.
+            const hasWebsiteSteps = steps.some((s) => s.continuesOn === 'website');
             const expanded = compact ? true : openCourseId === preset._id;
             const isActiveCourse = preset._id === activeCourseId;
             return (
@@ -345,6 +363,11 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                 </div>
                 {showTree && expanded && (
                   <div style={treeStyles.stepsWrap}>
+                    {hasWebsiteSteps && (
+                      <div style={treeStyles.stepsCaption}>
+                        Plugin checkpoints — follow the rest of the course on the website
+                      </div>
+                    )}
                     {steps.map((s) => {
                       const active = isActiveCourse && s.id === activeStepId;
                       return (
@@ -409,6 +432,13 @@ const treeStyles: Record<string, React.CSSProperties> = {
   },
   chevronHidden: { cursor: 'default', color: 'transparent' },
   stepsWrap: { display: 'flex', flexDirection: 'column', margin: '2px 8px 8px 40px' },
+  stepsCaption: {
+    color: '#8a94a6',
+    fontSize: 11,
+    lineHeight: 1.4,
+    fontStyle: 'italic',
+    padding: '0 10px 6px',
+  },
   stepRow: {
     display: 'flex',
     alignItems: 'center',

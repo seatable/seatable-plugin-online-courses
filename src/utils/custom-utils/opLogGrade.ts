@@ -17,8 +17,17 @@
  * base, exactly like the old authored-write path.
  */
 
-import { AnyGradeRule, AutomationSetRule, grade, GradeRule, Outcome } from './grader';
+import {
+  AnyGradeRule,
+  AutomationRuleRule,
+  AutomationSetRule,
+  grade,
+  GradeRule,
+  Outcome,
+  PluginUiRule,
+} from './grader';
 import { cellLabel, getColumn, getTableByName } from './sdkRead';
+import { gradeAutomationRule } from './automationGrade';
 
 // The op_user value SeaTable stamps on automation-rule writes.
 const AUTOMATION_OP_USER = 'Automation Rule';
@@ -125,14 +134,43 @@ export async function gradeAutomationSet(rule: AutomationSetRule): Promise<Outco
   };
 }
 
+// "Dirty" UI-state check for the Welcome tour: is the plugin shrunk to the floating
+// toolbar AND parked in the lower-right quadrant of the screen? Reads the plugin
+// window DOM directly — setPluginFloating (app.tsx) sets the host to
+// pointer-events:none while floating, and the toolbar is the host's first child. No
+// base data, so it works in any base the tour is opened from.
+function gradePluginUi(rule: PluginUiRule): Outcome {
+  const host = document.querySelector('#plugin-wrapper') as HTMLElement | null;
+  const modal = host?.firstElementChild as HTMLElement | null;
+  if (!host || !modal) return { kind: 'fail', reason: 'could not read the plugin window' };
+  const floating = host.style.pointerEvents === 'none';
+  if (!floating) {
+    return { kind: 'fail', reason: 'shrink the plugin to the toolbar first (the shrink icon, top-right)' };
+  }
+  if (rule.check === 'toolbar-lower-right') {
+    const r = modal.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    if (cx > window.innerWidth / 2 && cy > window.innerHeight / 2) return { kind: 'pass' };
+    return { kind: 'fail', reason: 'drag the toolbar into the lower-right quarter of the screen' };
+  }
+  return { kind: 'fail', reason: 'unknown plugin-ui check' };
+}
+
 /**
- * Grade any manifest rule. Cell-match rules stay synchronous (SDK-only); the
- * automation-set rule is async (activity-log REST). One entry point so the runner
- * doesn't branch on rule type.
+ * Grade any manifest rule. Cell-match and plugin-UI rules stay synchronous; the
+ * automation rules are async (activity-log / config REST). One entry point so the
+ * runner doesn't branch on rule type.
  */
 export async function gradeStep(rule: AnyGradeRule): Promise<Outcome> {
+  if ((rule as PluginUiRule).kind === 'plugin-ui') {
+    return gradePluginUi(rule as PluginUiRule);
+  }
   if ((rule as AutomationSetRule).kind === 'automation-set') {
     return gradeAutomationSet(rule as AutomationSetRule);
+  }
+  if ((rule as AutomationRuleRule).kind === 'automation-rule') {
+    return gradeAutomationRule(rule as AutomationRuleRule);
   }
   return grade(rule as GradeRule);
 }

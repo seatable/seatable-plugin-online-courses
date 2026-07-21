@@ -46,6 +46,9 @@ export interface IPluginDataStore extends Pick<
   // plugin serves all seven courses, so it's a per-course map. Content lives in
   // Hugo (not here) — the datastore only remembers where to resume.
   courseProgress?: { [courseId: string]: string };
+  // Last position (top-left, px) of the floating "movable icon" puck, so it
+  // re-pops where the learner left it next time. Defaults to the bottom-left.
+  floatIconPos?: { x: number; y: number };
 }
 
 export interface AvailableLocales {

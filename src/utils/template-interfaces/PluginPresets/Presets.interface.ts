@@ -17,6 +17,9 @@ export interface IPresetsProps {
   // Compact mode (reduced/exercise view): show only the active course, scrollable,
   // auto-scrolled to the current step.
   compact?: boolean;
+  // Shrink the plugin to the floating icon (same action as the header button);
+  // wired to the plugin logo at the top of the panel.
+  onFloat?: () => void;
   updatePresets: (
     currentIdx: number,
     presets: PresetsArray,

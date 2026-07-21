@@ -22,6 +22,8 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({
   courseManifest,
   courseStepId,
   onSelectStep,
+  onFloatControls,
+  onContentHeight,
 }) => {
   const initialized = useRef(false);
 
@@ -59,6 +61,8 @@ const CustomPlugin: React.FC<IPluginTRProps> = ({
       manifest={courseManifest ?? null}
       stepId={courseStepId ?? null}
       onSelectStep={onSelectStep ?? (() => {})}
+      onFloatControls={onFloatControls}
+      onContentHeight={onContentHeight}
     />
   );
 };

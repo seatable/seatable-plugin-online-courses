@@ -16,6 +16,7 @@
  */
 
 import { AnyGradeRule } from './grader';
+import { AutomationStage } from './automationGrade';
 import { getCurrentStepId } from './courseProgress';
 
 // Base URL of the Hugo-built course content. One sub-directory per courseId,
@@ -40,15 +41,53 @@ export interface CourseStep {
   /** Custom message shown when the exercise passes (else a generic one). */
   successMessage?: string;
   /**
+   * Website-unfolding handoff: where the course continues AFTER this plugin step.
+   * The website is the course spine; the plugin holds only the interactive
+   * checkpoints, entered by the authored step number ("open the plugin and select
+   * Step 3"). So the manifest is intentionally GAPPED and forward navigation is
+   * driven by this flag, NOT by manifest adjacency:
+   *   'website' → the next authored step is on the website; show a "continue on the
+   *               website" closer instead of an in-plugin Next (even if a later
+   *               checkpoint still exists in the manifest).
+   *   'plugin'  → the next authored step is itself a plugin checkpoint (adjacent
+   *               checkpoints, e.g. Step 6 → Step 7); chain to it in-plugin.
+   * Left unset on the plugin's own front-matter (Introduction) → plain structural
+   * nav (Continue to the next manifest step, or nothing if it's the last).
+   */
+  continuesOn?: 'website' | 'plugin';
+  /** Optional override for the handoff sentence (else a generic one). */
+  handoffNote?: string;
+  /**
+   * Short single-sentence instruction for the floating-icon caption. Kept concise
+   * on purpose — the full-size plugin shows the richer `html`; this is what stays
+   * readable under the shrunk icon. Falls back to the stripped `html` if absent.
+   */
+  instruction?: string;
+  /**
    * Optional demo hook — swaps the exercise's Verify flow for a scripted plugin
    * action. 'live-modify' runs a sequence of learner edits so you can watch the grid
    * update and inspect how the edits are attributed in row history. 'load-example'
    * injects the canonical example rows (`example` below) so the learner is never
-   * blocked when the AI extraction misfires.
+   * blocked when the AI extraction misfires. 'automation-guided' runs the Step-2
+   * "build your first automation" flow: a choice between a guided, stage-by-stage
+   * build (each verified before the next, from `automationStages`) and a one-shot
+   * "just check it" against the step's `grade` (an 'automation-rule' rule).
    */
-  demo?: 'live-modify' | 'load-example';
+  demo?: 'live-modify' | 'load-example' | 'automation-guided';
   /** Rows injected by the 'load-example' action (column NAME → display value). */
   example?: { table_name: string; rows: Record<string, any>[] };
+  /**
+   * Guided sub-stages for a 'automation-guided' step. Each is checked (in order)
+   * against a slice of the step's `grade` rule via the given `stage`; the learner
+   * only advances once a stage passes. The final "all" check is the same `grade`.
+   */
+  automationStages?: {
+    title: string;
+    html: string;
+    /** Short single-sentence caption for the floating icon (falls back to `html`). */
+    instruction?: string;
+    stage: AutomationStage;
+  }[];
 }
 
 export interface CourseManifest {
@@ -102,28 +141,9 @@ export function stepIndex(manifest: CourseManifest, stepId: string): number {
 // once CONTENT_BASE points at a real, CORS-enabled host.
 export const USE_REMOTE_CONTENT = false;
 
-// Single-step deep-link. ⛔ DEAD in production — SeaTable's dtable-web strips
-// unknown URL params before the plugin script evaluates (see
-// PLANNED-CHANGES-2026-07-02.md §1). Kept ONLY as a dev-only convenience; the
-// left-panel navigation tree is the real navigation surface. (Course selection is
-// the active preset, not a URL param.)
-const QID_PARAM = 'qid';
-const QID_PATTERN = /^[a-zA-Z0-9]{4}$/;
-
-function getQidFromUrl(): string | null {
-  try {
-    const raw = new URLSearchParams(window.location.search).get(QID_PARAM);
-    return raw && QID_PATTERN.test(raw) ? raw : null;
-  } catch {
-    return null;
-  }
-}
-
 // Initial step: a valid `qid` deep-link wins (dev only); else resume saved
 // progress; else the first step.
 export function resolveInitialStepId(manifest: CourseManifest, courseId: string): string {
-  const qid = getQidFromUrl();
-  if (qid && findStep(manifest, qid)) return qid;
   const saved = getCurrentStepId(courseId);
   if (saved && findStep(manifest, saved)) return saved;
   return manifest.steps[0].id;
@@ -133,18 +153,6 @@ export function resolveInitialStepId(manifest: CourseManifest, courseId: string)
 // Reproduces the original Course-3 demo. The grade rule is row_id-based (matching
 // the gateway Update-Row shape), so we resolve the demo row's _id from the live
 // base — letting the row_id grader work against the current test base with no host.
-
-const LESSON_HTML = `
-  <h1>Checking a delivery</h1>
-  <p class="lead">Automate the busywork and connect your tools — let the base handle the
-  repetitive steps so you only deal with the exceptions.</p>
-  <p>You work in <b>receiving</b>. When a delivery arrives, its <b>delivery note</b> is scanned
-  and the goods land in the base as <b>Line items</b> — one row per product, with the quantity
-  ordered and the quantity received. Automations do the legwork: they read the note, create the
-  lines, and flag anything that needs a human eye by ticking <b>To check</b>.</p>
-  <p>Your job is to handle those exceptions — confirm what actually arrived, mark short or
-  damaged deliveries, and let the automations carry the rest through. Let's start with a line
-  that's been flagged for review.</p>`;
 
 const EXERCISE_HTML = `
   A quality check flagged this delivery line (<b>To check</b> is ticked): the goods arrived
@@ -166,6 +174,52 @@ const LOAD_EXAMPLE_HTML = `
   you're never blocked: the plugin can inject the expected <b>Line items</b> for you.
   Click <b>Load the example</b> to add the three delivery lines, then continue with the
   exercise.`;
+
+// Course-4 Step 2 — "Import and link the lines". The learner builds their first
+// automation on Line items; the plugin either walks them through it stage by stage
+// or checks the finished rule. Grading reads the automation CONFIG over REST, so
+// it works BEFORE any data has flowed through the rule (see automationGrade.ts).
+const LINK_AUTOMATION_HTML = `
+  <b>Build your first automation.</b> On the <b>Line items</b> table, create an automation that links
+  every new line to its <b>Product</b> and its <b>Document</b> by matching references — no links entered by
+  hand. Choose <b>Guide me</b> to build it one stage at a time (each checked before the next), or
+  <b>Just check it</b> if you’ve already built it.`;
+
+const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
+  {
+    title: 'Automation created',
+    stage: 'created',
+    instruction: 'Add a new rule in the Automations editor and give it a name.',
+    html: `<b>Create the automation.</b> Open the <b>Automations editor</b> and add a new rule and 
+      give it a name, then click <b>Check</b>.`,
+  },
+  {
+    title: 'Trigger + guard',
+    stage: 'trigger',
+    instruction:
+      'Trigger on “When a row is added”, with Product reference and Document reference both not empty.',
+    html: `<b>Set the trigger — and guard it.</b> Choose <b>“When a row is added”</b>, then add two
+      <b>conditions</b> so it only runs on complete lines: <b>Product reference</b> is <b>not empty</b>
+      <b>and</b> <b>Document reference</b> is <b>not empty</b>.`,
+  },
+  {
+    title: 'Link the product',
+    stage: 'action:0',
+    instruction: 'Add an “Add links” action matching Product reference to a product’s Reference.',
+    html: `<b>Link the product.</b> Add an <b>Add links</b> action that fills the
+      <b>Product</b> column: the line’s <b>Product reference</b> should equal a product’s
+      <b>Reference</b>.`,
+  },
+  {
+    title: 'Link the document',
+    stage: 'action:1',
+    instruction:
+      'Add a second “Add links” action matching Document reference to a document’s Identifier.',
+    html: `<b>Link the document.</b> Add a second <b>Add links</b> action that fills the
+      <b>Document</b> column: the line’s <b>Document reference</b> should equal a document’s
+      <b>Identifier</b>. That completes your automation.`,
+  },
+];
 
 const AUTOMATION_HTML = `
   <b>Automation review.</b> Build an <b>automation rule</b> on <b>Documents</b> that fills the
@@ -220,6 +274,13 @@ export interface CourseMeta {
 }
 
 export const COURSES: CourseMeta[] = [
+  {
+    id: 'welcome',
+    name: 'Welcome — using the plugin',
+    access: 'active',
+    intro:
+      'A quick tour of this course companion — how a course works, the buttons, and the movable toolbar.',
+  },
   {
     id: 'course-1',
     name: 'Course 1 — Getting Started',
@@ -290,16 +351,138 @@ function introHtml(c: CourseMeta): string {
   return `<h1>${c.name}</h1><p class="lead">${c.intro}</p>${note}`;
 }
 
-// Course 4 (active): the lesson + the status exercises (fix-the-stale-status +
-// live-modify demo) + load-example + the op-log automation exercise. The status
-// exercises act on a fixed Line items row (LINE_ITEM_ROW_ID) in the imported base.
+// Welcome (active): a short, fully in-plugin tour so first-time learners get
+// familiar with the companion before starting a real course. Pure lesson pages —
+// no grading — and it references the real buttons (inline dtable-font icons render
+// because the font is loaded globally), so the learner recognises them on screen.
+function welcomeContentSteps(): CourseStep[] {
+  return [
+    {
+      id: 'w1',
+      type: 'course',
+      title: 'Step 1 · Welcome',
+      html: `
+        <h1>Welcome 👋</h1>
+        <p class="lead">This little panel is your course companion. It walks you through
+        hands-on exercises and checks your work right here in your own base.</p>
+        <p>Take a minute to get familiar with it — then you'll be ready for any course.
+        Use <b>Next</b> at the top to move through this tour.</p>`,
+    },
+    {
+      id: 'w2',
+      type: 'course',
+      title: 'Step 2 · How a course works',
+      html: `
+        <h1>How a course works</h1>
+        <p>You follow each course mainly on the <b>website</b>. At certain points it asks you to
+        <b>open this plugin and pick a step</b> — that's where you do something in your base and
+        the plugin checks it for you.</p>
+        <p>Use the <b>list on the left</b> to jump between the plugin's steps. Steps are numbered
+        to match the website (Step&nbsp;2, Step&nbsp;6…), so a gap in the numbers just means those
+        steps happen on the site.</p>`,
+    },
+    {
+      id: 'w3',
+      type: 'course',
+      title: 'Step 3 · The buttons',
+      html: `
+        <h1>The buttons</h1>
+        <p>The top bar carries everything you need for the current step:</p>
+        <ul style="line-height:1.7;">
+          <li><i class="dtable-font dtable-icon-left"></i> <b>Back</b> — return to the previous step.</li>
+          <li><i class="dtable-font dtable-icon-help-center"></i> <b>Hint</b> — reveal a hint when you're stuck.</li>
+          <li><i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> (or <i class="dtable-font dtable-icon-right"></i> <b>Next</b>) — check your work, then move on once it passes.</li>
+        </ul>
+        <p>On the far right are the window controls: <i class="dtable-font dtable-icon-full-screen"></i>
+        <b>shrink to a toolbar</b> and <i class="dtable-font dtable-icon-x"></i> <b>close</b>.</p>`,
+    },
+    {
+      id: 'w4',
+      type: 'course',
+      title: 'Step 4 · The movable toolbar',
+      html: `
+        <h1>The movable toolbar</h1>
+        <p>Working in your base and the panel is in the way? Click <b>shrink</b>
+        (<i class="dtable-font dtable-icon-full-screen"></i>, top-right) to collapse it into a small
+        <b>toolbar</b> you can drag anywhere.</p>
+        <p>While it's a toolbar the whole base stays clickable — nothing is blocked — and you keep the
+        essentials:</p>
+        <ul style="line-height:1.7;">
+          <li><i class="dtable-font dtable-icon-drag"></i> <b>Drag</b> it wherever it's out of your way.</li>
+          <li><i class="dtable-font dtable-icon-info"></i> <b>Info</b> — show the instruction (and a hint) any time.</li>
+          <li><i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> — check your work without expanding.</li>
+          <li><i class="dtable-font dtable-icon-full-screen"></i> <b>Expand</b> — bring the full panel back.</li>
+        </ul>
+        <p>On the next step you'll try it yourself.</p>`,
+    },
+    {
+      id: 'w5',
+      type: 'exercise',
+      title: 'Step 5 · Try the toolbar',
+      instruction: 'Shrink to the toolbar and drag it into the lower-right corner, then Verify.',
+      html: `
+        <b>Your turn.</b> Click <b>shrink</b> (<i class="dtable-font dtable-icon-full-screen"></i>,
+        top-right) to collapse this panel into the toolbar, drag it into the <b>lower-right quarter</b>
+        of your screen, then press <i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> on
+        the toolbar.`,
+      hint: 'Shrink with the ⤢ icon at the top-right; drag using the ⠿ handle on the toolbar; then click the ✓ on the toolbar. “Lower-right” means the bottom-right quarter of your whole screen.',
+      grade: { kind: 'plugin-ui', check: 'toolbar-lower-right' },
+      successMessage:
+        "Perfect — you've got the toolbar down 🎉 That's the tour! Expand the plugin and pick a course from the list to begin.",
+    },
+  ];
+}
+
+// Course 4 (active): the plugin CHECKPOINTS only — the course narrative unfolds on
+// the website, which sends the learner into the plugin by authored step number. So
+// the manifest is intentionally gapped (labelled "Step N") and each checkpoint hands
+// back to the website via `continuesOn`. The status exercises act on a fixed Line
+// items row (LINE_ITEM_ROW_ID) in the imported base.
 function course4ContentSteps(): CourseStep[] {
   return [
-    { id: 'le01', type: 'course', title: 'Checking a delivery', html: LESSON_HTML },
+    {
+      id: 'am01',
+      type: 'exercise',
+      title: 'Step 2 · Build the linking automation',
+      continuesOn: 'website',
+      html: LINK_AUTOMATION_HTML,
+      instruction:
+        'Build an automation on Line items that links each new line to its product and document.',
+      demo: 'automation-guided',
+      automationStages: LINK_AUTOMATION_STAGES,
+      hint: 'On Line items: trigger “a new row is added”, two conditions (Product reference & Document reference not empty), then two Add links actions — one to Products (Reference), one to Documents (Identifier).',
+      // Structural (config) grade — read over REST, order-independent on the two
+      // link actions so a "just check it" learner passes whatever order they built.
+      grade: {
+        kind: 'automation-rule',
+        trigger_table: 'Line items',
+        trigger_event: 'rows_added',
+        conditions: [
+          { column: 'Product reference', predicate: 'is_not_empty' },
+          { column: 'Document reference', predicate: 'is_not_empty' },
+        ],
+        conjunction: 'And',
+        link_actions: [
+          {
+            source_column: 'Product reference',
+            target_table: 'Products',
+            target_column: 'Reference',
+          },
+          {
+            source_column: 'Document reference',
+            target_table: 'Documents',
+            target_column: 'Identifier',
+          },
+        ],
+      },
+      successMessage:
+        'Your linking automation is complete — every new line will now find its product and its document on its own.',
+    },
     {
       id: 'ex01',
       type: 'exercise',
       title: 'Fix the stale status',
+      continuesOn: 'website',
       html: EXERCISE_HTML,
       hint: 'In the Line items table, set the flagged line’s Status to Damaged and untick its To check box.',
       grade: {
@@ -312,6 +495,7 @@ function course4ContentSteps(): CourseStep[] {
       id: 'lm01',
       type: 'exercise',
       title: 'Live modify example',
+      continuesOn: 'website',
       html: LIVE_MODIFY_HTML,
       demo: 'live-modify',
     },
@@ -319,6 +503,7 @@ function course4ContentSteps(): CourseStep[] {
       id: 'le02',
       type: 'exercise',
       title: 'Load the example',
+      continuesOn: 'website',
       html: LOAD_EXAMPLE_HTML,
       demo: 'load-example',
       example: { table_name: 'Line items', rows: LINE_ITEMS_EXAMPLE },
@@ -327,6 +512,8 @@ function course4ContentSteps(): CourseStep[] {
       id: 'au01',
       type: 'exercise',
       title: 'Automation review',
+      continuesOn: 'website',
+      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
       html: AUTOMATION_HTML,
       hint: 'Add an automation on Documents: when Review needed becomes true, set the Reviewer column to a colleague. Trigger it on at least one document, then Verify.',
       // Open-ended (method) grade: pass only if an AUTOMATION set Reviewer on a
@@ -341,48 +528,18 @@ function course4ContentSteps(): CourseStep[] {
   ];
 }
 
-// Course 3: placeholder pages, purely for the demo look of the nav tree (the real
-// collaboration content moved to Course 4).
-function course3DummySteps(): CourseStep[] {
-  const placeholder = (title: string, lead: string): CourseStep['html'] =>
-    `<h1>${title}</h1><p class="lead">${lead}</p><p><em>Demo content — this page is a placeholder to show how a course with several pages looks in the plugin.</em></p>`;
-  return [
-    {
-      id: 'd1',
-      type: 'course',
-      title: 'Sharing & permissions',
-      html: placeholder(
-        'Sharing & permissions',
-        'Share a base or a view, and control what collaborators can see and edit.'
-      ),
-    },
-    {
-      id: 'd2',
-      type: 'course',
-      title: 'Comments & @mentions',
-      html: placeholder(
-        'Comments & @mentions',
-        'Discuss rows in context and notify teammates with @mentions.'
-      ),
-    },
-    {
-      id: 'd3',
-      type: 'course',
-      title: 'Activity log',
-      html: placeholder('Activity log', 'See who changed what, and when.'),
-    },
-  ];
-}
-
 // Build every demo course manifest: an Introduction page, plus the active/dummy
 // pages for Courses 4 and 3.
 export function buildAllFallbackManifests(): CourseManifest[] {
   return COURSES.map((c) => {
+    // The Welcome tour is fully in-plugin — its own pages, no generic intro.
+    if (c.id === 'welcome') {
+      return { courseId: c.id, title: c.name, steps: welcomeContentSteps() };
+    }
     const steps: CourseStep[] = [
       { id: 'intro', type: 'course', title: 'Introduction', html: introHtml(c) },
     ];
     if (c.id === 'course-4') steps.push(...course4ContentSteps());
-    else if (c.id === 'course-3') steps.push(...course3DummySteps());
     return { courseId: c.id, title: c.name, steps };
   });
 }

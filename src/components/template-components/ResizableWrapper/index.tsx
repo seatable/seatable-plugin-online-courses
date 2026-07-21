@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import styles from '../../../styles/template-styles/Plugin.module.scss';
 import { IResizableWrapper } from '../../../utils/template-interfaces/ResizableWrapper.interface';
 
-const ResizableWrapper: React.FC<IResizableWrapper> = ({ children }) => {
+const ResizableWrapper: React.FC<IResizableWrapper> = ({ children, floating = false }) => {
   const [allowTextSelection, setAllowTextSelection] = useState<boolean>(true);
   const modalRef = useRef<null | HTMLDivElement>(null);
   const modalTop = useRef<null | HTMLDivElement>(null);
@@ -63,8 +63,13 @@ const ResizableWrapper: React.FC<IResizableWrapper> = ({ children }) => {
       ref={modalRef}
       className={styles.plugin_wrapper}
       style={{ userSelect: allowTextSelection ? 'auto' : 'none' }}>
-      {/* draggable  */}
-      <div ref={modalTop} className={styles.plugin_draggable}>
+      {/* draggable resize handle — hidden (NOT unmounted) while floating: the puck
+          moves rather than resizes, but keeping the node mounted preserves the
+          mousedown listener (attached once), so resize still works after restoring. */}
+      <div
+        ref={modalTop}
+        className={styles.plugin_draggable}
+        style={floating ? { display: 'none' } : undefined}>
         <span></span>
         <span></span>
       </div>

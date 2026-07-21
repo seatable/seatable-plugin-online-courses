@@ -54,8 +54,54 @@ export interface AutomationSetRule {
   condition?: { column: string; equals: any };
 }
 
+/**
+ * "Automation-structure" rule: pass if an automation rule with a given SHAPE
+ * exists in the base — a `rows_added` trigger on `trigger_table`, optional
+ * not-empty guard conditions, and one *Add links* action per `link_actions`
+ * entry. Unlike AutomationSetRule (which proves an automation RAN, from the
+ * op-log), this reads the automation CONFIG via the account REST API and grades
+ * how it was BUILT — used by Course 4 Step 2 to check the learner's first
+ * automation before any data has flowed through it. See automationGrade.ts.
+ *
+ * Column/table NAMES are resolved to the live base's ids/keys at grade time, so
+ * the rule stays declarative in the manifest. Link actions are matched by their
+ * CONFIG (source column → target table/column), never by position, so a learner
+ * who added the two actions in either order still passes.
+ */
+export interface AutomationRuleRule {
+  kind: 'automation-rule';
+  /** Table the `rows_added` trigger must fire on, e.g. 'Line items'. */
+  trigger_table: string;
+  /** Currently only the new-row trigger is checked. */
+  trigger_event?: 'rows_added';
+  /** Guard conditions on the trigger (all resolved by column NAME). */
+  conditions?: { column: string; predicate: 'is_not_empty' | 'is_empty' }[];
+  /** How the guard conditions combine. Default 'And'. */
+  conjunction?: 'And' | 'Or';
+  /** One expected *Add links* action per entry. */
+  link_actions?: {
+    /** Column in `trigger_table` whose value is matched, e.g. 'Product reference'. */
+    source_column: string;
+    /** Table searched for a match, e.g. 'Products'. */
+    target_table: string;
+    /** Column in `target_table` compared against, e.g. 'Reference'. */
+    target_column: string;
+  }[];
+}
+
+/**
+ * "Dirty" plugin-UI-state check, used ONLY by the Welcome tour. It grades the state
+ * of the PLUGIN itself (is it shrunk to the toolbar, and where is the toolbar?) with
+ * no base data involved — so it works from any base the tour is opened in. Graded by
+ * reading the plugin window's own DOM; see gradePluginUi in opLogGrade.ts.
+ */
+export interface PluginUiRule {
+  kind: 'plugin-ui';
+  check: 'toolbar-lower-right';
+}
+
 /** Any grade rule a manifest step can carry. */
-export type AnyGradeRule = GradeRule | AutomationSetRule;
+export type AnyGradeRule = GradeRule | AutomationSetRule | AutomationRuleRule | PluginUiRule;
 
 type RowResult =
   | { ok: true }
