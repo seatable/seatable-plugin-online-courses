@@ -46,6 +46,11 @@ export interface IPluginDataStore extends Pick<
   // plugin serves all seven courses, so it's a per-course map. Content lives in
   // Hugo (not here) — the datastore only remembers where to resume.
   courseProgress?: { [courseId: string]: string };
+  // Per-course marks for actions that must not be offered twice by accident —
+  // today only Step 4's rewind, which would delete the delivery the learner has
+  // just had the AI read back in. Session state would forget it the moment they
+  // paged to another step. See courseProgress.ts.
+  courseFlags?: { [courseId: string]: { [key: string]: boolean } };
   // Last position (top-left, px) of the floating "movable icon" puck, so it
   // re-pops where the learner left it next time. Defaults to the bottom-left.
   floatIconPos?: { x: number; y: number };

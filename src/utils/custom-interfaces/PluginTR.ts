@@ -20,6 +20,9 @@ export interface IPluginTRProps {
   // Reports the current step's instruction + actions (back / verify / advance), so
   // App's floating toolbar can drive the step without re-expanding the plugin.
   onFloatControls?: (controls: FloatControls) => void;
+  // Lets the runner ASK to be shrunk to the floating toolbar, for a step whose very
+  // first instruction points at a control the expanded panel is sitting on top of.
+  onRequestFloat?: () => void;
   // Reports the exercise banner's natural height so App can size the plugin to fit.
   onContentHeight?: (px: number) => void;
 }

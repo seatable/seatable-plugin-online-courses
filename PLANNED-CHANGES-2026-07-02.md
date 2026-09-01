@@ -13,14 +13,17 @@ in the manifest (`courseContent.ts`); `grader.ts` scores DATA (cells), `opLogGra
 ## Done (for context)
 
 - **Step 2 — automation structure** (`am01`, `automation-rule` grade) ✅.
+- **Step 2 — "Watch it work" link corroboration** (`CourseStep.watch` + `watchAutomation.ts`) ✅
+  (2026-08-05). Once the rule passes its config grade, the plugin writes the delivery note's
+  three lines into `Line items` (refs `8004400007203`/`9300605048454`/`0850210008934`, qty
+  24/60/36, `Document reference` = `INT-001`) and polls the rows it just created until the
+  learner's own rule has filled `Product` **and** `Document`. Solves the corroboration point
+  below without a generic grader rule: it tracks the created row `_id`s by diffing the table
+  around the append, so it can never "confirm" links on pre-existing rows.
 - **Step 4 — Reviewer assigned by automation when `Review needed`** (`au01`, `automation-set`) ✅.
 
 ## Outstanding grade points
 
-- **Step 2 (optional corroboration)** — after the import runs, each imported `Line items`
-  row has its `Product` **and** `Document` links filled (the data effect of the automation).
-  A `cells`-style rule can't assert "link non-empty" per-row generically yet — needs a small
-  grader addition or a fixed sample row.
 - **Step 3 — Receive & update stock** → `Products.Stock` increased by the received qty on
   validated lines. Status-aware: `As expected`→`Qty`, `Missing`/`Damaged`→0, else
   `Received qty`. (Script-driven; grade the resulting `Stock` value.)
@@ -28,7 +31,7 @@ in the manifest (`courseContent.ts`); `grader.ts` scores DATA (cells), `opLogGra
   product). Grade the RESULT, never the AI's success — the `le02` "Load the example" fallback
   covers misfires.
   ⚠️ **Caveat (course-side):** the Step-5 AI script writes `Document reference = 'DN'+delivery`,
-  which differs from the `Documents.Identifier` the Step-2 link compares against → AI-created
+  which differs from the `Documents.Delivery reference` the Step-2 link compares against → AI-created
   lines may NOT auto-fill their `Document` link under that rule. A canonical-key fix is pending
   course-side; don't build Step-5 grading on the assumption the link always fills.
 - **Step 8 — API inbound** → an inbound `Line items` row is appended via `append_rows`.

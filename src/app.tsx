@@ -628,6 +628,7 @@ const App: React.FC<IAppProps> = (props) => {
                 courseStepId={activeStepId}
                 onSelectStep={(stepId) => onSelectStep(activeCourseId, stepId)}
                 onFloatControls={reportFloatControls}
+                onRequestFloat={onFloat}
                 onContentHeight={reportContentHeight}
               />
             </div>
@@ -710,12 +711,19 @@ const FloatToolbar: React.FC<{
     const startY = e.clientY;
     const originX = pos.x;
     const originY = pos.y;
-    const onMouseMove = (ev: MouseEvent) => setPluginFloating(originX + ev.clientX - startX, originY + ev.clientY - startY);
+    const onMouseMove = (ev: MouseEvent) =>
+      setPluginFloating(originX + ev.clientX - startX, originY + ev.clientY - startY);
     const onMouseUp = (ev: MouseEvent) => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      const nx = Math.max(0, Math.min(originX + (ev.clientX - startX), window.innerWidth - FLOAT_W));
-      const ny = Math.max(0, Math.min(originY + (ev.clientY - startY), window.innerHeight - FLOAT_H));
+      const nx = Math.max(
+        0,
+        Math.min(originX + (ev.clientX - startX), window.innerWidth - FLOAT_W)
+      );
+      const ny = Math.max(
+        0,
+        Math.min(originY + (ev.clientY - startY), window.innerHeight - FLOAT_H)
+      );
       onMove({ x: nx, y: ny });
     };
     document.addEventListener('mousemove', onMouseMove);
@@ -740,7 +748,12 @@ const FloatToolbar: React.FC<{
     <div style={{ position: 'relative', width: FLOAT_W, height: FLOAT_H }}>
       <div style={tb.bar}>
         <img src={pluginIcon} alt="" draggable={false} style={tb.logo} />
-        <i className="dtable-font dtable-icon-drag" title="Drag to move it" onMouseDown={startDrag} style={tb.drag} />
+        <i
+          className="dtable-font dtable-icon-drag"
+          title="Drag to move it"
+          onMouseDown={startDrag}
+          style={tb.drag}
+        />
         <span style={tb.divider} />
         <button
           type="button"
@@ -832,7 +845,9 @@ const FloatToolbar: React.FC<{
             </div>
           )}
           {controls.feedback && (
-            <div style={{ ...tb.fb, ...fbColor(controls.feedback.kind) }}>{controls.feedback.text}</div>
+            <div style={{ ...tb.fb, ...fbColor(controls.feedback.kind) }}>
+              {controls.feedback.text}
+            </div>
           )}
         </div>
       )}
@@ -862,7 +877,13 @@ const tb: Record<string, React.CSSProperties> = {
   },
   logo: { width: 28, height: 28, borderRadius: 8, display: 'block', flexShrink: 0 },
   drag: { color: 'rgba(255,255,255,0.85)', fontSize: 16, cursor: 'grab', padding: '0 3px' },
-  divider: { width: 1, height: 22, background: 'rgba(255,255,255,0.3)', margin: '0 3px', flexShrink: 0 },
+  divider: {
+    width: 1,
+    height: 22,
+    background: 'rgba(255,255,255,0.3)',
+    margin: '0 3px',
+    flexShrink: 0,
+  },
   btn: {
     display: 'flex',
     alignItems: 'center',

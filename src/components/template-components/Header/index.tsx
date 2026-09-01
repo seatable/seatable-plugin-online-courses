@@ -8,15 +8,8 @@ import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
 const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
 
 const Header: React.FC<IHeaderProps> = (props) => {
-  const {
-    presetName,
-    isShowPresets,
-    onTogglePresets,
-    togglePlugin,
-    stepTitle,
-    controls,
-    onFloat,
-  } = props;
+  const { presetName, isShowPresets, onTogglePresets, togglePlugin, stepTitle, controls, onFloat } =
+    props;
 
   // The step's actions (back / verify / advance) live here so the docked plugin
   // matches the floating toolbar. The "Guide me / Just check it" choice reuses the
@@ -36,7 +29,9 @@ const Header: React.FC<IHeaderProps> = (props) => {
 
   return (
     <div className={styles.plugin_header}>
-      <div className="d-flex align-items-center justify-content-start" style={{ minWidth: 0, flex: 1 }}>
+      <div
+        className="d-flex align-items-center justify-content-start"
+        style={{ minWidth: 0, flex: 1 }}>
         <div className={`align-items-center ${isShowPresets ? 'd-none' : 'd-flex'} `}>
           <button
             className={stylesPPresets.presets_uncollapse_btn2_settings}
@@ -87,7 +82,9 @@ const Header: React.FC<IHeaderProps> = (props) => {
                   }}>
                   <i className={`dtable-font ${primaryGlyph}`} style={hs.glyph} />
                   <span>{primary.busy ? 'Checking…' : primary.title}</span>
-                  {primary.menu && <i className="dtable-font dtable-icon-drop-down" style={hs.caret} />}
+                  {primary.menu && (
+                    <i className="dtable-font dtable-icon-drop-down" style={hs.caret} />
+                  )}
                 </button>
                 {menuOpen && primary.menu && (
                   <div style={hs.menu}>

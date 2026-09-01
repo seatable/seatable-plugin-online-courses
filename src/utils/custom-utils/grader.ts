@@ -18,6 +18,7 @@
  */
 
 import { cellLabel, getColumn, getTableByName } from './sdkRead';
+import { linkStatus } from './watchAutomation';
 
 export type Outcome =
   | { kind: 'idle' }
@@ -90,6 +91,54 @@ export interface AutomationRuleRule {
 }
 
 /**
+ * "Rows exist" rule: pass when at least `min_count` rows of `table_name` carry
+ * `where.equals` in `where.column`. Used by Course 4 Step 4, where the rows being
+ * graded did not exist when the manifest was written — the learner (or rather the
+ * AI chain they built) creates them — so there is no row id to assert against.
+ *
+ * Deliberately counts and nothing more. The lines it looks for are the output of an
+ * AI extraction, and grading their CONTENT would make the model's success a
+ * condition of progress; the plugin's safety net writes the same rows when the
+ * extraction misfires, and both paths must pass equally.
+ */
+export interface RowsExistRule {
+  kind: 'rows-exist';
+  table_name: string;
+  /** The cell that identifies the rows, by display value. */
+  where: { column: string; equals: any };
+  /** How many must be there. Default 1. */
+  min_count?: number;
+  /** Names the rows in the failure message, e.g. "delivery lines". */
+  noun?: string;
+  /**
+   * LINK columns that must be filled on a matching row for it to count. Used by
+   * Course 4 Step 7: a line pushed through the API is only interesting once the
+   * learner's own step-2 automation has attached it, so the grade asks for the
+   * links rather than for the row alone.
+   *
+   * ⚠️ Checked through `linkStatus`, NEVER by reading the cell: a link value is not
+   * on the row at all (see the warning over linkStatus in watchAutomation.ts). This
+   * option was first written as a generic "non-empty columns" test against
+   * `row[column.key]`, which reports every link as empty and fails a learner whose
+   * base plainly shows the links.
+   */
+  linked_columns?: string[];
+  /**
+   * Require that the row was WRITTEN BY A TOKEN — an API call or a script — and not
+   * typed into the grid by hand. Course 4 Step 7 needs this: the whole point of the
+   * step is that an outside system wrote the line, and without it the exercise passes
+   * for a learner who simply typed the row (the user hit exactly that).
+   *
+   * Grades the METHOD rather than the cell, like the automation-set rule. Passes when
+   * ANY activity on the row carries a token's signature — `op_user` empty, the app
+   * named in `op_app` — since a person's edit carries their account and an automation
+   * carries the literal "Automation Rule". Order-independent on purpose: the activity
+   * list is not ordered as this file once assumed. Async — see gradeRowsExistWritten.
+   */
+  written_by_app?: boolean;
+}
+
+/**
  * "Dirty" plugin-UI-state check, used ONLY by the Welcome tour. It grades the state
  * of the PLUGIN itself (is it shrunk to the toolbar, and where is the toolbar?) with
  * no base data involved — so it works from any base the tour is opened in. Graded by
@@ -101,7 +150,12 @@ export interface PluginUiRule {
 }
 
 /** Any grade rule a manifest step can carry. */
-export type AnyGradeRule = GradeRule | AutomationSetRule | AutomationRuleRule | PluginUiRule;
+export type AnyGradeRule =
+  | GradeRule
+  | AutomationSetRule
+  | AutomationRuleRule
+  | RowsExistRule
+  | PluginUiRule;
 
 type RowResult =
   | { ok: true }
@@ -170,4 +224,58 @@ export function grade(rule: GradeRule): Outcome {
   const fail = results.find((r) => !r.ok) as { reason: string } | undefined;
   if (fail) return { kind: 'fail', reason: fail.reason };
   return { kind: 'pass' };
+}
+
+/** Count the rows matching a `rows-exist` rule against the current base state. */
+export function gradeRowsExist(rule: RowsExistRule): Outcome {
+  const table = getTableByName(rule.table_name);
+  if (!table) return { kind: 'missing', what: `table "${rule.table_name}"` };
+  const column = getColumn(table, rule.where.column);
+  if (!column) {
+    return { kind: 'missing', what: `column "${rule.where.column}" in "${rule.table_name}"` };
+  }
+
+  const wanted = String(rule.where.equals);
+  const matching = (table.rows || []).filter(
+    (r: any) => cellLabel(column, r[column.key]) === wanted
+  );
+  const min = rule.min_count ?? 1;
+  const noun = rule.noun ?? `rows with ${rule.where.column} "${wanted}"`;
+
+  const wantLinks = rule.linked_columns ?? [];
+  if (!wantLinks.length) {
+    if (matching.length >= min) return { kind: 'pass' };
+    return {
+      kind: 'fail',
+      reason: `${matching.length === 0 ? 'no' : `only ${matching.length}`} ${noun} in ${
+        rule.table_name
+      } — ${min} expected`,
+    };
+  }
+
+  // Links live in the store, not on the row — linkStatus is the only correct read.
+  const progress = linkStatus(
+    rule.table_name,
+    matching.map((r: any) => r._id),
+    wantLinks
+  );
+  const found = progress.total - progress.pending;
+  if (found >= min) return { kind: 'pass' };
+
+  // The row being there but unlinked is a different problem from it being absent,
+  // and it is the one the learner can act on — so say which it is.
+  if (matching.length >= min) {
+    return {
+      kind: 'fail',
+      reason: `${matching.length} ${noun} in ${rule.table_name}, but ${progress.missing
+        .map((n) => `"${n}"`)
+        .join(' and ')} not linked yet`,
+    };
+  }
+  return {
+    kind: 'fail',
+    reason: `${matching.length === 0 ? 'no' : `only ${matching.length}`} ${noun} in ${
+      rule.table_name
+    } — ${min} expected`,
+  };
 }

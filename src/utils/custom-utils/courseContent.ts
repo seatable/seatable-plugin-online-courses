@@ -16,6 +16,8 @@
  */
 
 import { AnyGradeRule } from './grader';
+import { RewindSpec } from './rewindDelivery';
+import { WebhookBurstSpec } from './webhookBurst';
 import { AutomationStage } from './automationGrade';
 import { getCurrentStepId } from './courseProgress';
 
@@ -65,17 +67,108 @@ export interface CourseStep {
   instruction?: string;
   /**
    * Optional demo hook — swaps the exercise's Verify flow for a scripted plugin
-   * action. 'live-modify' runs a sequence of learner edits so you can watch the grid
-   * update and inspect how the edits are attributed in row history. 'load-example'
-   * injects the canonical example rows (`example` below) so the learner is never
-   * blocked when the AI extraction misfires. 'automation-guided' runs the Step-2
-   * "build your first automation" flow: a choice between a guided, stage-by-stage
-   * build (each verified before the next, from `automationStages`) and a one-shot
-   * "just check it" against the step's `grade` (an 'automation-rule' rule).
+   * action. 'automation-guided' runs the Step-2 "build your first automation" flow:
+   * a choice between a guided, stage-by-stage build (each verified before the next,
+   * from `automationStages`) and a one-shot "just check it" against the step's
+   * `grade` (an 'automation-rule' rule). 'seed-discrepancy' creates the Step-3
+   * delivery the learner's scheduled rule needs in order to have something to find.
+   * 'rewind' removes a delivery from the base (lines, document and the stock they
+   * moved) so Step 4 can receive it again for real, and keeps the `example` rows at
+   * hand as the safety net for when the extraction misfires.
    */
-  demo?: 'live-modify' | 'load-example' | 'automation-guided';
-  /** Rows injected by the 'load-example' action (column NAME → display value). */
+  demo?: 'automation-guided' | 'seed-discrepancy' | 'rewind' | 'webhook-burst' | 'write-lines';
+  /**
+   * Label for a demo step's action button, when the generic one would be vague.
+   * Say what the button DOES in the base ("Create new delivery"), not what it
+   * prepares for you.
+   */
+  demoLabel?: string;
+  /**
+   * Shown when the step's action has already run — including on a later visit, when
+   * the live status message is long gone. An action step without one would come back
+   * looking untouched. Say what is now TRUE in the base, not what was clicked.
+   */
+  demoDoneMessage?: string;
+  /**
+   * The table this step's action shows its result in. When the learner is looking
+   * at another one, the plugin says so before they press — most actions play out in
+   * a single table, and from anywhere else nothing appears to happen at all.
+   */
+  watchTable?: string;
+  /**
+   * The VIEW of `watchTable` the action has to be watched from, for a result the
+   * table's ordinary view cannot show. Step 5a writes a throwaway row into a catalog
+   * of hundreds: it lands wherever the default view puts it, and a learner scrolled
+   * anywhere at all sees nothing happen. A narrow view built for the step keeps the
+   * row in sight whatever the scroll position — which sorting cannot guarantee.
+   *
+   * Enforced ONLY when the view actually exists in the base: a learner working from
+   * an older `.dtable` that predates it must not be locked out of the step by a view
+   * they have no way to open.
+   */
+  watchView?: string;
+  /**
+   * The rows the plugin writes when an extraction has to be rescued — what a clean
+   * run would have produced (column NAME → display value). Written in REPLACE mode
+   * on a 'rewind' step, so a partial extraction cannot leave duplicates behind.
+   */
   example?: { table_name: string; rows: Record<string, any>[] };
+  /**
+   * Payload of the 'rewind' action (Step 4): the delivery to take back out of the
+   * base — its lines, its document row, and the stock its validated lines moved —
+   * so the learner can receive the same note again and let the AI read it. The
+   * step's `example` rows are then the safety net for a misfiring extraction, and
+   * are written in REPLACE mode. See rewindDelivery.ts.
+   */
+  rewind?: RewindSpec;
+  /**
+   * Payload of the 'webhook-burst' action (Step 5): a throwaway row created, edited
+   * and deleted a second apart, so the learner has a change they KNOW the shape of
+   * waiting for them at the other end of their webhook. See webhookBurst.ts.
+   */
+  burst?: WebhookBurstSpec;
+  /**
+   * Payload of the 'seed-discrepancy' action (Step 3): the plugin creates a delivery
+   * and a short-delivered line so the learner's scheduled rule has something to find.
+   * The document is created here on purpose — see seedDiscrepancy.ts — and the grade
+   * is then pinned to that row rather than matched by condition.
+   */
+  /**
+   * What a seed step must CLEAR before it (re)seeds — so running it twice cleans up
+   * after itself instead of stacking a second delivery on the same reference, which
+   * would make the reference-based links ambiguous.
+   *
+   * It is also what lets a learner start a step over. Nothing the plugin marks as
+   * done may be a dead end: somebody who wants to redo an exercise without the
+   * guidance has to be able to, and an irreversible "done" would trap them.
+   */
+  reset?: RewindSpec;
+  seed?: {
+    document: { table_name: string; row: Record<string, any> };
+    /** Omitted for a document-only seed (Step 7) — see seedDiscrepancy.ts. */
+    lines?: { table_name: string; rows: Record<string, any>[]; link_columns: string[] };
+  };
+  /**
+   * "Watch it work" — an optional demo that runs AFTER an exercise passes, before
+   * the learner is handed back to the website. Built for Step 2: the automation is
+   * graded on its config, so at that point nothing has ever run through it. The
+   * plugin writes `rows` into `table_name` in front of the learner and then confirms,
+   * on those exact rows, that THEIR rule filled `link_columns` — columns the plugin
+   * never wrote. See watchAutomation.ts.
+   */
+  watch?: {
+    table_name: string;
+    /** Rows the plugin writes (column NAME → display value). */
+    rows: Record<string, any>[];
+    /** Link columns the learner's automation is expected to fill on those rows. */
+    link_columns: string[];
+    /** HTML framing the demo, shown once the exercise passes. */
+    html: string;
+    /** Short caption for the floating toolbar (falls back to the stripped `html`). */
+    instruction?: string;
+    /** Message shown when every link came back filled. */
+    successMessage?: string;
+  };
   /**
    * Guided sub-stages for a 'automation-guided' step. Each is checked (in order)
    * against a slice of the step's `grade` rule via the given `stage`; the learner
@@ -86,6 +179,15 @@ export interface CourseStep {
     html: string;
     /** Short single-sentence caption for the floating icon (falls back to `html`). */
     instruction?: string;
+    /**
+     * Hint for THIS stage only. The step's own `hint` describes the finished
+     * automation, so offering it inside the guided build would hand over the three
+     * stages the learner has not reached yet. When set, it replaces the step hint
+     * while that stage is current; when absent, the step hint is used as before.
+     * ONE SHORT LINE: it renders in the toolbar's small popover, so a paragraph
+     * does not fit. Say the one thing that trips people up at this stage.
+     */
+    hint?: string;
     stage: AutomationStage;
   }[];
 }
@@ -154,26 +256,18 @@ export function resolveInitialStepId(manifest: CourseManifest, courseId: string)
 // the gateway Update-Row shape), so we resolve the demo row's _id from the live
 // base — letting the row_id grader work against the current test base with no host.
 
-const EXERCISE_HTML = `
-  A quality check flagged this delivery line (<b>To check</b> is ticked): the goods arrived
-  <b>damaged</b>, but its <b>Status</b> still reads <b>"As expected"</b>. Set the line's
-  <b>Status</b> to <b>"Damaged"</b>, then untick <b>To check</b> to validate the line.`;
-
-const LIVE_MODIFY_HTML = `
-  <b>Live modify example.</b> Watch the plugin edit the base for you: it steps a
-  <b>Line items</b> row's <b>Status</b> through a few values. Keep the Line items table in
-  view, click <b>Run live edits</b>, then open that row's history to see how the edits are
-  attributed.`;
-
-// The delivery line the Course-4 status exercises (Fix-the-stale-status + Live-modify)
-// act on — a fixed row in the imported base.
-const LINE_ITEM_ROW_ID = 'LK228TKwQW-uRMzT26obqw';
-
-const LOAD_EXAMPLE_HTML = `
-  <b>Load the example.</b> When the automatic extraction of the delivery note misfires,
-  you're never blocked: the plugin can inject the expected <b>Line items</b> for you.
-  Click <b>Load the example</b> to add the three delivery lines, then continue with the
-  exercise.`;
+// The three lines of the delivery note the base ships with (INT-001). Written by
+// the plugin twice over: in step 2 to set off the learner's brand-new linking rule,
+// and in step 4 as the safety net when the AI extraction misfires. Only the two
+// references and the quantity — exactly what step 4's script writes, no more: the
+// safety net has to produce what a clean extraction would have produced, and Product
+// and Document are LINK columns the learner's own automation fills.
+const DELIVERY_REFERENCE = 'INT-001';
+const DELIVERY_LINES: Record<string, any>[] = [
+  { 'Product reference': '8004400007203', Qty: 24, 'Document reference': DELIVERY_REFERENCE },
+  { 'Product reference': '9300605048454', Qty: 60, 'Document reference': DELIVERY_REFERENCE },
+  { 'Product reference': '0850210008934', Qty: 36, 'Document reference': DELIVERY_REFERENCE },
+];
 
 // Course-4 Step 2 — "Import and link the lines". The learner builds their first
 // automation on Line items; the plugin either walks them through it stage by stage
@@ -185,11 +279,31 @@ const LINK_AUTOMATION_HTML = `
   hand. Choose <b>Guide me</b> to build it one stage at a time (each checked before the next), or
   <b>Just check it</b> if you’ve already built it.`;
 
+// Step 3's seeded delivery comes from a DIFFERENT supplier than the seeded note, and
+// the two references in play do not belong to the same party: the delivery reference
+// is the supplier's own numbering (so it looks nothing like the INT-00x of the note
+// already in the base — every supplier numbers its own delivery notes), while the PO
+// reference is the warehouse's, and stays in its series (INT-001 carries 2462/2026).
+// The delivery reference must also be unique: links are made on the raw value, so
+// reusing one would make them ambiguous.
+const SEED_DELIVERY_REFERENCE = '2026-08-4417';
+const SEED_PO_REFERENCE = '2588/2026';
+
+const REVIEWER_HTML = `
+  <b>Give your rule something to find.</b> A scheduled rule only shows what it is worth on a delivery
+  that actually needs attention — so rather than have you stage one, the plugin does it: it creates a
+  <b>new delivery</b> and one line received short of what was ordered. Your step-2 automation attaches
+  the line on its own; the plugin waits until it has.</p>
+  <p>Then go to the <b>Automations editor</b> and press <b>Run now</b> on your reviewer rule — no need to
+  wait for the hour you set. Come back and verify: what is checked is not that a reviewer is there, but
+  that <b>your automation</b>, and not you, is the one that put it there.`;
+
 const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
   {
     title: 'Automation created',
     stage: 'created',
     instruction: 'Add a new rule in the Automations editor and give it a name.',
+    hint: 'The name field of the rule has to be focused out for it to exist',
     html: `<b>Create the automation.</b> Open the <b>Automations editor</b> and add a new rule and 
       give it a name, then click <b>Check</b>.`,
   },
@@ -198,6 +312,7 @@ const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
     stage: 'trigger',
     instruction:
       'Trigger on “When a row is added”, with Product reference and Document reference both not empty.',
+    hint: 'Set the conditions in the Trigger settings panel',
     html: `<b>Set the trigger — and guard it.</b> Choose <b>“When a row is added”</b>, then add two
       <b>conditions</b> so it only runs on complete lines: <b>Product reference</b> is <b>not empty</b>
       <b>and</b> <b>Document reference</b> is <b>not empty</b>.`,
@@ -206,6 +321,7 @@ const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
     title: 'Link the product',
     stage: 'action:0',
     instruction: 'Add an “Add links” action matching Product reference to a product’s Reference.',
+    hint: 'Choose the Add links action, then the Product column it should fill',
     html: `<b>Link the product.</b> Add an <b>Add links</b> action that fills the
       <b>Product</b> column: the line’s <b>Product reference</b> should equal a product’s
       <b>Reference</b>.`,
@@ -214,48 +330,170 @@ const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
     title: 'Link the document',
     stage: 'action:1',
     instruction:
-      'Add a second “Add links” action matching Document reference to a document’s Identifier.',
+      'Add a second “Add links” action matching Document reference to a document’s Delivery reference.',
+    hint: 'The same action again, this time filling Document',
     html: `<b>Link the document.</b> Add a second <b>Add links</b> action that fills the
       <b>Document</b> column: the line’s <b>Document reference</b> should equal a document’s
-      <b>Identifier</b>. That completes your automation.`,
+      <b>Delivery reference</b>. That completes your automation.`,
   },
 ];
 
-const AUTOMATION_HTML = `
-  <b>Automation review.</b> Build an <b>automation rule</b> on <b>Documents</b> that fills the
-  <b>Reviewer</b> column whenever a document needs review (<b>Review needed</b> = true), then run
-  it on a document. Click <b>Verify</b>: the plugin checks the activity log to confirm the
-  Reviewer was set <em>by an automation</em> — grading the method, not just the value.`;
+const WATCH_HTML = `
+  <b>Watch it work.</b> Your rule is built, but nothing has set it off yet — so let's give it
+  something. First <b>open the Line items table</b> so you can see it happen, then let the plugin
+  bring in the delivery lines, as if your supplier had sent through a tidy list of what was loaded
+  onto the truck. Keep an eye on the <b>Product</b> and <b>Document</b> columns as the lines land:
+  neither is part of what the plugin writes, and both fill themselves in.`;
 
-// The canonical example rows the plugin injects into "Line items" when the AI OCR
-// extraction misfires — the learner is never blocked (grading targets rows exist +
-// validated, never AI success). Column NAME → display value; blank columns (links /
-// formulas / automation-filled) are intentionally omitted. From line_items.csv.
-const LINE_ITEMS_DOC_URL =
-  'https://cloud.st-next.de/apps/custom/delivery-check/?page_id=XSyG&record_id=Vtf2nXaAQKWMzdT-pYDSGA';
-const LINE_ITEMS_EXAMPLE: Record<string, any>[] = [
-  {
-    'Product reference': '098765',
-    Qty: 1,
-    'Document reference': 'DNINT-001',
-    'To check': true,
-    'Document URL': LINE_ITEMS_DOC_URL,
+// Course-4 Step 5 — the learner points a native webhook at a test endpoint and has
+// to go and read what lands there. The plugin makes the change for them so the
+// payload on screen is one the course can name field by field — and makes three of
+// them, which is the step's other lesson: a native webhook fires on every content
+// change in the base, and nothing filters it.
+const WEBHOOK_BURST: WebhookBurstSpec = {
+  table_name: 'Products',
+  // Deliberately nothing like a real barcode: this row joins the catalog that
+  // Step 4's snap() matches against for as long as it exists, and it must not be
+  // able to win a fuzzy match. It is deleted a moment later anyway.
+  // The reference moves from STEP0 to STEP1 so the edit is visible in the grid at a
+  // glance: the base carries colouring rules keyed on these values, and Reference is
+  // the primary column, so the change also shows up as `row_name` in the payload.
+  row: {
+    Reference: 'WEBHOOK-TEST-STEP0',
+    Description: 'Test product',
+    Brand: 'Course 4',
   },
-  {
-    'Product reference': '567890',
-    Qty: 2,
-    'Document reference': 'DNINT-001',
-    'To check': true,
-    'Document URL': LINE_ITEMS_DOC_URL,
+  edit: {
+    Reference: 'WEBHOOK-TEST-STEP1',
+    Description: 'To be deleted',
   },
-  {
-    'Product reference': '345678',
-    Qty: 3,
-    'Document reference': 'DNINT-001',
-    'To check': true,
-    'Document URL': LINE_ITEMS_DOC_URL,
+};
+
+// Note 2 — the delivery dropped in at the end of step 5. A learner on the no-AI path
+// would otherwise retype three 13-digit barcodes off a photograph: pure tax, and one
+// wrong digit lands an unlinked line, which is step 2's failure replayed at a moment
+// that teaches nothing. So the plugin offers to write them, exactly as it rescues a
+// misfired extraction in step 4 — same mechanism, already met, and it leaves the
+// learner holding the part that IS the lesson: press the button, get the push.
+// Course-4 Step 7 — the delivery note of the supplier who has gone electronic. It
+// carries no file on purpose: nothing was printed, nothing photographed. The
+// reference is machine-shaped for the same reason — it was generated by their system
+// the moment the truck was loaded, not written on a pad. Must match the reference
+// printed in the course's step 7, which the learner types into the API reference.
+const API_DELIVERY_REFERENCE = 'DN-2026-000871';
+// The warehouse's own order number, so it stays in the warehouse's series — INT-001
+// carries 2462/2026 and Step 3's seed 2588/2026 — and comes after both, this being
+// the last delivery of the course. See the note above SEED_DELIVERY_REFERENCE: the
+// delivery reference belongs to the supplier, the PO reference to you.
+const API_PO_REFERENCE = '2634/2026';
+
+const API_CREATE_HTML = `
+  <b>Play the supplier's system — the first half.</b> One of your suppliers now generates its
+  delivery note when the truck is loaded and sends it straight to your base. That conversation has
+  two halves: the header of the note, then its lines. The plugin lays down the header, so that the
+  half you do by hand stays small enough to read.</p>
+  <p>A new document appears in <b>Documents</b> with the reference <b>${API_DELIVERY_REFERENCE}</b>
+  and no file attached — there is nothing to photograph any more.</p>
+  <p>Then it is your turn, back on the website: push at least one line into <b>Line items</b> from
+  the API reference. Come back here at <b>Step 7b</b> when it is sent.`;
+
+const API_VERIFY_HTML = `
+  <b>The second half is yours.</b> From the API reference, push at least one line into
+  <b>Line items</b>: the reference <b>${API_DELIVERY_REFERENCE}</b> in <b>Document reference</b>, a
+  product from your catalog in <b>Product reference</b>, and a <b>Qty</b>.</p>
+  <p>What is checked is not only that your line arrived, but that it attached itself — to its
+  product and to its document — through the automation you built back in step 2, and that it really
+  came in from outside: a row typed into the grid by hand does not count here.`;
+
+const NOTE_2_REFERENCE = 'GR 2026/44718';
+const NOTE_2_SPEC: RewindSpec = {
+  document: {
+    table_name: 'Documents',
+    reference_column: 'Delivery reference',
+    reference: NOTE_2_REFERENCE,
   },
+  lines: {
+    table_name: 'Line items',
+    reference_column: 'Document reference',
+    link_column: 'Document',
+  },
+  // No `stock`: nothing on this delivery has been validated, so there is nothing to
+  // put back — and the writing path never touches stock in any case.
+};
+const NOTE_2_LINES: Record<string, any>[] = [
+  { 'Product reference': '9310342001124', Qty: 48, 'Document reference': NOTE_2_REFERENCE },
+  { 'Product reference': '8858702402323', Qty: 120, 'Document reference': NOTE_2_REFERENCE },
+  { 'Product reference': '5057967574810', Qty: 30, 'Document reference': NOTE_2_REFERENCE },
 ];
+
+const WEBHOOK_HTML = `
+  <b>Give your webhook something to say.</b> With your webhook pointed at the test endpoint, the plugin
+  will make a change you know the shape of: it adds a row to <b>Products</b>, edits it a few seconds
+  later, then deletes it — leaving your catalog exactly as it was. Keep the test page beside your base: the
+  three changes are spaced so you can watch each one land on both sides. If nothing reaches the endpoint, try
+  moving both pages into the same browser window.</p>
+  <p>Three operations, three requests: what was written, what changed (with the value it held before),
+  and what went. Nothing is checked here — reading the other side is the whole exercise.`;
+
+// The far end of authored step 5: the second note has arrived and its lines have to
+// reach Line items before the dock can be told anything.
+const WRITE_LINES_HTML = `
+  <b>Let the plugin do the typing.</b> The second delivery note is in your base, and its lines are not.
+  Copying three barcodes off a photograph teaches nothing, so the plugin writes them for you — the same
+  lines a clean reading of that note would have produced.</p>
+  <p>They land in <b>Line items</b> carrying their references, so the rule you built in step 2 attaches
+  each one to its product and its document as it arrives. Nothing is checked here.</p>
+  <p>Then finish the way the office finishes: read the list against the note, and press
+  <b>Notify the dock</b> on the document.`;
+
+// Course-4 Step 4 — the AI chain is built, and there is nothing to feed it: the
+// delivery note it would read is already in the base, lines and all. The plugin
+// takes that delivery back out so the learner can receive it for real, from the
+// app, and let the AI do the reading. The safety net stays on hand throughout: the
+// extraction is allowed to misfire, progress is not allowed to depend on it.
+const REWIND_SPEC: RewindSpec = {
+  document: {
+    table_name: 'Documents',
+    reference_column: 'Delivery reference',
+    reference: DELIVERY_REFERENCE,
+  },
+  lines: {
+    table_name: 'Line items',
+    reference_column: 'Document reference',
+    link_column: 'Document',
+  },
+  // Reverses what step 3's Validate script credited, rather than restoring fixed
+  // numbers — see rewindDelivery.ts.
+  stock: {
+    table_name: 'Products',
+    column: 'Stock',
+    link_column: 'Product',
+    quantity_column: 'Received qty',
+    validated_column: 'Validated',
+    status_column: 'Status',
+    excluded_statuses: ['Damaged', 'Missing'],
+  },
+};
+
+/**
+ * The safety net names itself for what it is about to do — there are either no
+ * lines to speak of, or some the extraction got wrong. Exported: the runner puts
+ * them on the button, and they must read the same in both places.
+ */
+export const EXAMPLE_WRITE_LABEL = 'Write the lines';
+export const EXAMPLE_FIX_LABEL = 'Fix the lines';
+
+const REWIND_HTML = `
+  <b>Take the delivery back out.</b> You have the chain — what you do not have is anything to feed
+  it: that delivery is already in your base, lines and all. Let the plugin remove them, and the
+  document with them, so the same note can arrive the way it really would. Your stock goes back to
+  where it was too.</p>
+  <p>Then receive it for real: in the <b>Delivery check</b> app, open <b>New delivery note</b>, attach
+  the photo of the delivery note and submit. Watch the reading, the extraction and the script do the
+  rest — then come back and verify.</p>
+  <p>If the extraction goes off the rails, the plugin writes the delivery's lines for you — whole if it
+  produced none, corrected if it got them wrong. What is checked is that the lines are back, never that
+  the AI got them right on its own.`;
 
 // The demo course roster. Each entry becomes a left-panel preset (id = preset _id)
 // AND a fallback manifest. Content is bundled here (no Hugo host yet). Only
@@ -310,7 +548,7 @@ export const COURSES: CourseMeta[] = [
     name: 'Course 4 — Automation & Integration',
     access: 'active',
     intro:
-      'Automate your workflows and connect external tools.<br><br>Will cover automations, scripts, API basics, webhooks, and integrations with n8n, Zapier, and Make.',
+      'Automate your workflows and connect external tools.<br><br>Covers no-code automations, Python scripts, the API, webhooks, workflow orchestration with n8n, and AI-powered document extraction — around a warehouse receiving scenario.',
   },
   {
     id: 'course-5',
@@ -436,8 +674,8 @@ function welcomeContentSteps(): CourseStep[] {
 // Course 4 (active): the plugin CHECKPOINTS only — the course narrative unfolds on
 // the website, which sends the learner into the plugin by authored step number. So
 // the manifest is intentionally gapped (labelled "Step N") and each checkpoint hands
-// back to the website via `continuesOn`. The status exercises act on a fixed Line
-// items row (LINE_ITEM_ROW_ID) in the imported base.
+// back to the website via `continuesOn`. One checkpoint per authored step that has
+// something for the plugin to do — steps 1, 6 and 8 deliberately have none.
 function course4ContentSteps(): CourseStep[] {
   return [
     {
@@ -450,7 +688,7 @@ function course4ContentSteps(): CourseStep[] {
         'Build an automation on Line items that links each new line to its product and document.',
       demo: 'automation-guided',
       automationStages: LINK_AUTOMATION_STAGES,
-      hint: 'On Line items: trigger “a new row is added”, two conditions (Product reference & Document reference not empty), then two Add links actions — one to Products (Reference), one to Documents (Identifier).',
+      hint: 'On Line items: trigger “a new row is added”, two conditions (Product reference & Document reference not empty), then two Add links actions — one to Products (Reference), one to Documents (Delivery reference).',
       // Structural (config) grade — read over REST, order-independent on the two
       // link actions so a "just check it" learner passes whatever order they built.
       grade: {
@@ -471,59 +709,225 @@ function course4ContentSteps(): CourseStep[] {
           {
             source_column: 'Document reference',
             target_table: 'Documents',
-            target_column: 'Identifier',
+            target_column: 'Delivery reference',
           },
         ],
       },
       successMessage:
         'Your linking automation is complete — every new line will now find its product and its document on its own.',
-    },
-    {
-      id: 'ex01',
-      type: 'exercise',
-      title: 'Fix the stale status',
-      continuesOn: 'website',
-      html: EXERCISE_HTML,
-      hint: 'In the Line items table, set the flagged line’s Status to Damaged and untick its To check box.',
-      grade: {
+      // Config-graded, so nothing has run through the rule yet: prove it on real rows
+      // before handing back to the website.
+      watch: {
         table_name: 'Line items',
-        expected: [{ row_id: LINE_ITEM_ROW_ID, row: { Status: 'Damaged', 'To check': false } }],
+        rows: DELIVERY_LINES,
+        link_columns: ['Product', 'Document'],
+        html: WATCH_HTML,
+        instruction:
+          'Open the Line items table, then add the three delivery lines and watch the links fill in.',
+        successMessage:
+          'Both links filled themselves in, on lines you never touched. You didn’t automate this delivery — you built a rule that holds for every line that will ever enter this table, whoever puts it there.',
       },
-      successMessage: 'Well done — the status has been updated and your line item validated.',
     },
     {
-      id: 'lm01',
+      id: 'rv01',
       type: 'exercise',
-      title: 'Live modify example',
-      continuesOn: 'website',
-      html: LIVE_MODIFY_HTML,
-      demo: 'live-modify',
-    },
-    {
-      id: 'le02',
-      type: 'exercise',
-      title: 'Load the example',
-      continuesOn: 'website',
-      html: LOAD_EXAMPLE_HTML,
-      demo: 'load-example',
-      example: { table_name: 'Line items', rows: LINE_ITEMS_EXAMPLE },
-    },
-    {
-      id: 'au01',
-      type: 'exercise',
-      title: 'Automation review',
+      watchTable: 'Documents',
+      title: 'Step 3 · A reviewer for a short delivery',
       continuesOn: 'website',
       handoffNote: 'You’re done here — head back to the website to continue the course ↩',
-      html: AUTOMATION_HTML,
-      hint: 'Add an automation on Documents: when Review needed becomes true, set the Reviewer column to a colleague. Trigger it on at least one document, then Verify.',
-      // Open-ended (method) grade: pass only if an AUTOMATION set Reviewer on a
-      // Documents row that needs review — graded from the op-log, not the cell state.
+      html: REVIEWER_HTML,
+      instruction:
+        'Let the plugin create a short delivery, then run your rule from the automation editor and verify.',
+      hint: 'Use Run now in the automation editor — no need to wait for the scheduled hour.',
+      demo: 'seed-discrepancy',
+      reset: {
+        document: {
+          table_name: 'Documents',
+          reference_column: 'Delivery reference',
+          reference: SEED_DELIVERY_REFERENCE,
+        },
+        lines: {
+          table_name: 'Line items',
+          reference_column: 'Document reference',
+          link_column: 'Document',
+        },
+      },
+      seed: {
+        document: {
+          table_name: 'Documents',
+          row: {
+            'Delivery reference': SEED_DELIVERY_REFERENCE,
+            'PO reference': SEED_PO_REFERENCE,
+            'Movement type': 'Delivery',
+          },
+        },
+        lines: {
+          table_name: 'Line items',
+          rows: [
+            {
+              // A product that is NOT on the seeded delivery note: reusing one would
+              // put the same product on two open deliveries at once, which muddles
+              // the stock story the previous section just told.
+              'Product reference': '9310342001124',
+              Qty: 48,
+              'Received qty': 36,
+              'Document reference': SEED_DELIVERY_REFERENCE,
+              Status: 'Too few',
+              // Already validated: the receiving side of this line is settled, only
+              // the dispute is left. Without this it would sit in the operator's
+              // "to check" queue, and validating it would credit the stock with
+              // goods that were never delivered.
+              Validated: true,
+            },
+          ],
+          link_columns: ['Product', 'Document'],
+        },
+      },
+      // Graded from the activity log of the document the plugin just created: what
+      // has to be true is not that a reviewer is there, but that an AUTOMATION put
+      // it there. The row being brand new is what makes that reading trustworthy.
       grade: {
         kind: 'automation-set',
         table_name: 'Documents',
         column: 'Reviewer',
-        condition: { column: 'Review needed', equals: true },
       },
+    },
+    {
+      id: 'rw01',
+      type: 'exercise',
+      watchTable: 'Line items',
+      title: 'Step 4 · Rewind, and do it for real',
+      continuesOn: 'website',
+      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
+      html: REWIND_HTML,
+      instruction:
+        'Let the plugin take the seeded delivery back out, then receive it again from the app and let the AI read the note.',
+      hint: 'The form is the second page of the Delivery check app — attach the photo and submit; everything else is read from the picture.',
+      demo: 'rewind',
+      rewind: REWIND_SPEC,
+      // The safety net, written in REPLACE mode on a rewind step: what a clean
+      // extraction would have produced, whatever the run actually produced.
+      example: { table_name: 'Line items', rows: DELIVERY_LINES },
+      // Counts the lines, and nothing else: the AI wrote them, and grading their
+      // content would make the model's success a condition of progress.
+      grade: {
+        kind: 'rows-exist',
+        table_name: 'Line items',
+        where: { column: 'Document reference', equals: DELIVERY_REFERENCE },
+        min_count: 3,
+        noun: 'lines for this delivery',
+      },
+      successMessage:
+        'The delivery is back — read off a photograph this time, with its lines linked by the rule you built in step 2.',
+    },
+    {
+      id: 'wh01',
+      type: 'exercise',
+      watchTable: 'Products',
+      // The catalog runs to hundreds of rows and the burst appends one: in the
+      // default view it lands off-screen, and the edit and the delete then happen on
+      // a row the learner never saw. A narrow view keeps all three in sight wherever
+      // they had scrolled. Inert until the base actually carries the view.
+      watchView: 'Step 5a - Webhook',
+      title: 'Step 5a · See what SeaTable sends',
+      continuesOn: 'website',
+      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
+      html: WEBHOOK_HTML,
+      instruction:
+        'Point your webhook at the test endpoint first, then let the plugin make a change you know the shape of.',
+      hint: 'Nothing is graded here — the whole exercise is to go and read what arrived at the other end.',
+      demo: 'webhook-burst',
+      burst: WEBHOOK_BURST,
+      demoDoneMessage: '✅ The three changes have been made — go and read them at the other end.',
+    },
+    {
+      // The other end of the same authored step, and its own menu entry: the course
+      // sends the learner back here much later, once the second note has arrived.
+      // One entry per "open the plugin" in the prose — a dropdown would have hidden
+      // a chronological beat behind a button meant for choices.
+      id: 'wl01',
+      type: 'exercise',
+      watchTable: 'Line items',
+      title: 'Step 5b · Write the delivery’s lines',
+      continuesOn: 'website',
+      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
+      html: WRITE_LINES_HTML,
+      instruction:
+        'Let the plugin write the second delivery’s lines, rather than copy three barcodes off a photograph.',
+      hint: 'The lines land in Line items and your step-2 rule attaches them; then press Notify the dock on the document.',
+      demo: 'write-lines',
+      demoLabel: 'Write the lines',
+      demoDoneMessage: '✅ The delivery’s lines are in Line items, linked by your own rule.',
+      rewind: NOTE_2_SPEC,
+      example: { table_name: 'Line items', rows: NOTE_2_LINES },
+    },
+    {
+      id: 'ap01',
+      type: 'exercise',
+      watchTable: 'Documents',
+      title: 'Step 7a · The electronic delivery note',
+      continuesOn: 'website',
+      handoffNote: 'Now go and push one of its lines from the API reference ↩',
+      html: API_CREATE_HTML,
+      instruction:
+        'Let the plugin drop in the electronic delivery note, then go and push one of its lines from the API reference.',
+      hint: 'Nothing is graded here — this only puts the note in your base so your pushed lines have something to link to.',
+      demo: 'seed-discrepancy',
+      demoLabel: 'Create new delivery',
+      demoDoneMessage: '✅ The delivery note is in your base, with no lines and no file.',
+      // No `stock` to undo: nothing pushed through the API is ever validated here.
+      reset: {
+        document: {
+          table_name: 'Documents',
+          reference_column: 'Delivery reference',
+          reference: API_DELIVERY_REFERENCE,
+        },
+        lines: {
+          table_name: 'Line items',
+          reference_column: 'Document reference',
+          link_column: 'Document',
+        },
+      },
+      // Document only: the lines are what the learner pushes through the API, and
+      // the header has to be there first or they would land unlinked. No `grade`
+      // either — the check belongs to 7b, once the line has actually been pushed.
+      seed: {
+        document: {
+          table_name: 'Documents',
+          row: {
+            'Delivery reference': API_DELIVERY_REFERENCE,
+            'PO reference': API_PO_REFERENCE,
+            'Movement type': 'Delivery',
+          },
+        },
+      },
+    },
+    {
+      id: 'ap02',
+      type: 'exercise',
+      title: 'Step 7b · Check the pushed line',
+      continuesOn: 'website',
+      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
+      html: API_VERIFY_HTML,
+      instruction:
+        'Push at least one line into Line items from the API reference, then verify it arrived, linked itself and came in through the API.',
+      hint: `In the API reference, table_name is "Line items" and the row needs Document reference "${API_DELIVERY_REFERENCE}", a Product reference from your catalog, and a Qty.`,
+      // Counts a pushed line, but only one that has LINKED itself: the payoff of
+      // this step is that a row arriving from outside is treated exactly like one
+      // typed by hand, and that is the rule from step 2 doing the treating.
+      grade: {
+        kind: 'rows-exist',
+        table_name: 'Line items',
+        where: { column: 'Document reference', equals: API_DELIVERY_REFERENCE },
+        min_count: 1,
+        linked_columns: ['Product', 'Document'],
+        // Without this the step passes for a line typed into the grid by hand, which
+        // is the one thing it is not about.
+        written_by_app: true,
+        noun: 'pushed line',
+      },
+      successMessage:
+        'Your line came in through the API and attached itself on the way — no scanner, no camera, no keyboard, and nothing in your base can tell the difference.',
     },
   ];
 }

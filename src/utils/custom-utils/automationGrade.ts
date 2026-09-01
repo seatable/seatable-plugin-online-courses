@@ -11,8 +11,9 @@
  * Auth: this is an /api/v2.1/workspace/… account endpoint (the same family the web
  * UI's own automation panel calls), so a same-origin GET authenticates with the
  * learner's SESSION cookie — no account token to enter, consistent with "the plugin
- * runs as the learner". ⚠️ Cross-origin on the localhost dev server (CORS), so — like
- * opLogGrade — it only works INSIDE a real base. GET needs no CSRF token.
+ * runs as the learner". GET needs no CSRF token. On the localhost DEV server the
+ * cookie can't travel (different origin), so an account token from setting.local.js
+ * is used instead — see devAccountToken below.
  *
  * Column/table NAMES in the rule are resolved to the live base's ids/keys here, so
  * the manifest rule stays declarative. Link actions are matched by CONFIG (source
@@ -52,7 +53,48 @@ function accountApiConfig(): { server: string; workspaceId: string; baseName: st
   };
 }
 
-/** List every automation rule in the base (session-cookie auth, prod-only). */
+/**
+ * DEV ONLY — an account token for the call below.
+ *
+ * Inside a real base the endpoint authenticates with the learner's SESSION cookie:
+ * same origin, nothing to configure. The dev server is a DIFFERENT origin, so that
+ * cookie is never sent, and asking for it (`credentials: 'include'`) makes the
+ * browser reject the response outright — the opaque "NetworkError when attempting to
+ * fetch resource" — unless the server also returns Access-Control-Allow-Credentials.
+ * There is no base-token flavour of this endpoint (the OpenAPI spec marks it
+ * AccountTokenAuth), so dev needs a real ACCOUNT token: either `accountToken` in
+ * setting.local.js, or `username`/`password`, exchanged once for one.
+ */
+let devTokenPromise: Promise<string> | null = null;
+
+/** The dev harness's config — set by setting.ts, which only the dev entry loads. */
+function devConfig(): any {
+  return (window as any).dtablePluginConfig || null;
+}
+
+async function devAccountToken(): Promise<string> {
+  const cfg = devConfig();
+  if (!cfg) return '';
+  if (cfg.accountToken) return String(cfg.accountToken);
+  if (!cfg.username || !cfg.password) return '';
+  if (!devTokenPromise) {
+    const server = String(cfg.server || '').replace(/\/+$/, '');
+    devTokenPromise = fetch(`${server}/api2/auth-token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cfg.username, password: cfg.password }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`auth-token failed (${r.status})`))))
+      .then((d: any) => String(d?.token || ''))
+      .catch((err) => {
+        devTokenPromise = null; // let the next attempt retry
+        throw err;
+      });
+  }
+  return devTokenPromise;
+}
+
+/** List every automation rule in the base (session cookie in a base, token in dev). */
 async function fetchAutomationRules(): Promise<any[]> {
   const { server, workspaceId, baseName } = accountApiConfig();
   if (!server || !workspaceId || !baseName) {
@@ -61,13 +103,51 @@ async function fetchAutomationRules(): Promise<any[]> {
   const url =
     `${server}/api/v2.1/workspace/${encodeURIComponent(workspaceId)}` +
     `/dtable/${encodeURIComponent(baseName)}/automation-rules/`;
-  const resp = await fetch(url, {
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
+  const token = await devAccountToken().catch(() => '');
+  let resp: Response;
+  try {
+    resp = await fetch(url, {
+      // With a token we authenticate by header, and must NOT ask for cookies: a
+      // credentialed cross-origin request also needs Access-Control-Allow-Credentials.
+      credentials: token ? 'omit' : 'include',
+      headers: token
+        ? { Accept: 'application/json', Authorization: `Token ${token}` }
+        : { Accept: 'application/json' },
+    });
+  } catch (err: any) {
+    if (devConfig() && !token) {
+      throw new Error(
+        'checking automations from the dev server needs an account token — add ' +
+          '`accountToken` (or `username` + `password`) to src/setting.local.js'
+      );
+    }
+    throw err;
+  }
   if (!resp.ok) throw new Error(`automation-rules request failed (${resp.status})`);
   const data = await resp.json().catch(() => ({}));
   return Array.isArray(data?.dtable_automation_rule_list) ? data.dtable_automation_rule_list : [];
+}
+
+/**
+ * The ids of every automation rule currently in the base. Taken as a BASELINE right
+ * before a guided build starts, so the "created" stage can require a rule the
+ * learner has actually just added rather than accepting one that was already there
+ * (a base is rarely pristine — a previous run of the course leaves its rule behind).
+ * Best-effort: the caller falls back to no baseline if this throws.
+ */
+export async function listAutomationRuleIds(): Promise<string[]> {
+  const rules = await fetchAutomationRules();
+  return rules.map((rl) => String(rl?.id ?? '')).filter(Boolean);
+}
+
+/** How a guided build pins its checks to ONE rule across stages. */
+export interface GuidedRuleTracking {
+  /** Rule ids that existed before the build started — never accepted as "created". */
+  ignoreRuleIds?: string[];
+  /** Once identified, every later stage is checked against THIS rule only. */
+  pinRuleId?: string | null;
+  /** Reports the rule the "created" stage settled on, so it can be pinned. */
+  onRuleIdentified?: (ruleId: string) => void;
 }
 
 // --- structural checks over one rule ----------------------------------------
@@ -174,7 +254,8 @@ function ruleIsComplete(rule: any, r: ResolvedRule): boolean {
  */
 export async function gradeAutomationRule(
   rule: AutomationRuleRule,
-  stage: AutomationStage = 'all'
+  stage: AutomationStage = 'all',
+  guided: GuidedRuleTracking = {}
 ): Promise<Outcome> {
   const resolved = resolveRule(rule);
   if ('missing' in resolved) return { kind: 'missing', what: resolved.missing };
@@ -187,21 +268,48 @@ export async function gradeAutomationRule(
   }
 
   // 'created' — the learner has just ADDED and named a rule; nothing else is
-  // configured yet (no trigger table, no actions), so the trigger table isn't
-  // "Line items" at this point (that's the next stage). Detect ANY automation rule,
-  // not one already triggering on the target table — otherwise this stage can never
-  // pass. (Assumes this is the base's first automation, per "build your first
-  // automation"; a freshly created rule must be SAVED to appear over the API.)
+  // configured yet (no trigger table, no actions), so we can't recognise it by its
+  // trigger (that's the next stage). We recognise it by being NEW: any rule absent
+  // from the baseline taken when the guided build started. Without that baseline
+  // this stage would accept a rule the base already had — including the complete
+  // one left behind by a previous run, which then also satisfies every later stage.
+  // (A freshly created rule must be SAVED to appear over the API.)
   if (stage === 'created') {
-    return rules.length > 0
-      ? { kind: 'pass' }
-      : { kind: 'fail', reason: 'no automation rule yet — add one, name it, and save it' };
+    const ignore = new Set(guided.ignoreRuleIds || []);
+    const fresh = rules.filter((rl) => !ignore.has(String(rl?.id ?? '')));
+    if (fresh.length === 0) {
+      return {
+        kind: 'fail',
+        reason: ignore.size
+          ? 'no NEW automation rule yet — add one, name it, and save it'
+          : 'no automation rule yet — add one, name it, and save it',
+      };
+    }
+    // Pin the most recently created one (highest id) so every later stage checks
+    // the rule the learner is actually building, not a lookalike elsewhere.
+    const picked = fresh.reduce((a, b) => (Number(b?.id) > Number(a?.id) ? b : a));
+    guided.onRuleIdentified?.(String(picked.id));
+    return { kind: 'pass' };
+  }
+
+  // Later stages check the pinned rule when the guided build identified one; only a
+  // free-standing check ("I built it — just check it") looks at every rule.
+  const pinned = guided.pinRuleId
+    ? rules.filter((rl) => String(rl?.id ?? '') === String(guided.pinRuleId))
+    : rules;
+  if (guided.pinRuleId && pinned.length === 0) {
+    return { kind: 'fail', reason: 'the rule you created is gone — create it again' };
   }
 
   // Later stages need a rule that at least triggers on the right table.
-  const candidates = rules.filter((rl) => rl?.trigger?.table_id === resolved.triggerTableId);
+  const candidates = pinned.filter((rl) => rl?.trigger?.table_id === resolved.triggerTableId);
   if (candidates.length === 0) {
-    return { kind: 'fail', reason: `no automation on "${rule.trigger_table}" yet` };
+    return {
+      kind: 'fail',
+      reason: guided.pinRuleId
+        ? `your rule doesn’t trigger on "${rule.trigger_table}" yet`
+        : `no automation on "${rule.trigger_table}" yet`,
+    };
   }
 
   if (stage === 'trigger') {
