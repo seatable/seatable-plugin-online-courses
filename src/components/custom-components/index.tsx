@@ -9,9 +9,13 @@ import OnlineCourse from './OnlineCourse';
 // reordered by the user. Preset _id === courseId.
 const COURSE_PRESETS = COURSES.map((c) => ({ _id: c.id, name: c.name, settings: {} }));
 
-// Land on the course under active development by default (only on a fresh seed;
-// subsequent loads resume the learner's last-selected course).
-const DEFAULT_COURSE_ID = 'course-4';
+// Where a learner lands the first time the plugin is opened in a base (only on a
+// fresh seed; later loads resume whatever course they last selected). The in-plugin
+// tour is the right first thing for someone who has just installed the companion:
+// it explains what it is and how a course works. This was 'course-4' for as long as
+// that course was the one being built, which dropped every new base into the middle
+// of a course the learner had not chosen — fine while developing, wrong to ship.
+const DEFAULT_COURSE_ID = 'welcome';
 const DEFAULT_COURSE_IDX = Math.max(
   0,
   COURSE_PRESETS.findIndex((p) => p._id === DEFAULT_COURSE_ID)
