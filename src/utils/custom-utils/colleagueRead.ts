@@ -161,3 +161,28 @@ export async function baseCollaborators(): Promise<Collaborator[]> {
     avatarUrl: String(u.avatar_url || ''),
   }));
 }
+
+export interface ColleagueAccount {
+  email: string;
+  name: string;
+  contactEmail: string;
+  avatarUrl: string;
+}
+
+/**
+ * Who does the stored token belong to?
+ *
+ * Used by the setup step to confirm, before anything depends on it, that the
+ * credential is valid AND that it belongs to the colleague rather than to the
+ * learner. Pasting your own token is the natural mistake, and it would otherwise
+ * only surface much later, as a colleague who mysteriously signs with your name.
+ */
+export async function colleagueAccountInfo(): Promise<ColleagueAccount> {
+  const body = await colleagueAccountGet('/api2/account/info/');
+  return {
+    email: String(body?.email || ''),
+    name: String(body?.name || ''),
+    contactEmail: String(body?.contact_email || ''),
+    avatarUrl: String(body?.avatar_url || ''),
+  };
+}

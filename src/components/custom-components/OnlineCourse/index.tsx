@@ -19,6 +19,7 @@ import {
 } from '../../../utils/custom-utils/rewindDelivery';
 import { webhookBurst } from '../../../utils/custom-utils/webhookBurst';
 import { colleagueStoreWrite } from '../../../utils/custom-utils/colleagueStoreWrite';
+import ColleagueSetup from './ColleagueSetup';
 import {
   gradeAutomationRule,
   listAutomationRuleIds,
@@ -177,6 +178,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const isBurst = step?.demo === 'webhook-burst';
   const isWriteLines = step?.demo === 'write-lines';
   const isColleagueWrite = step?.demo === 'colleague-write';
+  const isColleagueSetup = step?.demo === 'colleague-setup';
 
   // On step change: fetch its HTML, reset UI. Progress persistence and window
   // resizing both live in App — the source of truth for the active step.
@@ -653,6 +655,19 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       return { instruction: watchText, onBack, primary, feedback };
     }
 
+    // Setup step: the field carries its own Check button, so the toolbar has nothing
+    // to run — it only moves the learner on once a token has been accepted.
+    if (isColleagueSetup) {
+      return {
+        instruction: text,
+        onBack,
+        primary: demoDone ? forwardPrimary : undefined,
+        feedback: demoDone
+          ? { kind: 'pass', text: step.demoDoneMessage ?? 'Your colleague is configured.' }
+          : undefined,
+      };
+    }
+
     // Demo steps: the primary RUNS the scripted action; its status shows as info.
     if (isSeedDiscrepancy) {
       const runPrimary: FloatControls['primary'] = {
@@ -999,6 +1014,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           </div>
         )}
         <div style={S.instruction} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+        {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
         {statusLine && <div style={S.demoStatus}>{statusLine}</div>}
         {showHint && step.hint && !watching && <div style={S.hint}>{step.hint}</div>}
         {feedbackLine && (

@@ -83,7 +83,8 @@ export interface CourseStep {
     | 'rewind'
     | 'webhook-burst'
     | 'write-lines'
-    | 'colleague-write';
+    | 'colleague-write'
+    | 'colleague-setup';
   /**
    * Label for a demo step's action button, when the generic one would be vague.
    * Say what the button DOES in the base ("Create new delivery"), not what it
@@ -961,7 +962,25 @@ function course4ContentSteps(): CourseStep[] {
 function course3ContentSteps(): CourseStep[] {
   return [
     {
+      id: 'cs00',
+      type: 'exercise',
+      title: 'Setup · your colleague\u2019s token',
+      instruction:
+        'Paste your colleague\u2019s account token below, and check that the plugin greets the right person.',
+      demo: 'colleague-setup',
+      continuesOn: 'website',
+      html: `
+        <h1>Your colleague\u2019s token</h1>
+        <p class="lead">One piece of setup, once. It is what lets this companion act for Malika \u2014 so that
+        you never have to sign in as her.</p>
+        <p>In <b>her</b> account, open <b>Personal settings</b> and copy the account token. Paste it here.</p>
+        <p>The token stays in this browser. It is never written into your base \u2014 which matters, because
+        you are about to share that base with other people.</p>
+      `,
+    },
+    {
       id: 'cw01',
+
       type: 'exercise',
       title: 'Experiment · the colleague edits a row',
       instruction:
