@@ -17,6 +17,7 @@
 
 import { AnyGradeRule } from './grader';
 import { RewindSpec } from './rewindDelivery';
+import { ColleagueWriteSpec } from './colleagueStoreWrite';
 import { WebhookBurstSpec } from './webhookBurst';
 import { AutomationStage } from './automationGrade';
 import { getCurrentStepId } from './courseProgress';
@@ -76,7 +77,13 @@ export interface CourseStep {
    * moved) so Step 4 can receive it again for real, and keeps the `example` rows at
    * hand as the safety net for when the extraction misfires.
    */
-  demo?: 'automation-guided' | 'seed-discrepancy' | 'rewind' | 'webhook-burst' | 'write-lines';
+  demo?:
+    | 'automation-guided'
+    | 'seed-discrepancy'
+    | 'rewind'
+    | 'webhook-burst'
+    | 'write-lines'
+    | 'colleague-write';
   /**
    * Label for a demo step's action button, when the generic one would be vague.
    * Say what the button DOES in the base ("Create new delivery"), not what it
@@ -127,6 +134,14 @@ export interface CourseStep {
    * waiting for them at the other end of their webhook. See webhookBurst.ts.
    */
   burst?: WebhookBurstSpec;
+  /**
+   * Payload of the 'colleague-write' action (Course 3 EXPERIMENT): the edit the
+   * colleague makes, driven through a SECOND dtable-store opened with her own base
+   * token, so the operation is singular, names the row, carries its before-values
+   * and is signed by her. See colleagueStoreWrite.ts for what this is testing and
+   * why the REST route cannot serve Step 4.
+   */
+  colleagueWrite?: ColleagueWriteSpec;
   /**
    * Payload of the 'seed-discrepancy' action (Step 3): the plugin creates a delivery
    * and a short-delivered line so the learner's scheduled rule has something to find.
@@ -538,7 +553,9 @@ export const COURSES: CourseMeta[] = [
   {
     id: 'course-3',
     name: 'Course 3 — Collaboration',
-    access: 'external',
+    // EXPERIMENT (2026-09-16): opened up so the colleague-write spike can be run
+    // in a real base. Put this back to 'external' if the course ships without it.
+    access: 'active',
     helpUrl: 'https://seatable.com/help/online-course-3/',
     intro:
       'Work together on your data — share, co-edit, and keep everyone in sync.<br><br>Covers sharing and permissions, groups, comments and @mentions, the activity log, common datasets, and the whiteboard.',
@@ -932,6 +949,53 @@ function course4ContentSteps(): CourseStep[] {
   ];
 }
 
+/**
+ * Course 3 — EXPERIMENT ONLY, not course content.
+ *
+ * One step, one question: can the plugin make an edit that the base log renders
+ * as the colleague's own — "Row James Bennett modified", signed by her, with
+ * Restore available? Measured 2026-09-16, no REST route can (bulk op, row name
+ * lost, and on 6.2.12 no before-values either). The store route is the candidate;
+ * this is what runs it. See colleagueStoreWrite.ts.
+ */
+function course3ContentSteps(): CourseStep[] {
+  return [
+    {
+      id: 'cw01',
+      type: 'exercise',
+      title: 'Experiment · the colleague edits a row',
+      instruction:
+        'Open the Customers table, then run this. It should look exactly like Malika editing the row herself.',
+      demo: 'colleague-write',
+      demoLabel: 'Let Malika change the status',
+      demoDoneMessage:
+        'Malika has set James Bennett to Client. Open the base log (versions icon → Logs) and read the entry.',
+      watchTable: 'Customers',
+      colleagueWrite: {
+        table: 'Customers',
+        match: { column: 'Full Name', equals: 'James Bennett' },
+        cells: { Status: 'Client' },
+      },
+      html: `
+        <h1>Experiment · the colleague edits a row</h1>
+        <p class="lead">Does a write driven through the colleague's own store look like she made it by hand?</p>
+        <p><b>Before you run it</b>, give the plugin her account token — copied from her
+        <i>Personal settings</i> page. It is read from your browser only, never written into the base:</p>
+        <pre style="white-space:pre-wrap;font-size:12px;background:#f6f7f9;padding:8px 10px;border-radius:6px;">localStorage.setItem('online-courses:colleague-account-token', 'PASTE_HER_TOKEN')</pre>
+        <p>Then open the <code>Customers</code> table and press the button. Afterwards, open the base log
+        from the versions icon and check three things:</p>
+        <ol>
+          <li>does the entry read <b>Row James Bennett modified</b> — with the row's name — rather than
+          “The number of modified rows is: 1”?</li>
+          <li>is it signed with <b>her name</b>, instead of “API” or “anonymous”?</li>
+          <li>does its menu offer <b>Restore</b>, and does restoring put the status back?</li>
+        </ol>
+        <p>Three yeses and Step 4 can be staged without a second browser window.</p>
+      `,
+    },
+  ];
+}
+
 // Build every demo course manifest: an Introduction page, plus the active/dummy
 // pages for Courses 4 and 3.
 export function buildAllFallbackManifests(): CourseManifest[] {
@@ -944,6 +1008,7 @@ export function buildAllFallbackManifests(): CourseManifest[] {
       { id: 'intro', type: 'course', title: 'Introduction', html: introHtml(c) },
     ];
     if (c.id === 'course-4') steps.push(...course4ContentSteps());
+    if (c.id === 'course-3') steps.push(...course3ContentSteps());
     return { courseId: c.id, title: c.name, steps };
   });
 }

@@ -18,6 +18,7 @@ import {
   rewindDelivery,
 } from '../../../utils/custom-utils/rewindDelivery';
 import { webhookBurst } from '../../../utils/custom-utils/webhookBurst';
+import { colleagueStoreWrite } from '../../../utils/custom-utils/colleagueStoreWrite';
 import {
   gradeAutomationRule,
   listAutomationRuleIds,
@@ -175,6 +176,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const isRewind = step?.demo === 'rewind';
   const isBurst = step?.demo === 'webhook-burst';
   const isWriteLines = step?.demo === 'write-lines';
+  const isColleagueWrite = step?.demo === 'colleague-write';
 
   // On step change: fetch its HTML, reset UI. Progress persistence and window
   // resizing both live in App — the source of truth for the active step.
@@ -343,6 +345,28 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       markDemoDone();
     } catch (err: any) {
       setDemoStatus(`❌ ${err?.message || 'Could not make the change.'}`);
+    }
+    setDemoRunning(false);
+  };
+
+  // --- colleague-write action (Course 3 EXPERIMENT) --------------------------
+  // Drives the edit through a SECOND store opened with the colleague's own base
+  // token. What matters is not that the cell changes — REST could do that — but
+  // the SHAPE of the operation it leaves in the log. See colleagueStoreWrite.ts.
+  const runColleagueWrite = async () => {
+    if (demoRunning || !step?.colleagueWrite) return;
+    setDemoRunning(true);
+    setDemoDone(false);
+    setDemoStatus('Working…');
+    try {
+      const res = await colleagueStoreWrite(step.colleagueWrite, setDemoStatus);
+      markDemoDone();
+      setDemoStatus(
+        `✅ Written on row ${res.rowId}. Now open the base log and read the entry: does it name the row, ` +
+          'is it signed by her, and does its menu offer Restore?'
+      );
+    } catch (err: any) {
+      setDemoStatus(`❌ ${err?.message || 'Could not make the change as the colleague.'}`);
     }
     setDemoRunning(false);
   };
@@ -674,6 +698,17 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         instruction: text,
         onBack,
         primary: actionPrimary(step.demoLabel ?? 'Write the lines', runLoadExample),
+        feedback: actionFeedback(),
+      };
+    }
+
+    // Colleague-write experiment (Course 3): one action, nothing graded — the
+    // result is read in the base log, not here.
+    if (isColleagueWrite) {
+      return {
+        instruction: text,
+        onBack,
+        primary: actionPrimary(step.demoLabel ?? 'Let the colleague edit', runColleagueWrite),
         feedback: actionFeedback(),
       };
     }
