@@ -44,9 +44,7 @@
 
 import { DTableStore } from 'dtable-store';
 import { RowUtils } from 'dtable-store';
-
-/** Where the learner pastes Malika's account token for this experiment. */
-export const COLLEAGUE_TOKEN_KEY = 'online-courses:colleague-account-token';
+import { colleagueBaseToken, getColleagueToken, hostConfig } from './colleagueIdentity';
 
 export interface ColleagueWriteSpec {
   /** Table holding the row, e.g. 'Customers'. */
@@ -100,76 +98,6 @@ async function waitForFlush(store: any, timeoutMs = 8000): Promise<boolean> {
 }
 
 /**
- * Base identity, host first. `window.dtable` is what a real base injects;
- * `dtableSDK.config` only exists on the dev server. Reading the dev source first
- * is the trap that made every op-log grade fail INSIDE a base (2026-09-01).
- */
-function hostConfig(): {
-  server: string;
-  workspaceID: string;
-  baseName: string;
-  dtableUuid: string;
-} {
-  const host: any = (window as any).dtable || {};
-  const cfg: any = (window as any).dtableSDK?.config || {};
-  const pick = (...keys: string[]) => {
-    for (const key of keys) {
-      const value = host[key] ?? cfg[key];
-      if (value) return String(value);
-    }
-    return '';
-  };
-  return {
-    server: pick('server').replace(/\/+$/, ''),
-    workspaceID: pick('workspaceID', 'workspace_id'),
-    baseName: pick('fileName', 'dtableName'),
-    dtableUuid: pick('dtableUuid', 'dtable_uuid'),
-  };
-}
-
-export function getColleagueToken(): string {
-  const fromConfig = (window as any).dtablePluginConfig?.colleagueAccountToken;
-  if (fromConfig) return String(fromConfig).trim();
-  try {
-    return (localStorage.getItem(COLLEAGUE_TOKEN_KEY) || '').trim();
-  } catch {
-    // Private windows and blocked site data both throw here; no token is a
-    // perfectly ordinary answer, so it must never take the step down with it.
-    return '';
-  }
-}
-
-/**
- * Mint a base token that carries the colleague's `username`.
- *
- * This is the whole difference with a named API token, whose JWT has
- * `username: ""` — nobody to sign with, which is why comments came back "Unknown"
- * and log entries "anonymous".
- */
-async function colleagueBaseToken(
-  accountToken: string,
-  server: string,
-  workspaceID: string,
-  baseName: string
-): Promise<{ accessToken: string; dtableUuid: string }> {
-  const url =
-    `${server}/api/v2.1/workspace/${workspaceID}/dtable/` +
-    `${encodeURIComponent(baseName)}/access-token/`;
-  const resp = await fetch(url, {
-    headers: { Authorization: `Token ${accountToken}`, Accept: 'application/json' },
-  });
-  if (!resp.ok) {
-    throw new Error(
-      resp.status === 403 || resp.status === 404
-        ? 'That account cannot open this base — check the token, and that the colleague has access.'
-        : `Could not get a base token for the colleague (${resp.status}).`
-    );
-  }
-  const data = await resp.json();
-  return { accessToken: data.access_token, dtableUuid: data.dtable_uuid };
-}
-
-/**
  * Open a second store on the same base, authenticated as the colleague, and make
  * one edit through it.
  *
@@ -183,8 +111,7 @@ export async function colleagueStoreWrite(
   const accountToken = getColleagueToken();
   if (!accountToken) {
     throw new Error(
-      'No colleague token. Paste her account token (Personal settings) into ' +
-        `localStorage under "${COLLEAGUE_TOKEN_KEY}", then run this again.`
+      'No colleague token yet — the course asks for it in Step 2.'
     );
   }
 
@@ -199,12 +126,7 @@ export async function colleagueStoreWrite(
   }
 
   onStatus('Signing in as your colleague…');
-  const { accessToken, dtableUuid } = await colleagueBaseToken(
-    accountToken,
-    server,
-    workspaceID,
-    baseName
-  );
+  const { accessToken, dtableUuid } = await colleagueBaseToken();
 
   onStatus('Opening the base as her…');
   const store = new DTableStore({
