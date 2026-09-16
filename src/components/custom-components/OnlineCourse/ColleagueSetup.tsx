@@ -69,6 +69,7 @@ const S: Record<string, React.CSSProperties> = {
   name: { fontWeight: 600, fontSize: 14 },
   sub: { fontSize: 12, color: '#6c757d' },
   error: { marginTop: 12, fontSize: 13, color: '#b02a37' },
+  done: { marginTop: 10, fontSize: 13, color: '#1a7f37', fontWeight: 600 },
   note: { marginTop: 10, fontSize: 12, color: '#6c757d', lineHeight: 1.5 },
 };
 
@@ -145,6 +146,10 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
             <div style={S.sub}>{account.contactEmail || account.email}</div>
           </div>
         </div>
+        <div style={S.done}>
+          All set — the companion can now act for her. Head back to the website and carry on
+          with the course.
+        </div>
         <div style={{ ...S.note, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
           <span>
             Is this your colleague, and not you? If you recognise yourself here, the plugin
@@ -176,10 +181,7 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
         </button>
       </div>
       {error && <div style={S.error}>{error}</div>}
-      <div style={S.note}>
-        The token stays in this browser. It is never written into your base, which you are
-        about to share with other people.
-      </div>
+      <div style={S.note}>The token is kept in this browser, not in your base.</div>
     </div>
   );
 };

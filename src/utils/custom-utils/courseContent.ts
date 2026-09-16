@@ -968,14 +968,15 @@ function course3ContentSteps(): CourseStep[] {
       instruction:
         'Paste your colleague\u2019s account token below, and check that the plugin greets the right person.',
       demo: 'colleague-setup',
+      demoDoneMessage:
+        '\u2705 Your colleague is configured \u2014 the companion can act for her. Carry on with the course on the website.',
       continuesOn: 'website',
       html: `
         <h1>Your colleague\u2019s token</h1>
         <p class="lead">One piece of setup, once. It is what lets this companion act for Malika \u2014 so that
         you never have to sign in as her.</p>
         <p>In <b>her</b> account, open <b>Personal settings</b> and copy the account token. Paste it here.</p>
-        <p>The token stays in this browser. It is never written into your base \u2014 which matters, because
-        you are about to share that base with other people.</p>
+        <p>The token is kept in this browser, not in your base.</p>
       `,
     },
     {
