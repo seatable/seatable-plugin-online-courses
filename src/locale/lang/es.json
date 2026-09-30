@@ -20,6 +20,8 @@
     "login_cancel": "Cancelar",
     "login_submit": "Iniciar sesion",
     "login_loading": "Iniciando sesion...",
-    "login_2fa_required": "Se requiere autenticacion de dos factores"
+    "login_2fa_required": "Se requiere autenticacion de dos factores",
+    "account_token_desc": "Necesario para la auditoría de recursos. Genéralo desde la configuración de tu cuenta de SeaTable.",
+    "login_disclaimer": "Sus credenciales se envian directamente a su servidor SeaTable y no se almacenan."
   }
 }

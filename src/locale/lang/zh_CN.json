@@ -20,6 +20,8 @@
     "login_cancel": "取消",
     "login_submit": "登录",
     "login_loading": "登录中...",
-    "login_2fa_required": "需要双重身份验证"
+    "login_2fa_required": "需要双重身份验证",
+    "account_token_desc": "资产审计所必需。请在您的 SeaTable 账户设置中生成一个。",
+    "login_disclaimer": "您的凭据将直接发送到您的 SeaTable 服务器，不会被存储。"
   }
 }

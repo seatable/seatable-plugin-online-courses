@@ -20,6 +20,8 @@
     "login_cancel": "Annuler",
     "login_submit": "Connexion",
     "login_loading": "Connexion en cours...",
-    "login_2fa_required": "Authentification à deux facteurs requise"
+    "login_2fa_required": "Authentification à deux facteurs requise",
+    "account_token_desc": "Requis pour l'audit des ressources. Générez-en un depuis les paramètres de votre compte SeaTable.",
+    "login_disclaimer": "Vos identifiants sont envoyés directement à votre serveur SeaTable et ne sont pas stockés."
   }
 }
