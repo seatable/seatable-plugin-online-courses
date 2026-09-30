@@ -1,0 +1,56 @@
+// Main Content Colors
+$main-content-bgColor: #f5f5f5;
+
+// Modal Colors
+$modal-boxShadow: rgba(0, 0, 0, 0.134);
+$modal-bgColor: #fff;
+$modal-header-borderBottom: rgba(113, 113, 113, 0.079);
+$modal-header-p: #132043;
+$modal-header-hover: #ff800146;
+$modal-cards-bgColor: #9ba4b5;
+$modal-addRow: #ff8001;
+$figure-borderBottom: #eee;
+
+// Presets Colors
+$preset-bgColor: rgb(29, 40, 56);
+$preset-text1: #fff;
+$preset-text2: #000;
+$borderR-color: rgba(113, 113, 113, 0.079);
+$light-gray: rgb(240, 240, 240);
+$dark-gray: rgb(85, 85, 85);
+$btn-hover: rgba(255, 255, 255, 0.1);
+$condition-disabled: #888888;
+$borderColor: #e2e2e2;
+$dropDown-boxShadow: #ccc;
+$newPreset-bgColor: #fff;
+$newPreset-boxShadow: rgba(0, 0, 0, 0.509);
+$add-btn-hover: #0000001f;
+
+// Header Colors
+$header-bgColor: #fff;
+$header-text1: colorContrast($preset-bgColor);
+
+// Field Toggle Colors
+$toggle-bgColor: #e9ecef;
+$toggle-borderColor: rgba(0, 40, 100, 0.12);
+$toggle-after-bgColor: #fff;
+$toggle-after-boxShadow: rgba(0, 0, 0, 0.4);
+$toggle-active-bgColor: #ff8001;
+
+// Function to calculate contrast color based on brightness
+@function colorContrast($color) {
+  // Convert RGB color to HSL
+  $r: calc(red($color) / 255);
+  $g: calc(green($color) / 255);
+  $b: calc(blue($color) / 255);
+  $min: min($r, $g, $b);
+  $max: max($r, $g, $b);
+  $l: calc(($min + $max) / 2);
+
+  // Choose black or white as the contrasting color
+  @if $l > 0.5 {
+    @return $preset-text2;
+  } @else {
+    @return $preset-text1;
+  }
+}

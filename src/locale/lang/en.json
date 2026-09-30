@@ -1,0 +1,24 @@
+{
+  "settings_headline": "Settings",
+  "table": "Table",
+  "view": "View",
+  "preset_add": "Add relationship chart",
+  "preset_rename": "Rename",
+  "preset_duplicate": "Duplicate",
+  "preset_delete": "Delete",
+  "preset_warn_exist": "Please enter a unique name",
+  "add_row": "Adding a row only works in production",
+  "custom_plugin": {
+    "title_link": "Link to other records relationship",
+    "title_formula": "Link formula relationship",
+    "title_tables": "Tables",
+    "rel_links": "Show linked record",
+    "rel_lookup": "Show lookup",
+    "rel_lookup2nd": "Show 2nd level lookup",
+    "rel_count": "Show countlinks",
+    "rel_rollup": "Show rollup",
+    "rel_max": "Show findmax",
+    "rel_min": "Show findmin",
+    "tbl_noLinks": "Show tables without links"
+  }
+}

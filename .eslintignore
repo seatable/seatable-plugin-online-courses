@@ -1,0 +1,13 @@
+#config
+/config
+
+# setting
+/src/setting.js
+/src/setting.ts
+/src/setting.local.dist.js
+/src/setting.local.dist.ts
+/src/setting.local.js
+
+# locale
+/src/locale/**/*.js
+/src/locale/**/*.ts

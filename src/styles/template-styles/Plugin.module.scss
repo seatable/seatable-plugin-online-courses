@@ -1,0 +1,276 @@
+@import '../abstracts/_media.scss';
+@import '../constants.scss';
+
+.plugin_wrapper {
+  width: 100%;
+  position: fixed;
+  height: 95%;
+  bottom: 0;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+  background: $modal-bgColor;
+  display: flex;
+}
+
+.plugin {
+  width: 100%;
+  background: $modal-bgColor;
+  height: 100%;
+
+  &_draggable {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 6px;
+    width: 50px;
+    z-index: 10;
+    cursor: row-resize;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    span {
+      background-color: $modal-boxShadow;
+      width: 100%;
+      height: 2px;
+    }
+  }
+
+  &_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: $modal-bgColor;
+    padding: 15px 15px 10px;
+    border-block: 1px solid $modal-header-borderBottom;
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 8;
+
+    @include mobile {
+      padding: 10px 10px 7px;
+    }
+
+    &_views {
+      display: flex;
+      max-width: 50%;
+      align-items: center;
+      flex-wrap: nowrap;
+      padding-bottom: 15px;
+      margin-right: 10px;
+      margin-bottom: -15px;
+
+      @include mobile {
+        width: 40%;
+      }
+    }
+
+    &_icon_btn {
+      all: unset;
+      width: 25px;
+      height: 25px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      border-radius: 3px;
+      outline: none;
+      margin-right: 3px;
+      margin-left: 3px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 3px;
+
+      p {
+        font-size: 12px;
+        color: $modal-header-p;
+      }
+
+      &:hover {
+        background: $modal-header-hover;
+      }
+
+      &_active {
+        width: auto;
+        padding-inline: 3px;
+      }
+
+      &_settings {
+        height: 24px;
+        line-height: 24px;
+      }
+      &:focus,
+      &:not(:hover) {
+        outline: none;
+      }
+    }
+
+    &_viewBtn,
+    &_viewBtn_active {
+      all: unset;
+      position: relative;
+      font-size: 15px;
+      padding: 10px 24px;
+      border-radius: 5px;
+      color: colorContrast($preset-bgColor);
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      @include mobile {
+        font-size: 12px;
+      }
+
+      &_icons {
+        justify-self: center;
+        opacity: 0;
+        color: colorContrast($preset-bgColor);
+
+        @include mobile {
+          opacity: 1;
+        }
+      }
+      &_settings {
+        opacity: 0;
+        color: colorContrast($preset-bgColor);
+
+        @include mobile {
+          opacity: 1;
+        }
+      }
+
+      &:hover {
+        .plugin_header_viewBtn_icons {
+          opacity: 1;
+        }
+        .plugin_header_viewBtn_settings {
+          opacity: 1;
+        }
+      }
+    }
+
+    &_viewBtn_active {
+      background-color: lighten($preset-bgColor, 30%);
+    }
+
+    &_settings {
+      width: 25%;
+
+      @include mobile {
+        width: 20%;
+      }
+    }
+
+    &_languageDropdownContainer {
+      margin-bottom: 10px;
+    }
+
+    &_label {
+      margin-right: 8px;
+    }
+
+    &_select {
+      border: 1px solid $toggle-active-bgColor;
+      outline: none;
+      padding: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    &_pluginName {
+      p {
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+.main {
+  padding-top: 50px;
+  align-items: flex-start;
+}
+
+.preset_dropdown {
+  position: absolute;
+  top: 46px;
+  right: 0px;
+  background-color: $preset-bgColor;
+  border: 1px solid rgba($preset-bgColor, 0.12);
+  box-shadow: 0 0 5px $dropDown-boxShadow;
+  z-index: 100;
+  padding: 0;
+
+  li {
+    padding: 6px 20px;
+    font-weight: 400;
+    cursor: pointer;
+
+    &:hover {
+      background-color: lighten($preset-bgColor, 30%);
+    }
+  }
+}
+
+.add_row {
+  border: none;
+  cursor: pointer;
+  width: 60px;
+  height: 60px;
+  background-color: $preset-bgColor;
+  position: fixed;
+  bottom: 50px;
+  right: 50px;
+  border-radius: 50%;
+  outline: none !important;
+
+  &:hover {
+    opacity: 0.9;
+
+    .add_row_toolTip {
+      opacity: 0.9;
+    }
+  }
+
+  &_toolTip {
+    left: -340%;
+    position: absolute;
+    color: $modal-bgColor;
+    white-space: nowrap;
+    background-color: #000;
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+
+    &::before {
+      content: '';
+      position: absolute;
+      display: block;
+      width: 0px;
+      right: 10px;
+      top: 50%;
+      border: 10px solid transparent;
+      border-right: 0;
+      border-left: 10px solid #000;
+      transform: translate(calc(100% + 5px), -50%);
+    }
+  }
+}
+
+.body {
+  height: 100%;
+  overflow: scroll;
+  padding-bottom: 50px;
+  background-color: $main-content-bgColor;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

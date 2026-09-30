@@ -1,0 +1,24 @@
+{
+  "settings_headline": "Einstellungen",
+  "table": "Tabelle",
+  "view": "Ansicht",
+  "preset_add": "Tabellenbeziehung hinzufügen",
+  "preset_rename": "Umbenennen",
+  "preset_duplicate": "Duplizieren",
+  "preset_delete": "Löschen",
+  "preset_warn_exist": "Bitte wählen Sie einen einzigartigen Namen",
+  "add_row": "Das Hinzufügen einer Zeile funktioniert nur im Live-Betrieb",
+  "custom_plugin": {
+    "title_link": "Link zu anderen Datensätzen Beziehung",
+    "title_formula": "Linkformel Beziehung",
+    "title_tables": "Tabellen",
+    "rel_links": "Verknüpfung zu anderen Einträgen anzeigen",
+    "rel_lookup": "Formel für Verknüpfungen anzeigen",
+    "rel_lookup2nd": "Formel für Verknüpfungen (2-Ebene) anzeigen",
+    "rel_count": "Anzahl Links anzeigen",
+    "rel_rollup": "Rollup anzeigen",
+    "rel_max": "Findmax anzeigen",
+    "rel_min": "Findmin anzeigen",
+    "tbl_noLinks": "Tabellen ohne Verknüpfungen anzeigen"
+  }
+}

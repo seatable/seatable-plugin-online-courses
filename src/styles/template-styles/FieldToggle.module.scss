@@ -1,0 +1,35 @@
+@import '../constants.scss';
+
+.toggle_switch {
+  width: 22px;
+  height: 12px;
+  border-radius: 6px;
+  background: $toggle-bgColor;
+  border: 1px solid $toggle-borderColor;
+  transition:
+    0.3s border-color,
+    0.3s background-color;
+  position: relative;
+
+  &::after {
+    content: '';
+    height: 8px;
+    width: 8px;
+    background: $toggle-after-bgColor;
+    border-radius: 50%;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: 0.3s left;
+    position: absolute;
+    box-shadow: 0 1px 2px 0 $toggle-after-boxShadow;
+  }
+
+  &_active {
+    background-color: $toggle-active-bgColor;
+
+    &::after {
+      left: calc(100% - 8px);
+    }
+  }
+}

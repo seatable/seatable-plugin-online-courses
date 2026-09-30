@@ -1,0 +1,24 @@
+{
+  "settings_headline": "Paramètres",
+  "table": "Tableau",
+  "view": "Vue",
+  "preset_add": "Ajouter une relation de table",
+  "preset_rename": "Renommer",
+  "preset_duplicate": "Dupliquer",
+  "preset_delete": "Supprimmer",
+  "preset_warn_exist": "Veuillez saisir un nom unique",
+  "add_row": "L'ajout d'une ligne ne fonctionne que en production",
+  "custom_plugin": {
+    "title_link": "Lien vers d'autres relations d'enregistrements",
+    "title_formula": "Formule de lien relation",
+    "title_tables": "Tables",
+    "rel_links": "Afficher le lien vers d'autres enregistrement",
+    "rel_lookup": "Afficher la formule pour les liens",
+    "rel_lookup2nd": "Afficher la formule pour les liens de 2e niveau",
+    "rel_count": "Afficher les liens comptés",
+    "rel_rollup": "Afficher le rollup",
+    "rel_max": "Afficher findmax",
+    "rel_min": "Afficher findmin",
+    "tbl_noLinks": "Afficher les tables sans liens"
+  }
+}

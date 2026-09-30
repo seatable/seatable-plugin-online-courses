@@ -1,0 +1,24 @@
+{
+  "settings_headline": "设置",
+  "table": "子表",
+  "view": "视图",
+  "preset_add": "添加新的表格关系",
+  "preset_rename": "重命名预置",
+  "preset_duplicate": "复制预置",
+  "preset_delete": "删除预设",
+  "preset_warn_exist": "请选择一个独特的名称",
+  "add_row": "添加行仅在生产环境中有效",
+  "custom_plugin": {
+    "title_link": "链接到其他记录关系",
+    "title_formula": "链接公式关系",
+    "title_tables": "表格",
+    "rel_links": "显示链接记录关系",
+    "rel_lookup": "显示查找关系",
+    "rel_lookup2nd": "显示二级查找关系",
+    "rel_count": "显示链接计数",
+    "rel_rollup": "显示汇总",
+    "rel_max": "显示最大值",
+    "rel_min": "显示最小值",
+    "tbl_noLinks": "显示没有链接的表"
+  }
+}

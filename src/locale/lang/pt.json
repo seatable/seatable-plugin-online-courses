@@ -1,0 +1,24 @@
+{
+  "settings_headline": "Configurações",
+  "table": "Tabela",
+  "view": "Vista",
+  "preset_add": "Adicionar relação de tabela",
+  "preset_rename": "Renomear",
+  "preset_duplicate": "Duplicado",
+  "preset_delete": "Excluir",
+  "preset_warn_exist": "Introduza um nome único",
+  "add_row": "Adicionar uma linha só funciona em produção",
+  "custom_plugin": {
+    "title_link": "Link para outros registros relacionamento",
+    "title_formula": "Fórmula de link relacionamento",
+    "title_tables": "Tabelas",
+    "rel_links": "Mostrar relação de registro vinculado",
+    "rel_lookup": "Mostrar relação de busca",
+    "rel_lookup2nd": "Mostrar relação de busca de segundo nível",
+    "rel_count": "Mostrar contagem de links",
+    "rel_rollup": "Mostrar rollup",
+    "rel_max": "Mostrar findmax",
+    "rel_min": "Mostrar findmin",
+    "tbl_noLinks": "Mostrar tabelas sem links"
+  }
+}
