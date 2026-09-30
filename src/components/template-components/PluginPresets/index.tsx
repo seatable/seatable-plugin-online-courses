@@ -18,6 +18,7 @@ import {
   getActiveTableAndActiveView,
   isUniquePresetName,
 } from '../../../utils/template-utils/utils';
+import { isStepDone, PROGRESS_EVENT } from '../../../utils/custom-utils/courseStore';
 import {
   ACTIVE_PRESET_ID,
   DEFAULT_PLUGIN_DATA,
@@ -60,6 +61,13 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   onFloat,
 }) => {
   const [presetName, setPresetName] = useState('');
+  // Redraw the step checkmarks whenever a step is marked done or started over.
+  const [, setProgressTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setProgressTick((n) => n + 1);
+    window.addEventListener(PROGRESS_EVENT, bump);
+    return () => window.removeEventListener(PROGRESS_EVENT, bump);
+  }, []);
   const [presetNameAlreadyExists, setPresetNameAlreadyExists] = useState(false);
   const [_pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
   const [showNewPresetPopUp, setShowNewPresetPopUp] = useState<boolean>(false);
@@ -380,15 +388,30 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                             ...treeStyles.stepRow,
                             ...(active ? treeStyles.stepRowActive : null),
                           }}>
-                          <span
-                            style={{
-                              ...treeStyles.stepDot,
-                              ...(s.type === 'exercise'
-                                ? treeStyles.stepDotExercise
-                                : treeStyles.stepDotLesson),
-                            }}
-                          />
+                          {/* Where the learner stands, at a glance: a check for a step that
+                              is done, a plain dot otherwise. (The dot used to encode the
+                              page TYPE — orange exercise, grey lesson — which told the
+                              learner nothing they needed.) */}
+                          {isStepDone(preset._id, s) ? (
+                            <i
+                              className="dtable-font dtable-icon-check-mark"
+                              style={treeStyles.stepCheck}
+                              aria-label="done"
+                            />
+                          ) : (
+                            <span style={treeStyles.stepDot} />
+                          )}
                           <span style={treeStyles.stepTitle}>{s.title}</span>
+                          {/* Only exercises are marked: they are the pages that shrink the
+                              panel to a banner, and marking every page would crowd the list. */}
+                          {s.type === 'exercise' && (
+                            <i
+                              className="dtable-font dtable-icon-rename"
+                              style={treeStyles.stepExercise}
+                              title="Exercise — the panel shrinks so you can work in your base"
+                              aria-label="exercise"
+                            />
+                          )}
                         </button>
                       );
                     })}
@@ -454,10 +477,17 @@ const treeStyles: Record<string, React.CSSProperties> = {
     width: '100%',
   },
   stepRowActive: { background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 600 },
-  stepDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
-  stepDotLesson: { background: '#8a94a6' },
-  stepDotExercise: { background: '#ff8000' },
+  stepDot: {
+    width: 6,
+    height: 6,
+    margin: '0 2px',
+    borderRadius: '50%',
+    flexShrink: 0,
+    background: '#8a94a6',
+  },
+  stepCheck: { width: 10, fontSize: 10, color: '#34d399', flexShrink: 0, textAlign: 'center' },
   stepTitle: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  stepExercise: { marginLeft: 'auto', fontSize: 10, opacity: 0.6, flexShrink: 0 },
 };
 
 export default PluginPresets;

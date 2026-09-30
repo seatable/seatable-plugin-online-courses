@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Header from './components/template-components/Header';
 import PluginSettings from './components/template-components/PluginSettings';
 import PluginPresets from './components/template-components/PluginPresets';
-import ResizableWrapper from './components/template-components/ResizableWrapper';
+import ResizableWrapper, { clampHeight } from './components/template-components/ResizableWrapper';
 import CustomPlugin from './components/custom-components/index';
 // Import of Interfaces
 import {
@@ -56,7 +56,11 @@ import {
   loadAllCourses,
   resolveInitialStepId,
 } from './utils/custom-utils/courseContent';
-import { setCurrentStepId } from './utils/custom-utils/courseProgress';
+import {
+  getStoredBannerHeight,
+  setCurrentStepId,
+  setStoredBannerHeight,
+} from './utils/custom-utils/courseStore';
 
 // Plugin-window height presets (fraction of viewport, with a px floor): the full
 // lesson view vs the compact exercise banner at the bottom of the window.
@@ -179,6 +183,19 @@ const App: React.FC<IAppProps> = (props) => {
   // toolbar frees the whole base, which minimizing never did.
   const naturalExpanded = activeStep?.type !== 'exercise';
   const compact = !naturalExpanded;
+  // A banner height the learner chose by dragging the handle. Once set, it wins over
+  // the fit-to-content height for every banner page that follows: the window no
+  // longer changes size under them as the text changes. Full-height pages stay full.
+  const [userBannerPx, setUserBannerPx] = useState<number | null>(null);
+  const naturalExpandedRef = useRef(naturalExpanded);
+  naturalExpandedRef.current = naturalExpanded;
+  const onUserResize = useCallback((px: number) => {
+    if (naturalExpandedRef.current) return;
+    setUserBannerPx(px);
+    // Kept in the base, like the rest of the course state, so the next opening of the
+    // plugin — or another browser — starts at the height the learner chose.
+    setStoredBannerHeight(px);
+  }, []);
 
   // Floating mode: the plugin is shrunk to a small draggable toolbar so the learner
   // can reach the whole base behind it (the reduced bar covers panel action
@@ -201,6 +218,8 @@ const App: React.FC<IAppProps> = (props) => {
   const reportContentHeight = useCallback((px: number) => setExerciseContentPx(px), []);
   const currentSize = () => {
     if (naturalExpanded) return HEIGHT_EXPANDED;
+    // Clamped again here: the viewport may have shrunk since the height was chosen.
+    if (userBannerPx) return { ratio: 0, minPx: clampHeight(userBannerPx) };
     // Chrome around the banner content: header + body/banner padding + a small
     // buffer. Grow to fit, but never below the reduced floor nor above 75% of the
     // viewport (beyond that the banner scrolls rather than swallow the screen).
@@ -258,7 +277,7 @@ const App: React.FC<IAppProps> = (props) => {
   useEffect(() => {
     if (!activeStep || floating) return;
     setPluginHeight(currentSize());
-  }, [naturalExpanded, activeStepId, activeStep, floating, exerciseContentPx]);
+  }, [naturalExpanded, activeStepId, activeStep, floating, exerciseContentPx, userBannerPx]);
 
   // Enter/exit floating: apply the puck geometry, or tear it down and restore the
   // normal window size.
@@ -270,6 +289,15 @@ const App: React.FC<IAppProps> = (props) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floating]);
+
+  // Restore the banner height the learner chose last time, once the datastore is there.
+  const bannerHeightLoaded = useRef(false);
+  useEffect(() => {
+    if (bannerHeightLoaded.current || isLoading) return;
+    bannerHeightLoaded.current = true;
+    const px = getStoredBannerHeight();
+    if (px) setUserBannerPx(px);
+  }, [isLoading]);
 
   // Restore the saved puck position from the datastore once it has loaded (else
   // keep the bottom-left default).
@@ -570,7 +598,7 @@ const App: React.FC<IAppProps> = (props) => {
   return isLoading ? (
     <div></div>
   ) : (
-    <ResizableWrapper floating={floating}>
+    <ResizableWrapper floating={floating} onUserResize={onUserResize}>
       {/* Kept MOUNTED (display:none) while floating so in-progress step state —
           e.g. the automation stepper's current stage — survives shrink/restore. */}
       <div style={{ display: floating ? 'none' : 'contents' }}>
@@ -841,7 +869,9 @@ const FloatToolbar: React.FC<{
               <button type="button" style={tb.hintToggle} onClick={controls.help.toggle}>
                 {controls.help.shown ? '▾ Hide hint' : '▸ Show hint'}
               </button>
-              {controls.help.shown && <div style={tb.hintText}>{controls.help.text}</div>}
+              {controls.help.shown && (
+                <div style={tb.hintText} dangerouslySetInnerHTML={{ __html: controls.help.text }} />
+              )}
             </div>
           )}
           {controls.feedback && (
@@ -953,7 +983,9 @@ const tb: Record<string, React.CSSProperties> = {
     fontSize: 12.5,
     lineHeight: 1.4,
   },
-  fb: { fontWeight: 600, marginTop: 6, paddingRight: 14 },
+  // No bold: the symbol says pass or fail. The colour stays — on this dark popup an
+  // info line has no symbol, and colour is what tells it from the instruction.
+  fb: { marginTop: 6, paddingRight: 14 },
   menu: { padding: 4, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 11 },
   menuItem: {
     textAlign: 'left',

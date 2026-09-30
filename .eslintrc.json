@@ -18,7 +18,7 @@
   "plugins": ["react", "jsx-a11y"],
   "rules": {
     "linebreak-style": ["warn", "unix"],
-    "quotes": ["warn", "single"],
+    "quotes": ["warn", "single", { "avoidEscape": true, "allowTemplateLiterals": true }],
     "semi": [
       "warn",
       "always",

@@ -1,5 +1,6 @@
-@import '../abstracts/_media.scss';
-@import '../constants.scss';
+@use 'sass:color';
+@use '../abstracts/_media.scss' as *;
+@use '../constants.scss' as *;
 
 .plugin_wrapper {
   width: 100%;
@@ -154,7 +155,7 @@
     }
 
     &_viewBtn_active {
-      background-color: lighten($preset-bgColor, 30%);
+      background-color: color.adjust($preset-bgColor, $lightness: 30%);
     }
 
     &_settings {
@@ -210,7 +211,7 @@
     cursor: pointer;
 
     &:hover {
-      background-color: lighten($preset-bgColor, 30%);
+      background-color: color.adjust($preset-bgColor, $lightness: 30%);
     }
   }
 }

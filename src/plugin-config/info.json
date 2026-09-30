@@ -12,13 +12,13 @@
     "zh-cn": "Online courses"
   },
   "description": {
-    "de": "Prüfung der Assets und Tabellennutzung in einer Base.",
-    "en": "Audit assets and table usage in a base.",
-    "fr": "Audit des assets et de l'utilisation des tables d'une base.",
-    "es": "Auditar los activos y el uso de tablas en una base.",
-    "pt": "Auditar os ativos e o uso das tabelas de uma base.",
-    "ru": "Аудит активов и использования таблиц в базе.",
-    "zh-cn": "审计数据库中的资产和表格使用情况。"
+    "de": "Ihr Begleiter für die SeaTable Online-Kurse: Er führt Sie durch die praktischen Übungen und überprüft Ihre Arbeit direkt in Ihrer Base.",
+    "en": "Your companion for the SeaTable online courses: it guides you through the hands-on exercises and checks your work right in your own base.",
+    "fr": "Votre compagnon pour les cours en ligne SeaTable : il vous guide dans les exercices pratiques et vérifie votre travail directement dans votre base.",
+    "es": "Su compañero para los cursos en línea de SeaTable: le guía por los ejercicios prácticos y comprueba su trabajo directamente en su propia base.",
+    "pt": "O seu companheiro para os cursos online da SeaTable: guia-o pelos exercícios práticos e verifica o seu trabalho diretamente na sua base.",
+    "ru": "Ваш помощник в онлайн-курсах SeaTable: он проведёт вас через практические задания и проверит вашу работу прямо в вашей базе.",
+    "zh-cn": "SeaTable 在线课程的学习助手：引导您完成实践练习，并直接在您的数据库中检查您的操作结果。"
   },
   "active_components": {
     "settings_dropdowns": false,

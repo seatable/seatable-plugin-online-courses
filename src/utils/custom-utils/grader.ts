@@ -146,7 +146,7 @@ export interface RowsExistRule {
  */
 export interface PluginUiRule {
   kind: 'plugin-ui';
-  check: 'toolbar-lower-right';
+  check: 'toolbar-lower-right' | 'banner-resized';
 }
 
 /** Any grade rule a manifest step can carry. */
