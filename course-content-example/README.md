@@ -35,7 +35,7 @@ The `welcome` tour is plugin UI, not course content, and is not fetched.
   "version": "optional",
   "steps": [
     {
-      "id": "cv03",
+      "id": "malikas-window-in-this-base",
       "type": "course",
       "title": "Step 3a · Malika’s window in this base",
       "instruction": "One short sentence for the floating toolbar.",
@@ -48,8 +48,12 @@ The `welcome` tour is plugin UI, not course content, and is not fetched.
 
 A manifest must have a non-empty `steps` array. Each step:
 
-- **`id`** — a short id, unique in the course (`cs00`, `cv03`…). Saved progress and checkmarks are keyed
-  on it: changing an id resets that step for every learner.
+- **`id`** — the step's title without its `Step N ·` prefix, in lower case, accents and
+  apostrophes removed, words joined by hyphens: `Step 3a · Malika’s window in this base` →
+  `malikas-window-in-this-base`; the introduction is `introduction`. Unique within the course
+  (the same id in two courses is fine). Saved progress and checkmarks are keyed on it, so it
+  is set when the step is created and **not changed afterwards**, even if the title is
+  reworded: a new id resets that step for every learner.
 - **`type`** — `course` (full-height page) or `exercise` (compact banner over the base).
 - **`title`** — shown in the step list, e.g. `Step 3a · …`. The manifest is deliberately
   **gapped**: it holds only the plugin's checkpoints, while the website carries the course.
