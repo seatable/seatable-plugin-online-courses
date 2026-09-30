@@ -1,19 +1,96 @@
-# SeaTable Plugin Table relationships
+# SeaTable Plugin Online courses
 
-**Table relationships** is a SeaTable Server plugin that visualizes how tables are linked to each other through specific columns within a base.
+**Online courses** is a SeaTable plugin that works as a **learning companion** for the
+[SeaTable online courses](https://seatable.com/help/online-courses/). It does not give you a
+new view of your data: it walks you through the hands-on exercises of a course and **checks
+your work directly in your own base**.
 
-This visualization helps users easily understand the structure and connections within their data, facilitating more efficient data management. By clearly displaying relationships, it also aids in identifying potential data inconsistencies and optimizing database design.
+![The Online courses plugin open on a base, showing the current exercise and its Verify button](docs/online-courses-plugin.png)
 
-![Screenshot of Table relationships](./table_relationship.png)
+## How it works with the courses
 
-## What is a SeaTable Plugin?
+A course is followed mainly on the **website**, where the whole story unfolds step by step.
+At certain points it asks you to **open the plugin and pick a step**: that is where you
+actually do something in your base.
 
-SeaTable, the world-leading no-code app-building platform, supports plugins. Plugins provide additional visualization or interaction possibilities within a SeaTable base. Examples of SeaTable Plugins include the Gallery, the Map Plugin, or the Kanban board. You can find a list of all publicly available plugins [here](https://cloud.seatable.io/apps/custom/plugin-archive).
+- The **website** carries the narrative: it explains each concept and shows what to build
+  and why.
+- The **plugin** works with you inside your base. It reads your data and confirms that the
+  automation you built triggers correctly, that your script produced the right values, or
+  that your view is set up as expected — and gives you immediate feedback.
+
+It does more than mark the result:
+
+- **Guided builds** — when an operation has several stages (the trigger of an automation,
+  then its conditions, then each action), it can take you through them one at a time,
+  checking each stage before the next.
+- **Changes in your base** — it can bring in the records a step works on, or undo what a
+  previous step produced so you can run it again. It tells you each time what it is about
+  to do.
+- **A stand-in colleague** (Course 3 – Collaboration) — with the account token of a second
+  account in your team, it shows you what your colleague sees (her home page, her
+  notifications) and acts for her: edits signed with her name, replies in a comment thread.
+  You never have to sign in as her.
+
+Exercise pages shrink the plugin to a banner at the bottom of the window so the base stays
+in view; the plugin can also be collapsed into a small toolbar you drag anywhere.
+
+## Courses
+
+| Course                              | In the plugin                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| Welcome — using the plugin          | A short tour of the companion, fully in the plugin. Start here.          |
+| Course 3 – Collaboration            | Supported: sharing, comments, activity log (with the stand-in colleague) |
+| Course 4 – Automation & Integration | Supported                                                                |
+| Courses 1 and 2                     | Listed with a link to follow the course on the website                   |
+| Courses 5–7                         | Listed as coming soon                                                    |
+
+Course content is currently bundled in the plugin. Serving it from an external host is
+planned; the contract a host must follow is described in
+[`course-content-example/README.md`](course-content-example/README.md).
 
 ## How to install
 
-In general, a Plugin needs to be installed by the system admin on the SeaTable server and can then be activated in any base by the user. More information about the installation of plugins can be found in the [SeaTable Admin Manual](https://admin.seatable.io/configuration/plugins/?h=plugins).
+A plugin is installed by the system administrator of the SeaTable server, then activated
+in any base by its users. See the
+[SeaTable Admin Manual](https://admin.seatable.io/configuration/plugins/?h=plugins) for the
+installation, and the
+[help article](https://seatable.com/help/activate-plugin-in-base/) for
+activating a plugin in a base.
 
-## How to develop and contribute to this plugin
+Build the installable package with:
 
-Please refer to the [SeaTable Plugin Template](https://github.com/seatable/seatable-plugin-template-base/tree/TB-staging) documentation on GitHub. This guide explains how to set up your local testing environment, create a `setting.local.js` file to connect to a SeaTable base, and more.
+```bash
+npm install
+npm run build-plugin
+```
+
+This formats the code, builds it and writes `plugin-zip/online-courses-<version>.zip`. The
+version comes from `src/plugin-config/info.json`.
+
+## Development
+
+1. Copy `src/setting.local.dist.js` to `src/setting.local.js` (ignored by git) and fill in
+   your server, base name, workspace id and a base API token.
+   - `accountToken` (or `username` / `password`) is needed for the checks that read
+     account-level data, such as a base's automation rules.
+   - `colleagueAccountToken` is the second account's token for Course 3. In a real base the
+     plugin's setup step stores it in the plugin datastore instead.
+2. Run `npm start` and open the dev server.
+
+Useful places in the code:
+
+- `src/utils/custom-utils/courseContent.ts` — the course list and the steps of each course.
+- `src/utils/custom-utils/grader.ts`, `opLogGrade.ts` — the checks.
+- `src/utils/custom-utils/courseStore.ts` — progress and settings kept in the base.
+- `src/components/custom-components/OnlineCourse/` — the step runner and the colleague's
+  window.
+
+## Origin
+
+The plugin started as a copy of SeaTable's
+[Table relationships plugin](https://github.com/seatable/seatable-plugin-table-relationship)
+(v1.2.3), itself built on the
+[SeaTable plugin template](https://github.com/seatable/seatable-plugin-template-base). The
+build setup (`config/`, `scripts/`) comes from there; the history of that plugin is not
+carried over.

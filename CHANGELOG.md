@@ -1,37 +1,18 @@
 # Changelog
 
-## Version 1.2.4 (17.03.2026)
+## Unreleased
 
-- Allows individual tables to be displayed or not
-- Allows to display only the columns for a specific view of each table
-- Allows to modify theming: table headers background color, line width, color and dash pattern
-- Allows to reset the graph and to export it as a png file
-- Allows to add extra notes on the diagram
+- Course 3 – Collaboration: a stand-in colleague. With a second account's token, the plugin
+  shows her home page and her window in the base, and makes her edits and replies.
+- Step list: a checkmark for each step done, a pencil on exercise pages.
+- Welcome tour in seven pages, including resizing the exercise banner.
+- The banner height set with the resize handle is kept, and saved in the base.
+- Fix: the resize handle no longer gets stuck after the plugin shrinks to a banner.
+- Hints can show SeaTable icons.
+- Removed the code inherited from the table-relationship plugin; smaller bundle.
 
-## Version 1.2.3 (27.04.2025)
+## Version 0.9.0 (01.09.2026)
 
-- remove btn-close css class
-
-## Version 1.2.2 (21.03.2025)
-
-- remove conflicting css styles
-
-## Version 1.2.1 (18.02.2025)
-
-- Support self-link columns with SeaTable v5.2
-- Different mouse cursor to move scene
-
-## Version 1.1.2 (04.11.2024)
-
-- Adding more lookup functions
-- cleaning `AllTables` object for better performance with bigger bases
-- storing `ACTIVE_PRESET_ID` into local storage
-
-## Version 1.0.0
-
-- Initial release with SeaTable v5.0.
-- Displays the following types of relationships:
-  - Linked record
-  - Lookups
-  - Second-level lookup
-- Allows tables without links to be shown or hidden.
+- First version as the online courses companion: Course 4 – Automation & Integration
+  (graded steps, guided automation build, actions in the base), the Welcome tour, and the
+  floating toolbar.
