@@ -20,6 +20,8 @@
     "login_cancel": "Abbrechen",
     "login_submit": "Anmelden",
     "login_loading": "Anmeldung...",
-    "login_2fa_required": "Zwei-Faktor-Authentifizierung erforderlich"
+    "login_2fa_required": "Zwei-Faktor-Authentifizierung erforderlich",
+    "account_token_desc": "Für das Assets-Audit erforderlich. Generieren Sie einen Token in Ihren SeaTable-Kontoeinstellungen.",
+    "login_disclaimer": "Ihre Anmeldedaten werden direkt an Ihren SeaTable-Server gesendet und nicht gespeichert."
   }
 }

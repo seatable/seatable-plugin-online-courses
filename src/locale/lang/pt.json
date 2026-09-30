@@ -20,6 +20,8 @@
     "login_cancel": "Cancelar",
     "login_submit": "Entrar",
     "login_loading": "Entrando...",
-    "login_2fa_required": "Autenticacao de dois fatores necessaria"
+    "login_2fa_required": "Autenticacao de dois fatores necessaria",
+    "account_token_desc": "Necessário para a auditoria de arquivos. Gere um nas configurações da sua conta SeaTable.",
+    "login_disclaimer": "Suas credenciais sao enviadas diretamente ao seu servidor SeaTable e nao sao armazenadas."
   }
 }

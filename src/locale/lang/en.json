@@ -20,6 +20,8 @@
     "login_cancel": "Cancel",
     "login_submit": "Login",
     "login_loading": "Logging in...",
-    "login_2fa_required": "Two-factor authentication required"
+    "login_2fa_required": "Two-factor authentication required",
+    "account_token_desc": "Required for the assets and performance audits. Generate one from your SeaTable account settings.",
+    "login_disclaimer": "Your credentials are sent directly to your SeaTable server and are not stored."
   }
 }
