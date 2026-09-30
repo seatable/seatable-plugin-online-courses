@@ -1,131 +1,28 @@
 import { AppActiveState, IPluginDataStore } from '../template-interfaces/App.interface';
 import { TableArray } from '../template-interfaces/Table.interface';
+import { AuditTableDisplayState } from './AuditTypes';
+import { CourseManifest } from '../custom-utils/courseContent';
+import { FloatControls } from './FloatControls';
 
-interface IPluginTRProps {
-  id?: string;
+export interface IPluginTRProps {
   appActiveState: AppActiveState;
   pluginDataStore: IPluginDataStore;
   allTables: TableArray;
-  nodes?: Node[];
-  links?: Link[];
-  activeRelationships: RelationshipState;
-  setPluginDataStore: (t: any) => void;
+  verifyUrls?: boolean;
+  auditTableDisplay?: AuditTableDisplayState;
+  autoRerun?: boolean;
+  onPerfRunningChange?: (running: boolean) => void;
+  // Active course, owned by App; the runner is controlled. `onSelectStep` is
+  // pre-bound to the active course (the runner only navigates within it).
+  courseManifest?: CourseManifest | null;
+  courseStepId?: string | null;
+  onSelectStep?: (stepId: string) => void;
+  // Reports the current step's instruction + actions (back / verify / advance), so
+  // App's floating toolbar can drive the step without re-expanding the plugin.
+  onFloatControls?: (controls: FloatControls) => void;
+  // Lets the runner ASK to be shrunk to the floating toolbar, for a step whose very
+  // first instruction points at a control the expanded panel is sitting on top of.
+  onRequestFloat?: () => void;
+  // Reports the exercise banner's natural height so App can size the plugin to fit.
+  onContentHeight?: (px: number) => void;
 }
-interface ITableVisualizationProps {
-  appActiveState: AppActiveState;
-}
-
-interface Link {
-  _id: string;
-  table1_id?: string;
-  table2_id: string;
-  table1_table2_map?: Record<string, string[]>;
-  table2_table1_map: Record<string, string[]>;
-}
-
-interface RelationshipState {
-  // Link to other records relationship
-  recRel: boolean;
-  // Link formula relationship
-  lkRel: boolean;
-  lk2Rel: boolean;
-  countLinks: boolean;
-  rollup: boolean;
-  findmax: boolean;
-  findmin: boolean;
-  // Tables
-  tblNoLnk: boolean;
-}
-
-interface NodeResultItem {
-  id: string;
-  type: string;
-  position: {
-    x: number;
-    y: number;
-  };
-  data: {
-    name: string;
-    selected?: boolean;
-    position: {
-      x: number;
-      y: number;
-    };
-    columns: {
-      key: string;
-      name: string;
-      type: string;
-      isMultiple: boolean;
-    }[];
-  };
-}
-
-interface nodeCts {
-  n: string;
-  cts: number;
-}
-
-interface INodePositions {
-  [key: string]: {
-    x: number;
-    y: number;
-  };
-}
-
-interface ILinksColumnData {
-  table_id: string;
-  table_name: string;
-  column_key: string;
-  column_name: string;
-  formulaType?: string;
-  srcT?: string;
-  tgtT?: string;
-  link_id?: string;
-  isMultiple?: boolean;
-}
-
-interface ILinksData {
-  type: string;
-  sourceData: ILinksColumnData;
-  targetData1st: ILinksColumnData;
-  formulaType?: string;
-  targetData2nd?: ILinksColumnData;
-}
-
-interface srcOrTgtData {
-  column_key: string;
-  column_name: string;
-  table_id: string;
-  table_name: string;
-}
-
-interface ISrcFrstTblId {
-  firstLinkTableId: string;
-  sourceTableId: string;
-}
-
-interface IViewPort {
-  x: number;
-  y: number;
-  zoom: number;
-}
-
-type PositionLoggerNodeData = {
-  label?: string;
-};
-
-export type {
-  IPluginTRProps,
-  ITableVisualizationProps,
-  Link,
-  NodeResultItem,
-  RelationshipState,
-  nodeCts,
-  INodePositions,
-  ILinksColumnData,
-  ILinksData,
-  srcOrTgtData,
-  ISrcFrstTblId,
-  IViewPort,
-  PositionLoggerNodeData,
-};

@@ -33,9 +33,8 @@ const createEnvironmentHash = require('./webpack/persistentCache/createEnvironme
 const shouldUseSourceMap = process.env.GENERATE_SOURCEMAP !== 'false';
 
 const reactRefreshRuntimeEntry = require.resolve('react-refresh/runtime');
-const reactRefreshWebpackPluginRuntimeEntry = require.resolve(
-  '@pmmmwh/react-refresh-webpack-plugin'
-);
+const reactRefreshWebpackPluginRuntimeEntry =
+  require.resolve('@pmmmwh/react-refresh-webpack-plugin');
 const babelRuntimeEntry = require.resolve('babel-preset-react-app');
 const babelRuntimeEntryHelpers = require.resolve(
   '@babel/runtime/helpers/esm/assertThisInitialized',
@@ -391,13 +390,6 @@ module.exports = function (webpackEnv) {
               ],
               issuer: {
                 and: [/\.(ts|tsx|js|jsx|md|mdx)$/],
-              },
-            },
-            {
-              test: /\.worker\.js$/,
-              loader: require.resolve('worker-loader'),
-              options: {
-                inline: 'no-fallback',
               },
             },
             // Process application JS with Babel.

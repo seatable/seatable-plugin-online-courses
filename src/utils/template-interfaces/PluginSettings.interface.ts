@@ -1,29 +1,31 @@
-import { SettingsOption } from '../types';
-import { RelationshipState } from '../custom-interfaces/PluginTR';
-import { AppActiveState, IActiveComponents } from './App.interface';
+import { AppActiveState } from './App.interface';
 import { PresetSettings, PresetsArray } from './PluginPresets/Presets.interface';
 import { TableArray, TableViewArray } from './Table.interface';
+import { AuditTableDisplayState } from '../custom-interfaces/AuditTypes';
 
-interface IPluginSettingsProps {
+export interface IPluginSettingsProps {
   allTables: TableArray;
   appActiveState: AppActiveState;
   activeTableViews: TableViewArray;
   pluginPresets: PresetsArray;
-  onTableOrViewChange: (type: SettingsOption, option: SelectOption) => void;
   onToggleSettings: () => void;
   isShowSettings: boolean;
-  activeRelationships: RelationshipState;
-  handleRelationships: (t: any) => void;
-  activeComponents: IActiveComponents;
+  onSaveAccountToken?: (token: string) => void;
+  accountToken?: string;
+  verifyUrls?: boolean;
+  onVerifyUrlsChange?: (value: boolean) => void;
+  auditTableDisplay?: AuditTableDisplayState;
+  onAuditTableDisplayChange?: (display: AuditTableDisplayState) => void;
+  autoRerun?: boolean;
+  onAutoRerunChange?: (value: boolean) => void;
+  perfRunning?: boolean;
 }
 
-interface SelectOption {
+export interface SelectOption {
   value: string; // item._id
   label: string; // item.name
 }
 
-interface IActivePresetSettings extends PresetSettings {
+export interface IActivePresetSettings extends PresetSettings {
   activePresetId: string;
 }
-
-export type { IPluginSettingsProps, SelectOption, IActivePresetSettings };

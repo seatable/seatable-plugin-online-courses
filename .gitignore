@@ -27,3 +27,6 @@ yarn-error.log*
 
 # local development settings
 /src/setting.local.js
+
+# local notes
+/calculations.md

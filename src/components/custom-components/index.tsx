@@ -1,306 +1,76 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useCallback, useState, useRef } from 'react';
-import ReactFlow, {
-  useNodesState,
-  useEdgesState,
-  isNode,
-  useViewport,
-  useReactFlow,
-  Viewport,
-} from 'reactflow';
-import {
-  IPluginTRProps,
-  ILinksData,
-  INodePositions,
-  NodeResultItem,
-  RelationshipState,
-  nodeCts,
-} from '../../utils/custom-interfaces/PluginTR';
-import CustomNode from './NodesComponent/CustomNode';
+import React, { useEffect, useRef } from 'react';
+import { IPluginTRProps } from '../../utils/custom-interfaces/PluginTR';
+import { COURSES } from '../../utils/custom-utils/courseContent';
+import { ACTIVE_PRESET_ID, PLUGIN_NAME } from '../../utils/template-constants';
+import OnlineCourse from './OnlineCourse';
 
-// Import styles once
-import 'reactflow/dist/style.css';
-import '../../styles/custom-styles/overview.css';
+// Online courses plugin — one fixed preset per course (Courses 1–7). Presets are
+// seeded here (from the COURSES roster) and not meant to be created/edited/
+// reordered by the user. Preset _id === courseId.
+const COURSE_PRESETS = COURSES.map((c) => ({ _id: c.id, name: c.name, settings: {} }));
 
-// Import utils
-import {
-  generateNodes,
-  isCustomSettingsFn,
-  setPluginDataStoreFn,
-  checkMissingOrExtraIds,
-  checkNodesVsTablesIds,
-  filterRelationshipLinks,
-  filterNodesWithoutLinks,
-  generateEdges,
-  generateLinks,
-  setViewportPluginDataStoreFn,
-} from '../../utils/custom-utils/utils';
+// Where a learner lands the first time the plugin is opened in a base (only on a
+// fresh seed; later loads resume whatever course they last selected). The in-plugin
+// tour is the right first thing for someone who has just installed the companion:
+// it explains what it is and how a course works. This was 'course-4' for as long as
+// that course was the one being built, which dropped every new base into the middle
+// of a course the learner had not chosen — fine while developing, wrong to ship.
+const DEFAULT_COURSE_ID = 'welcome';
+const DEFAULT_COURSE_IDX = Math.max(
+  0,
+  COURSE_PRESETS.findIndex((p) => p._id === DEFAULT_COURSE_ID)
+);
 
-import { TableArray } from '../../utils/template-interfaces/Table.interface';
-import {
-  IPresetInfo,
-  PresetCustomSettings,
-} from '../../utils/template-interfaces/PluginPresets/Presets.interface';
-import { IPluginDataStore } from '../../utils/template-interfaces/App.interface';
-
-const nodeTypes = {
-  custom: CustomNode,
-};
-// Plugin Table Relationships Component
-const PluginTR: React.FC<IPluginTRProps> = ({
-  appActiveState,
-  allTables,
+const CustomPlugin: React.FC<IPluginTRProps> = ({
   pluginDataStore,
-  activeRelationships,
+  courseManifest,
+  courseStepId,
+  onSelectStep,
+  onFloatControls,
+  onRequestFloat,
+  onContentHeight,
 }) => {
-  const [_allTables, setAllTables] = useState<TableArray>([]);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [links, setLinks] = useState<ILinksData[]>([]);
-  const [nodesCts, setNodesCts] = useState<nodeCts[]>([]);
-  const [relationship, setRelationship] = useState(activeRelationships);
-  const [prevNodePositions, setPrevNodePositions]: [
-    INodePositions,
-    React.Dispatch<React.SetStateAction<INodePositions>>,
-  ] = useState({});
-  const viewPortState = useViewport();
-  const reactFlow = useReactFlow();
+  const initialized = useRef(false);
 
-  const [_pluginVPDataStore, setPluginVPDataStore] = useState(viewPortState);
-  let activeCustomSettings: PresetCustomSettings;
-
+  // On first mount, force the preset list to the fixed course roster.
   useEffect(() => {
-    let _edges = edges;
-    let _links = generateLinks(allTables);
+    if (initialized.current) return;
+    initialized.current = true;
 
-    const pluginPresetData =
-      pluginDataStore.presets[
-        pluginDataStore.presets.findIndex(
-          (preset: IPresetInfo) => preset._id === appActiveState.activePresetId
-        )
-      ];
-    const cs = pluginPresetData?.customSettings;
-    //   // no need to set relationship state if there's no change (precautionary measure for infinite loop)
-    if (JSON.stringify(activeRelationships) !== JSON.stringify(relationship)) {
-      setRelationship(activeRelationships);
-    }
-    // Filtering the links based on the active relationships
-    const filteredLinks = filterRelationshipLinks(_links, activeRelationships);
-
-    // Filtering the nodes based on the active relationships
-    const nodesNoLinks =
-      activeRelationships.tblNoLnk === false ? filterNodesWithoutLinks(nodes) : cs?.nodes;
-
-    // Further filtering the nodes to remove any nodes without a type
-    const validNodes =
-      nodesNoLinks !== undefined
-        ? (nodesNoLinks.filter((node: any) => node.type !== undefined) as NodeResultItem[])
-        : [];
-
-    _edges = generateEdges(filteredLinks, validNodes);
-
-    setLinks(filteredLinks);
-    setNodes(validNodes);
-    setEdges(_edges);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRelationships, relationship]);
-
-  useEffect(() => {
-    const pluginVPDataStore =
-      pluginDataStore.presets[appActiveState.activePresetIdx].customSettings?.vp;
-    if (pluginVPDataStore === undefined) {
-      reactFlow.fitView();
-    } else {
-      reactFlow.setViewport(pluginVPDataStore);
-    }
-    setPluginVPDataStore(pluginVPDataStore);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appActiveState.activePresetId]);
-
-  useEffect(() => {
-    const allTablesNodes = generateNodes(allTables);
-    const { isPDSCS, customSettings } = isCustomSettingsFn(
-      pluginDataStore,
-      allTables,
-      appActiveState.activePresetId
-    );
-    // eslint-disable-next-line
-    activeCustomSettings = customSettings;
-    if (isPDSCS === false) {
-      // if custom settings are not found, we set nodes, links, edges and relationship
-      const { links, nodes, edges, relationship } = activeCustomSettings;
-      setStates(links, nodes, edges, relationship);
-      setPluginDataStoreFn(
-        pluginDataStore,
-        relationship,
-        appActiveState.activePresetId,
-        nodes,
-        links,
-        edges
-      );
-    }
-
-    // In any case and whenever there is a change in the Tables, we need to check if the nodes and tables are equal
-    const storedNodesVsTablesNodes = activeCustomSettings.nodes.length === allTablesNodes.length;
-
-    // If the nodes and tables are equal, we check if the ids and columns are equal
-    //else we find which nodes are missing or extra
-    const newCustomSettings = storedNodesVsTablesNodes
-      ? checkNodesVsTablesIds(activeCustomSettings, allTablesNodes, allTables)
-      : checkMissingOrExtraIds(activeCustomSettings, allTablesNodes, allTables);
-
-    const { links, nodes, edges, relationship } = newCustomSettings as PresetCustomSettings;
-
-    setStates(links, nodes, edges, relationship);
-    setPluginDataStoreFn(
-      pluginDataStore,
-      relationship,
-      appActiveState.activePresetId,
-      nodes,
-      links,
-      edges
-    );
-  }, [JSON.stringify(allTables), appActiveState.activePresetId]);
-
-  // This function sets the states of the nodes, links, edges and relationship in the ERD Plugin component
-  function setStates(_links: any, _nodes: any, _edges: any, _relationship: RelationshipState) {
-    setLinks(_links);
-    setNodes(_nodes);
-    setEdges(_edges);
-    setRelationship(_relationship);
-    setPluginDataStoreFn(
-      pluginDataStore,
-      _relationship,
-      appActiveState.activePresetId,
-      _nodes,
-      _links,
-      _edges
-    );
-  }
-
-  const onNodeDragStart = useCallback(
-    (event, node) => {
-      // Store the current position of all nodes when dragging starts
-      const positions: { [key: string]: { x: number; y: number } } = {};
-      nodes.forEach((n) => {
-        positions[n.id] = { x: n.position.x, y: n.position.y };
-      });
-      setPrevNodePositions(positions);
-    },
-    [nodes]
-  );
-
-  const onNodeDrag = useCallback(
-    (event, node) => {
-      node.data.selected = true;
-      if (isNode(node) && links && allTables) {
-        // Node position is continuously changing, update node's position in state
-        const updatedNodes = nodes.map((n) => {
-          if (n.id === node.id) {
-            // Update node's position in state
-            return {
-              ...n,
-              position: node.position,
-              data: {
-                ...n.data,
-                position: node.position,
-              },
-            };
-          }
-          return n;
-        }) as NodeResultItem[];
-
-        setNodes(updatedNodes);
-
-        const nodeDataArray = updatedNodes.map((node) => {
-          return { n: node.id, cts: node.position.x };
-        });
-        setNodesCts(nodeDataArray);
-
-        const updatedEdges = edges.map((e) => {
-          const sourceNode = nodeDataArray.find((node) => node.n === e.source);
-          const targetNode = nodeDataArray.find((node) => node.n === e.target);
-
-          if (!sourceNode || !targetNode || e.source === e.target) {
-            return e;
-          }
-          const isSourceEarlier = sourceNode.cts + 90 < targetNode.cts;
-
-          return {
-            ...e,
-            sourceHandle: e.sourceHandle?.replace(
-              isSourceEarlier ? '_l-' : '_r-',
-              isSourceEarlier ? '_r-' : '_l-'
-            ),
-            targetHandle: e.targetHandle?.replace(
-              isSourceEarlier ? '_r-' : '_l-',
-              isSourceEarlier ? '_l-' : '_r-'
-            ),
-          };
-        });
-        setEdges(updatedEdges);
+    const presets = pluginDataStore.presets || [];
+    const alreadySeeded =
+      presets.length === COURSE_PRESETS.length &&
+      COURSE_PRESETS.every((p, i) => presets[i]?._id === p._id);
+    if (!alreadySeeded) {
+      // Fresh seed → default the active course to course-4. Setting localStorage too
+      // so App's resetData (which re-runs after this updatePluginSettings) picks it up.
+      try {
+        localStorage.setItem(ACTIVE_PRESET_ID, DEFAULT_COURSE_ID);
+      } catch {
+        /* localStorage unavailable — datastore default still applies */
       }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes, setNodes, prevNodePositions]
-  );
+      (window as any).dtableSDK.updatePluginSettings(PLUGIN_NAME, {
+        ...pluginDataStore,
+        activePresetId: DEFAULT_COURSE_ID,
+        activePresetIdx: DEFAULT_COURSE_IDX,
+        presets: COURSE_PRESETS,
+      });
+    }
+  }, [pluginDataStore]);
 
-  const onNodeDragStop = useCallback(
-    (event, node) => {
-      const updatedNodes = nodes.map((n) => {
-        if (n.id === node.id) {
-          // Update node's position in state
-          return {
-            ...n,
-
-            data: {
-              ...n.data,
-              selected: false,
-            },
-          };
-        }
-        return n;
-      }) as NodeResultItem[];
-
-      setNodes(updatedNodes);
-      setPluginDataStoreFn(
-        pluginDataStore,
-        activeRelationships,
-        appActiveState.activePresetId,
-        updatedNodes,
-        links,
-        edges
-      );
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes]
-  );
-
-  // const proOptions = { hideAttribution: true };
+  // The active course's manifest/step are owned by App so the left-panel tree and
+  // the runner stay in sync; the runner is a controlled component. onSelectStep is
+  // pre-bound to the active course by App.
   return (
-    <>
-      <ReactFlow
-        key={nodes.length}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeDragStart={onNodeDragStart}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStop={onNodeDragStop}
-        defaultViewport={_pluginVPDataStore}
-        fitView={false}
-        // proOptions={proOptions}
-        onMoveEnd={() => {
-          setViewportPluginDataStoreFn(
-            pluginDataStore,
-            appActiveState.activePresetId,
-            viewPortState
-          );
-        }}
-        nodeTypes={nodeTypes}></ReactFlow>
-    </>
+    <OnlineCourse
+      manifest={courseManifest ?? null}
+      stepId={courseStepId ?? null}
+      onSelectStep={onSelectStep ?? (() => {})}
+      onFloatControls={onFloatControls}
+      onRequestFloat={onRequestFloat}
+      onContentHeight={onContentHeight}
+    />
   );
 };
 
-export default PluginTR;
+export default CustomPlugin;

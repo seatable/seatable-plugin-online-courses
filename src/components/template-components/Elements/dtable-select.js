@@ -73,9 +73,10 @@ class DtableSelect extends React.Component {
     menuPortalTarget: PropTypes.string,
     menuPosition: PropTypes.string,
     noOptionsMessage: PropTypes.func,
+    isDisabled: PropTypes.bool,
   };
 
-  static defaultProps = {
+  static default = {
     options: [],
     value: {},
     isSearchable: false,
@@ -86,6 +87,7 @@ class DtableSelect extends React.Component {
     noOptionsMessage: () => {
       return null;
     },
+    isDisabled: false,
   };
 
   getMenuPortalTarget = () => {
@@ -104,6 +106,7 @@ class DtableSelect extends React.Component {
       menuPosition,
       isClearable,
       noOptionsMessage,
+      isDisabled,
       classNamePrefix,
     } = this.props;
     return (
@@ -123,6 +126,7 @@ class DtableSelect extends React.Component {
         menuPortalTarget={this.getMenuPortalTarget()}
         captureMenuScroll={false}
         noOptionsMessage={noOptionsMessage}
+        isDisabled={isDisabled}
       />
     );
   }

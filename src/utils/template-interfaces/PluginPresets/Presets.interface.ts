@@ -1,12 +1,25 @@
-import { RelationshipState } from '../../custom-interfaces/PluginTR';
-import { AppActiveState, IPluginDataStore } from '../App.interface';
+import { AppActiveState, AppIsShowState, IPluginDataStore } from '../App.interface';
 import { SelectOption } from '../PluginSettings.interface';
 import { TableArray } from '../Table.interface';
+import { CourseManifest } from '../../custom-utils/courseContent';
 
 export interface IPresetsProps {
+  appActiveState: AppActiveState;
   pluginPresets: PresetsArray;
   activePresetIdx: number;
   onSelectPreset: (presetId: string, newPresetActiveState?: AppActiveState) => void;
+  // Course navigation tree: each preset (id = courseId) expands to its manifest's
+  // steps (level 2). `courses` holds every course's manifest.
+  courses?: CourseManifest[];
+  activeCourseId?: string;
+  activeStepId?: string | null;
+  onSelectStep?: (courseId: string, stepId: string) => void;
+  // Compact mode (reduced/exercise view): show only the active course, scrollable,
+  // auto-scrolled to the current step.
+  compact?: boolean;
+  // Shrink the plugin to the floating icon (same action as the header button);
+  // wired to the plugin logo at the top of the panel.
+  onFloat?: () => void;
   updatePresets: (
     currentIdx: number,
     presets: PresetsArray,
@@ -19,6 +32,8 @@ export interface IPresetsProps {
   onTogglePresets: () => void;
   onToggleSettings: () => void;
   updateActiveData: () => void;
+  isShowState: AppIsShowState;
+  setIsShowState: (value: React.SetStateAction<AppIsShowState>) => void;
 }
 
 export interface IPresetsState {
@@ -42,7 +57,6 @@ export interface PresetSettings {
   show_field_names?: boolean;
 }
 export interface PresetCustomSettings {
-  relationship: RelationshipState;
   [key: string]: any;
 }
 

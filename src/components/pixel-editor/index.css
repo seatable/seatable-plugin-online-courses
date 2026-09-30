@@ -1,0 +1,29 @@
+.pixel-editor-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.pixel-editor-wrapper .form-control {
+  position: relative;
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  z-index: 0;
+}
+
+.pixel-editor-wrapper .pixel-unit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.375rem;
+  width: 2.375rem;
+  border: 1px solid rgba(0, 40, 100, 0.12);
+  border-left: none;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+  background-color: #fff;
+}
+
+.pixel-editor-wrapper .pixel-unit span {
+  margin-top: -2px;
+}
