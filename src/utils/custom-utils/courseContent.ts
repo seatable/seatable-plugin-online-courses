@@ -641,7 +641,7 @@ function introHtml(c: CourseMeta): string {
 function welcomeContentSteps(): CourseStep[] {
   return [
     {
-      id: 'w1',
+      id: 'welcome',
       type: 'course',
       title: 'Step 1 · Welcome',
       html: `
@@ -652,7 +652,7 @@ function welcomeContentSteps(): CourseStep[] {
         Use Next at the top to move through this tour.</p>`,
     },
     {
-      id: 'w2',
+      id: 'how-a-course-works',
       type: 'course',
       title: 'Step 2 · How a course works',
       html: `
@@ -667,7 +667,7 @@ function welcomeContentSteps(): CourseStep[] {
     {
       // An exercise page, so the learner meets the banner layout and its resize
       // handle while being told about it, rather than by surprise in a course.
-      id: 'w6',
+      id: 'room-for-your-base',
       type: 'exercise',
       title: 'Step 3 · Room for your base',
       instruction:
@@ -683,7 +683,7 @@ function welcomeContentSteps(): CourseStep[] {
       successMessage: 'Done — the exercises to come will open at that height.',
     },
     {
-      id: 'w3',
+      id: 'the-buttons',
       type: 'course',
       title: 'Step 4 · The buttons',
       // A hint of its own, so the Hint button the page describes is there to try.
@@ -700,7 +700,7 @@ function welcomeContentSteps(): CourseStep[] {
         shrink to a toolbar and <i class="dtable-font dtable-icon-x"></i> close.</p>`,
     },
     {
-      id: 'w4',
+      id: 'the-movable-toolbar',
       type: 'course',
       title: 'Step 5 · The movable toolbar',
       html: `
@@ -719,7 +719,7 @@ function welcomeContentSteps(): CourseStep[] {
         <p>On the next step you'll try it yourself.</p>`,
     },
     {
-      id: 'w5',
+      id: 'try-the-toolbar',
       type: 'exercise',
       title: 'Step 6 · Try the toolbar',
       instruction: 'Shrink to the toolbar and drag it into the lower-right corner, then Verify.',
@@ -736,7 +736,7 @@ function welcomeContentSteps(): CourseStep[] {
     {
       // A full-height page to end on: the course list on the left is only readable
       // at full height, and it is what the learner needs next.
-      id: 'w7',
+      id: 'youre-ready',
       type: 'course',
       title: 'Step 7 · You\u2019re ready',
       html: `
@@ -756,7 +756,7 @@ function welcomeContentSteps(): CourseStep[] {
 function course4ContentSteps(): CourseStep[] {
   return [
     {
-      id: 'am01',
+      id: 'build-the-linking-automation',
       type: 'exercise',
       title: 'Step 2 · Build the linking automation',
       continuesOn: 'website',
@@ -806,7 +806,7 @@ function course4ContentSteps(): CourseStep[] {
       },
     },
     {
-      id: 'rv01',
+      id: 'a-reviewer-for-a-short-delivery',
       type: 'exercise',
       watchTable: 'Documents',
       title: 'Step 3 · A reviewer for a short delivery',
@@ -870,7 +870,7 @@ function course4ContentSteps(): CourseStep[] {
       },
     },
     {
-      id: 'rw01',
+      id: 'rewind-and-do-it-for-real',
       type: 'exercise',
       watchTable: 'Line items',
       title: 'Step 4 · Rewind, and do it for real',
@@ -898,7 +898,7 @@ function course4ContentSteps(): CourseStep[] {
         'The delivery is back — read off a photograph this time, with its lines linked by the rule you built in step 2.',
     },
     {
-      id: 'wh01',
+      id: 'see-what-seatable-sends',
       type: 'exercise',
       watchTable: 'Products',
       // The catalog runs to hundreds of rows and the burst appends one: in the
@@ -922,7 +922,7 @@ function course4ContentSteps(): CourseStep[] {
       // sends the learner back here much later, once the second note has arrived.
       // One entry per "open the plugin" in the prose — a dropdown would have hidden
       // a chronological beat behind a button meant for choices.
-      id: 'wl01',
+      id: 'write-the-deliverys-lines',
       type: 'exercise',
       watchTable: 'Line items',
       title: 'Step 5b · Write the delivery’s lines',
@@ -939,7 +939,7 @@ function course4ContentSteps(): CourseStep[] {
       example: { table_name: 'Line items', rows: NOTE_2_LINES },
     },
     {
-      id: 'ap01',
+      id: 'the-electronic-delivery-note',
       type: 'exercise',
       watchTable: 'Documents',
       title: 'Step 7a · The electronic delivery note',
@@ -980,7 +980,7 @@ function course4ContentSteps(): CourseStep[] {
       },
     },
     {
-      id: 'ap02',
+      id: 'check-the-pushed-line',
       type: 'exercise',
       title: 'Step 7b · Check the pushed line',
       continuesOn: 'website',
@@ -1024,7 +1024,7 @@ function course4ContentSteps(): CourseStep[] {
 function course3ContentSteps(): CourseStep[] {
   return [
     {
-      id: 'cs00',
+      id: 'malika-joins-you',
       // A full page: nothing in the base to watch while pasting a token.
       type: 'course',
       title: 'Step 2a · Malika joins you',
@@ -1044,7 +1044,7 @@ function course3ContentSteps(): CourseStep[] {
       `,
     },
     {
-      id: 'cv02',
+      id: 'malikas-home-page',
       type: 'course',
       demoDoneMessage: '\u2705 This base is shared with Malika, with Read-Write permission.',
       // Read on the website next: the course text goes on before the next page.
@@ -1064,7 +1064,7 @@ function course3ContentSteps(): CourseStep[] {
       `,
     },
     {
-      id: 'cv03',
+      id: 'malikas-window-in-this-base',
       type: 'course',
       demoDoneMessage: '\u2705 Your mention has reached Malika.',
       // 3a hands straight on to 3b in-plugin once the mention has reached her: the
@@ -1085,7 +1085,7 @@ function course3ContentSteps(): CourseStep[] {
       `,
     },
     {
-      id: 'ca01',
+      id: 'malika-answers',
       type: 'exercise',
       title: 'Step 3b · Malika answers',
       instruction:
@@ -1137,7 +1137,7 @@ function course3ContentSteps(): CourseStep[] {
       `,
     },
     {
-      id: 'cw01',
+      id: 'malika-changes-a-status',
       type: 'exercise',
       title: 'Step 4 · Malika changes a status',
       instruction:
@@ -1194,7 +1194,7 @@ export function buildAllFallbackManifests(): CourseManifest[] {
       return { courseId: c.id, title: c.name, steps: welcomeContentSteps() };
     }
     const steps: CourseStep[] = [
-      { id: 'intro', type: 'course', title: 'Introduction', html: introHtml(c) },
+      { id: 'introduction', type: 'course', title: 'Introduction', html: introHtml(c) },
     ];
     if (c.id === 'course-4') steps.push(...course4ContentSteps());
     if (c.id === 'course-3') steps.push(...course3ContentSteps());
