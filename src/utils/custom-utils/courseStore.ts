@@ -42,7 +42,12 @@ type ProgressMap = { [courseId: string]: string };
  * joins the same shadow for the same reason — dropping it mid-course would send the
  * learner back to the setup step with no idea why.
  */
-const written: { flags: FlagMap; progress: ProgressMap; colleagueToken?: string } = {
+const written: {
+  flags: FlagMap;
+  progress: ProgressMap;
+  colleagueToken?: string;
+  bannerHeight?: number;
+} = {
   flags: {},
   progress: {},
 };
@@ -67,14 +72,16 @@ function mergedColleagueToken(store: IPluginDataStore): string {
   return written.colleagueToken ?? store.colleagueAccountToken ?? '';
 }
 
-/** Persist all three together — never one without the others, or we drop the others. */
+/** Persist them all together — never one without the others, or we drop the others. */
 function persist(): void {
   const store = readStore();
+  const bannerHeight = written.bannerHeight ?? store.bannerHeight;
   sdk()?.updatePluginSettings?.(PLUGIN_NAME, {
     ...store,
     courseFlags: mergedFlags(store),
     courseProgress: mergedProgress(store),
     colleagueAccountToken: mergedColleagueToken(store),
+    ...(bannerHeight ? { bannerHeight } : {}),
   });
 }
 
@@ -141,5 +148,16 @@ export function getStoredColleagueToken(): string {
 
 export function setStoredColleagueToken(token: string): void {
   written.colleagueToken = token.trim();
+  persist();
+}
+
+/** The banner height the learner chose with the resize handle, or null if they never did. */
+export function getStoredBannerHeight(): number | null {
+  const px = written.bannerHeight ?? readStore().bannerHeight;
+  return typeof px === 'number' && px > 0 ? px : null;
+}
+
+export function setStoredBannerHeight(px: number): void {
+  written.bannerHeight = Math.round(px);
   persist();
 }

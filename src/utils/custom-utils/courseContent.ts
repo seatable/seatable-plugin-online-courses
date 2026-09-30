@@ -38,7 +38,7 @@ export interface CourseStep {
   html?: string;
   /** Relative path (to the course dir) of an HTML fragment fetched from Hugo. */
   contentUrl?: string;
-  /** Optional hint, shown behind the exercise "Help" toggle. */
+  /** Optional hint, shown behind the Hint toggle. Authored HTML: SeaTable icons welcome. */
   hint?: string;
   /** Answer key — present on exercises. Omitted on pure lesson pages. */
   grade?: AnyGradeRule;
@@ -665,9 +665,29 @@ function welcomeContentSteps(): CourseStep[] {
         steps happen on the site.</p>`,
     },
     {
+      // An exercise page, so the learner meets the banner layout and its resize
+      // handle while being told about it, rather than by surprise in a course.
+      id: 'w6',
+      type: 'exercise',
+      title: 'Step 3 · Room for your base',
+      instruction:
+        'Drag the grip at the top center of this panel to make it taller or shorter, then Verify.',
+      html: `
+        Some pages, like this one, are exercises: the panel shrinks to a strip at the bottom so
+        your base stays in view while you work in it. Exercises carry a
+        <i class="dtable-font dtable-icon-rename"></i> in the list on the left; the other pages
+        open at full height. Drag the grip at the top center of this panel to make it taller or
+        shorter, then press <i class="dtable-font dtable-icon-check-mark"></i> Verify at the top.
+        The height you choose is kept for the exercises that follow.`,
+      grade: { kind: 'plugin-ui', check: 'banner-resized' },
+      successMessage: 'Done — the exercises to come will open at that height.',
+    },
+    {
       id: 'w3',
       type: 'course',
-      title: 'Step 3 · The buttons',
+      title: 'Step 4 · The buttons',
+      // A hint of its own, so the Hint button the page describes is there to try.
+      hint: 'This is a hint: it stays hidden until you ask for it. Press Hide hint to put it away.',
       html: `
         <h1>The buttons</h1>
         <p>The top bar carries everything you need for the current step:</p>
@@ -682,7 +702,7 @@ function welcomeContentSteps(): CourseStep[] {
     {
       id: 'w4',
       type: 'course',
-      title: 'Step 4 · The movable toolbar',
+      title: 'Step 5 · The movable toolbar',
       html: `
         <h1>The movable toolbar</h1>
         <p>Working in your base and the panel is in the way? Click shrink
@@ -701,17 +721,29 @@ function welcomeContentSteps(): CourseStep[] {
     {
       id: 'w5',
       type: 'exercise',
-      title: 'Step 5 · Try the toolbar',
+      title: 'Step 6 · Try the toolbar',
       instruction: 'Shrink to the toolbar and drag it into the lower-right corner, then Verify.',
       html: `
         Your turn. Click shrink (<i class="dtable-font dtable-icon-full-screen"></i>,
         top-right) to collapse this panel into the toolbar, drag it into the lower-right quarter
         of your screen, then press <i class="dtable-font dtable-icon-check-mark"></i> Verify on
         the toolbar.`,
-      hint: 'Shrink with the ⤢ icon at the top-right; drag using the ⠿ handle on the toolbar; then click the ✓ on the toolbar. “Lower-right” means the bottom-right quarter of your whole screen.',
+      hint: 'Shrink with the <i class="dtable-font dtable-icon-full-screen"></i> icon at the top-right; drag using the <i class="dtable-font dtable-icon-drag"></i> handle on the toolbar; then click the <i class="dtable-font dtable-icon-check-mark"></i> on the toolbar. “Lower-right” means the bottom-right quarter of your whole screen.',
       grade: { kind: 'plugin-ui', check: 'toolbar-lower-right' },
       successMessage:
-        "Perfect — you've got the toolbar down 🎉 That's the tour! Expand the plugin and pick a course from the list to begin.",
+        "Perfect — you've got the toolbar down 🎉 Expand the plugin, then press Next to finish the tour.",
+    },
+    {
+      // A full-height page to end on: the course list on the left is only readable
+      // at full height, and it is what the learner needs next.
+      id: 'w7',
+      type: 'course',
+      title: 'Step 7 · You\u2019re ready',
+      html: `
+        <h1>You\u2019re ready</h1>
+        <p>That\u2019s the tour. Pick a course from the list on the left to begin: each one
+        opens on its introduction.</p>
+        <p>This tour stays in the list, so you can come back to it any time.</p>`,
     },
   ];
 }

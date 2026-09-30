@@ -402,6 +402,16 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                             <span style={treeStyles.stepDot} />
                           )}
                           <span style={treeStyles.stepTitle}>{s.title}</span>
+                          {/* Only exercises are marked: they are the pages that shrink the
+                              panel to a banner, and marking every page would crowd the list. */}
+                          {s.type === 'exercise' && (
+                            <i
+                              className="dtable-font dtable-icon-rename"
+                              style={treeStyles.stepExercise}
+                              title="Exercise — the panel shrinks so you can work in your base"
+                              aria-label="exercise"
+                            />
+                          )}
                         </button>
                       );
                     })}
@@ -477,6 +487,7 @@ const treeStyles: Record<string, React.CSSProperties> = {
   },
   stepCheck: { width: 10, fontSize: 10, color: '#34d399', flexShrink: 0, textAlign: 'center' },
   stepTitle: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  stepExercise: { marginLeft: 'auto', fontSize: 10, opacity: 0.6, flexShrink: 0 },
 };
 
 export default PluginPresets;

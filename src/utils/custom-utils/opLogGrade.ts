@@ -240,6 +240,14 @@ function gradePluginUi(rule: PluginUiRule): Outcome {
   const host = document.querySelector('#plugin-wrapper') as HTMLElement | null;
   const modal = host?.firstElementChild as HTMLElement | null;
   if (!host || !modal) return { kind: 'fail', reason: 'could not read the plugin window' };
+  // Set by ResizableWrapper when the learner lets go of the resize handle.
+  if (rule.check === 'banner-resized') {
+    if (host.dataset.userResized === '1') return { kind: 'pass' };
+    return {
+      kind: 'fail',
+      reason: 'drag the grip at the top center of the panel up or down first',
+    };
+  }
   const floating = host.style.pointerEvents === 'none';
   if (!floating) {
     return {

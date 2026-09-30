@@ -1042,6 +1042,9 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         <div style={S.courseInner}>
           {loadNote && <div style={S.loadNote}>{loadNote}</div>}
           <div dangerouslySetInnerHTML={{ __html: html }} />
+          {showHint && step.hint && (
+            <div style={S.hint} dangerouslySetInnerHTML={{ __html: step.hint }} />
+          )}
           {/* A window on the colleague belongs on THIS layout, not in the compact
               exercise banner: the notification panel is as tall as its content, and
               inside the banner it brought its own scrollbar on top of the page's. */}
@@ -1131,7 +1134,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         {!watching && demoDone && forward.kind === 'website' && !feedbackLine && (
           <div style={S.demoStatus}>{forward.note}</div>
         )}
-        {showHint && step.hint && !watching && <div style={S.hint}>{step.hint}</div>}
+        {/* Authored HTML, like the step body: a hint can show SeaTable's own icons. */}
+        {showHint && step.hint && !watching && (
+          <div style={S.hint} dangerouslySetInnerHTML={{ __html: step.hint }} />
+        )}
         {/* A verify result reads like the rest of the step — same size, no bold, no
             box: its leading symbol (✅ pass, ❌ fail, ⚠️ missing) already says which. */}
         {feedbackLine && <div style={{ marginTop: 8 }}>{feedbackLine}</div>}

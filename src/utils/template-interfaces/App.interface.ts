@@ -58,6 +58,9 @@ export interface IPluginDataStore extends Pick<
   // Last position (top-left, px) of the floating "movable icon" puck, so it
   // re-pops where the learner left it next time. Defaults to the bottom-left.
   floatIconPos?: { x: number; y: number };
+  // Height (px) the learner gave the exercise banner with the resize handle. Used for
+  // every banner page instead of the fit-to-content height. Unset until they resize.
+  bannerHeight?: number;
 }
 
 export interface AvailableLocales {
