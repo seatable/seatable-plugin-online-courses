@@ -10,12 +10,17 @@
  * token — so the plugin can show them in the learner's own window instead. This
  * module is nothing but those reads. It never writes.
  *
- * ⚠️ ALL THREE ACCOUNT-LEVEL ENDPOINTS BELOW ARE UNDOCUMENTED (they are absent
- * from the OpenAPI spec) and were found by probing on 2026-09-16. They are
- * deliberately gathered in this one file so that a SeaTable version that moves
- * them breaks in a single place:
+ * ⚠️ These account-level endpoints were found by probing on 2026-09-16. Two of
+ * them are NOT in the OpenAPI spec (the bell, related-users); `/dtables/shared/`
+ * IS — "List My Shares" (corrected 2026-09-29), and so is `/workspaces/`. They
+ * are gathered in this one file all the same, so that a SeaTable version that
+ * moves one breaks in a single place:
  *
- *   /api/v2.1/notifications/      her account bell   → `unseen_count` IS the badge
+ *   /api/v2.1/notifications/      her account bell   → `unseen_count` is the unread
+ *                                 of the GENERAL category only (corrected
+ *                                 2026-09-22: the bell's badge in the UI is the
+ *                                 sum across General + Bases + Apps, and this
+ *                                 endpoint answers for General)
  *   /api/v2.1/dtables/shared/     her "Shared with me", with `permission`
  *   /api-gateway/…/related-users/ every collaborator's name AND avatar_url
  *
@@ -38,6 +43,42 @@ export interface BellEntry {
   type: string;
   seen: boolean;
   detail: any;
+  /** ISO timestamp, when the endpoint gives one — the panel shows "6 days ago". */
+  createdAt: string;
+  /**
+   * Who caused it. The two inboxes describe that person differently and neither
+   * does it in `detail`, so it is normalised here rather than hunted for in the UI:
+   *
+   *   account bell  `share_from_user_name` + `_avatar_url`, on the notification
+   *                 ROOT — display-ready;
+   *   in-base       `detail.author`, which is the internal username
+   *                 (`…@auth.local`), with no name and no avatar. Resolving it to a
+   *                 person needs `baseCollaborators()`, so the raw username is
+   *                 carried out and the caller does the lookup.
+   */
+  actor: { name: string; avatarUrl: string; username: string };
+}
+
+/**
+ * Pull the actor out of whichever shape the entry used (measured 2026-09-22):
+ *
+ *   share_dtable_to_user  detail.share_from.{share_from_user_name, _email,
+ *                         _avatar_url} — nested one level down, NOT on `detail`
+ *                         itself, which is what made every entry render as
+ *                         "SeaTable / Someone" while the field plainly existed;
+ *   add_user_to_group     detail.group_staff_name, and no avatar at all;
+ *   row_comment (in-base) detail.author, the internal `…@auth.local` username,
+ *                         with no name and no avatar — resolved by the caller
+ *                         through `baseCollaborators()`.
+ */
+function actorOf(n: any): BellEntry['actor'] {
+  const d = n?.detail || {};
+  const from = d.share_from || {};
+  return {
+    name: String(from.share_from_user_name || d.group_staff_name || d.user_name || ''),
+    avatarUrl: String(from.share_from_user_avatar_url || ''),
+    username: String(d.author || from.share_from_user_email || d.op_user || ''),
+  };
 }
 
 export interface Bell {
@@ -46,12 +87,48 @@ export interface Bell {
   entries: BellEntry[];
 }
 
-export interface SharedBase {
+/**
+ * How a base tile looks on a home page: its colour square and the glyph on it.
+ * All three come back `null` for a base nobody customised — the tile then falls
+ * back to SeaTable's default.
+ */
+export interface BaseLook {
+  color: string;
+  textColor: string;
+  icon: string;
+}
+
+export interface HomeBase extends BaseLook {
   name: string;
+  uuid: string;
+}
+
+export interface SharedBase extends HomeBase {
   /** 'rw' or 'r' — the step-2 lesson, seen from her side. */
   permission: string;
-  fromUser: string;
-  uuid: string;
+  /**
+   * What the chip on a shared tile names: the base's OWNER. MEASURED 2026-09-29 —
+   * the API calls it `from_user_name`, but for a base that belongs to a group it
+   * is the GROUP ("Commercial", `from_user` = `1@seafile_group`), not the person
+   * who shared it. The name misleads; the value is what SeaTable's own tile shows.
+   */
+  ownerName: string;
+  /** The chip's picture (`from_user_avatar`): a generic one for a group. */
+  ownerAvatarUrl: string;
+}
+
+function lookOf(t: any): BaseLook {
+  return {
+    color: t?.color ? String(t.color) : '',
+    textColor: t?.text_color ? String(t.text_color) : '',
+    icon: t?.icon ? String(t.icon) : '',
+  };
+}
+
+/** Her workspaces, detailed — where her own bases and each base's look are. */
+async function colleagueWorkspaces(): Promise<any[]> {
+  const body = await colleagueAccountGet('/api/v2.1/workspaces/?detail=true');
+  return body?.workspace_list || [];
 }
 
 export interface Collaborator {
@@ -82,18 +159,55 @@ export async function colleagueBell(): Promise<Bell> {
     type: String(n.type || n.msg_type || ''),
     seen: Boolean(n.seen),
     detail: n.detail,
+    createdAt: String(n.created_at || n.ctime || ''),
+    actor: actorOf(n),
   }));
   return { unseen: Number(body?.unseen_count ?? 0), entries };
 }
 
-/** The bases shared DIRECTLY with her — her "Shared with me" section. */
+/**
+ * The bases shared DIRECTLY with her — her "Shared with me" section.
+ *
+ * MEASURED 2026-09-29: `/dtables/shared/` carries the permission but NOT the
+ * base's look (`color`, `text_color`, `icon`) nor the owner's avatar; the `shared`
+ * bucket of her detailed workspaces carries all of them. Both are read and merged
+ * by uuid — a failed second read only costs the tile its colours.
+ */
 export async function colleagueSharedBases(): Promise<SharedBase[]> {
-  const body = await colleagueAccountGet('/api/v2.1/dtables/shared/');
-  return (body?.table_list || []).map((t: any) => ({
+  const [body, workspaces] = await Promise.all([
+    colleagueAccountGet('/api/v2.1/dtables/shared/'),
+    colleagueWorkspaces().catch(() => [] as any[]),
+  ]);
+  const looks = new Map<string, any>();
+  for (const ws of workspaces) {
+    for (const t of ws?.shared_table_list || []) if (t?.uuid) looks.set(String(t.uuid), t);
+  }
+  return (body?.table_list || []).map((t: any) => {
+    const uuid = String(t.uuid || '');
+    const detailed = looks.get(uuid);
+    return {
+      name: String(t.name || ''),
+      uuid,
+      ...lookOf(detailed || t),
+      permission: String(t.permission || ''),
+      ownerName: String(t.from_user_name || detailed?.from_user_name || ''),
+      ownerAvatarUrl: String(detailed?.from_user_avatar || t.from_user_avatar || ''),
+    };
+  });
+}
+
+/**
+ * Her own bases — her "My bases" section: the `personal` bucket of her detailed
+ * workspaces. In the course it is empty, which is itself worth seeing: a new team
+ * member starts with nothing of anyone's.
+ */
+export async function colleagueOwnBases(): Promise<HomeBase[]> {
+  const workspaces = await colleagueWorkspaces();
+  const personal = workspaces.find((ws: any) => ws?.type === 'personal');
+  return (personal?.table_list || []).map((t: any) => ({
     name: String(t.name || ''),
-    permission: String(t.permission || ''),
-    fromUser: String(t.from_user_name || t.from_user || ''),
     uuid: String(t.uuid || ''),
+    ...lookOf(t),
   }));
 }
 
@@ -112,10 +226,9 @@ export async function colleagueShareOfThisBase(): Promise<SharedBase | null> {
 export async function colleagueBaseNotifications(): Promise<BellEntry[]> {
   const { server } = hostConfig();
   const { accessToken, dtableUuid } = await colleagueBaseToken();
-  const resp = await fetch(
-    `${server}/api-gateway/api/v2/dtables/${dtableUuid}/notifications/`,
-    { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } }
-  );
+  const resp = await fetch(`${server}/api-gateway/api/v2/dtables/${dtableUuid}/notifications/`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+  });
   if (!resp.ok) throw new Error(`Her in-base notifications answered ${resp.status}`);
   const body = await resp.json();
   const list = body?.notification_list || body?.notifications || [];
@@ -124,6 +237,8 @@ export async function colleagueBaseNotifications(): Promise<BellEntry[]> {
     type: String(n.msg_type || n.type || ''),
     seen: Boolean(n.seen),
     detail: n.detail,
+    createdAt: String(n.created_at || n.ctime || ''),
+    actor: actorOf(n),
   }));
 }
 

@@ -11,7 +11,12 @@ import {
 import { AutomationRuleRule, Outcome } from '../../../utils/custom-utils/grader';
 import { gradeStep } from '../../../utils/custom-utils/opLogGrade';
 import { seedDiscrepancy } from '../../../utils/custom-utils/seedDiscrepancy';
-import { getCourseFlag, setCourseFlag } from '../../../utils/custom-utils/courseProgress';
+import {
+  getCourseFlag,
+  setCourseFlag,
+  stepDoneKey,
+  stepPassedKey,
+} from '../../../utils/custom-utils/courseStore';
 import {
   countDeliveryLines,
   reloadDeliveryLines,
@@ -19,7 +24,9 @@ import {
 } from '../../../utils/custom-utils/rewindDelivery';
 import { webhookBurst } from '../../../utils/custom-utils/webhookBurst';
 import { colleagueStoreWrite } from '../../../utils/custom-utils/colleagueStoreWrite';
+import { colleagueReply } from '../../../utils/custom-utils/colleagueComment';
 import ColleagueSetup from './ColleagueSetup';
+import ColleagueWindow from './ColleagueWindow';
 import {
   gradeAutomationRule,
   listAutomationRuleIds,
@@ -40,7 +47,7 @@ import { FloatControls } from '../../../utils/custom-interfaces/FloatControls';
  * App (so the left-panel navigation tree and the runner stay in sync) and passed in
  * as props. This component fetches each step's HTML, renders it, grades exercises
  * (grader.ts) and resizes the plugin window. Navigation is delegated up to
- * `onSelectStep`, which also persists progress (courseProgress.ts).
+ * `onSelectStep`, which also persists progress (courseStore.ts).
  *
  * Step types drive the layout: 'course' = full-height lesson page; 'exercise' =
  * compact bottom banner. The plugin window is height-resized to match. An exercise
@@ -103,8 +110,9 @@ function forwardFor(step: CourseStep, nextStep?: CourseStep): Forward {
 const REWOUND_FLAG = 'step4-rewound';
 // A demo step that creates something in the base must not create it twice: coming
 // back to it (with Back, or from the menu) has to show "already done" rather than
-// replay the action. Per-step so each checkpoint remembers its own.
-const doneFlag = (stepId: string) => `demo-done:${stepId}`;
+// replay the action. Per-step so each checkpoint remembers its own — and the same
+// flag is what the step list shows as a checkmark.
+const doneFlag = stepDoneKey;
 
 const OnlineCourse: React.FC<OnlineCourseProps> = ({
   manifest,
@@ -117,6 +125,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 }) => {
   const [html, setHtml] = useState<string>('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
+  // The pass shown on arrival came from an earlier visit, not from a verify run
+  // just now. It keeps the page in step with the checkmark in the step list — and
+  // stops the post-pass "watch it work" demo from offering to write its rows again.
+  const [restoredPass, setRestoredPass] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
@@ -142,7 +154,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const [seededDocId, setSeededDocId] = useState<string | null>(null);
   // 'rewind': the delivery has been taken out of the base, so the step's action
   // becomes "verify what came back" — with the safety net alongside it. Persisted
-  // per course (courseProgress.ts): the learner leaves the plugin between the
+  // per course (courseStore.ts): the learner leaves the plugin between the
   // rewind and the verify, and a forgotten flag would offer to rewind the delivery
   // they have just had the AI read back in.
   const [rewound, setRewound] = useState(false);
@@ -179,6 +191,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const isWriteLines = step?.demo === 'write-lines';
   const isColleagueWrite = step?.demo === 'colleague-write';
   const isColleagueSetup = step?.demo === 'colleague-setup';
+  const isColleagueWindow = step?.demo === 'colleague-window';
 
   // On step change: fetch its HTML, reset UI. Progress persistence and window
   // resizing both live in App — the source of truth for the active step.
@@ -195,6 +208,20 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setSeededDocId(null);
     setRewound(step.demo === 'rewind' && getCourseFlag(manifest.courseId, REWOUND_FLAG));
     setDemoDone(getCourseFlag(manifest.courseId, doneFlag(step.id)));
+    // A verify that passed on an earlier visit is shown as passed again, so the page
+    // says what the step list's checkmark says.
+    const passedBefore = !!step.grade && getCourseFlag(manifest.courseId, stepPassedKey(step.id));
+    setRestoredPass(passedBefore);
+    if (passedBefore) {
+      setOutcome({ kind: 'pass' });
+      // The guided build is over: show its checked state, not the guided/check choice.
+      if (step.demo === 'automation-guided') setAutoMode('check');
+    }
+    // A page with nothing to do or to observe is done once it has been opened. The
+    // windows on Malika are not: they wait for what they exist to show.
+    if (step.type === 'course' && !step.colleagueWindow && step.demo !== 'colleague-setup') {
+      setCourseFlag(manifest.courseId, doneFlag(step.id), true);
+    }
     setWatchPhase('idle');
     setWatchRowIds([]);
     setWatchNote('');
@@ -245,12 +272,21 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setDemoDone(true);
     if (manifest && step) setCourseFlag(manifest.courseId, doneFlag(step.id), true);
   };
+  // The reverse of markDemoDone, for a page whose success can be lost again.
+  const unmarkDemoDone = () => {
+    setDemoDone(false);
+    if (manifest && step) setCourseFlag(manifest.courseId, doneFlag(step.id), false);
+  };
   const startOver = () => {
     if (demoRunning) return;
     setDemoDone(false);
     setDemoStatus('');
     setOutcome({ kind: 'idle' });
-    if (manifest && step) setCourseFlag(manifest.courseId, doneFlag(step.id), false);
+    setRestoredPass(false);
+    if (manifest && step) {
+      setCourseFlag(manifest.courseId, doneFlag(step.id), false);
+      setCourseFlag(manifest.courseId, stepPassedKey(step.id), false);
+    }
   };
   /**
    * The faces of an action step's button: fire it, or clear it and start again —
@@ -362,10 +398,19 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setDemoStatus('Working…');
     try {
       const res = await colleagueStoreWrite(step.colleagueWrite, setDemoStatus);
+      if (step.colleagueReply) {
+        setDemoStatus('Malika is replying…');
+        await colleagueReply(step.colleagueReply);
+      }
+      for (const side of step.colleagueSideWrites ?? []) {
+        setDemoStatus('Malika updates a few other customers…');
+        await colleagueStoreWrite(side, () => undefined, { skipIfUnchanged: true });
+      }
       markDemoDone();
       setDemoStatus(
-        `✅ Written on row ${res.rowId}. Now open the base log and read the entry: does it name the row, ` +
-          'is it signed by her, and does its menu offer Restore?'
+        step.demoDoneMessage ??
+          `✅ Written on row ${res.rowId}. Now open the base log and read the entry: does it name the row, ` +
+            'is it signed by her, and does its menu offer Restore?'
       );
     } catch (err: any) {
       setDemoStatus(`❌ ${err?.message || 'Could not make the change as the colleague.'}`);
@@ -467,11 +512,40 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const exerciseComplete =
     passed && (!isAutomationGuided || autoMode === 'check' || autoStageIdx >= stages.length - 1);
 
+  // A verify re-run that now FAILS takes the checkmark back: the base has changed
+  // since it passed, and the list must not say done while the page says not yet.
+  useEffect(() => {
+    if (
+      (outcome.kind === 'fail' || outcome.kind === 'missing') &&
+      manifest &&
+      step?.grade &&
+      getCourseFlag(manifest.courseId, stepPassedKey(step.id))
+    ) {
+      setCourseFlag(manifest.courseId, stepPassedKey(step.id), false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outcome.kind]);
+
+  // A passed verify is kept, so the step list can check the step off — it used to
+  // live only as long as the page stayed open. Its own flag: on a step with an
+  // action AND a verify, the action having run is not the step being done.
+  useEffect(() => {
+    if (
+      exerciseComplete &&
+      manifest &&
+      step &&
+      !getCourseFlag(manifest.courseId, stepPassedKey(step.id))
+    ) {
+      setCourseFlag(manifest.courseId, stepPassedKey(step.id), true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exerciseComplete]);
+
   // The takeover is DERIVED, not set from an effect: the moment the exercise passes,
   // this render is already the watch demo's. (An effect would let the step's own
   // "…continues on the website" closer paint first — which reads as the end of the
   // step, so the learner leaves before the demo they were meant to see.)
-  const watching = !!watch && (exerciseComplete || watchPhase !== 'idle');
+  const watching = !!watch && !restoredPass && (exerciseComplete || watchPhase !== 'idle');
   const wPhase = watching && watchPhase === 'idle' ? 'ready' : watchPhase;
 
   // Where the lines are going, and whether the learner is looking at it. Empty when
@@ -623,8 +697,14 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         ? { kind: outcome.kind, text: feedbackText(outcome, msg) }
         : undefined;
 
-    // Lesson page: only a forward.
-    if (step.type === 'course') return { instruction: text, onBack, primary: forwardPrimary };
+    // Lesson page: only a forward. A window on Malika moves on in-plugin only once
+    // it has shown what it is there for.
+    if (step.type === 'course' && !isColleagueSetup)
+      return {
+        instruction: text,
+        onBack,
+        primary: isColleagueWindow && !demoDone ? undefined : forwardPrimary,
+      };
 
     // "Watch it work": the exercise has passed and this step proves the rule on real
     // rows before the handoff, so the primary drives the demo, not the forward.
@@ -666,6 +746,13 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           ? { kind: 'pass', text: step.demoDoneMessage ?? 'Your colleague is configured.' }
           : undefined,
       };
+    }
+
+    // Window-on-her step: nothing to run and nothing to grade. The panel reads her
+    // side live, and the learner's own action happens in the base — so the toolbar
+    // keeps the ordinary forward rather than inventing a button for a drawing.
+    if (isColleagueWindow) {
+      return { instruction: text, onBack, primary: forwardPrimary };
     }
 
     // Demo steps: the primary RUNS the scripted action; its status shows as info.
@@ -955,7 +1042,25 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         <div style={S.courseInner}>
           {loadNote && <div style={S.loadNote}>{loadNote}</div>}
           <div dangerouslySetInnerHTML={{ __html: html }} />
-          {forward.kind === 'website' && <div style={S.websiteHandoffBlock}>{forward.note}</div>}
+          {/* A window on the colleague belongs on THIS layout, not in the compact
+              exercise banner: the notification panel is as tall as its content, and
+              inside the banner it brought its own scrollbar on top of the page's. */}
+          {isColleagueWindow && step.colleagueWindow && (
+            <ColleagueWindow
+              surface={step.colleagueWindow.surface}
+              caption={step.colleagueWindow.caption}
+              onSuccess={() => !demoDone && markDemoDone()}
+              onFailure={() => demoDone && unmarkDemoDone()}
+            />
+          )}
+          {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
+          {(isColleagueWindow || isColleagueSetup) && demoDone && step.demoDoneMessage && (
+            <div style={S.demoStatus}>{step.demoDoneMessage}</div>
+          )}
+          {/* On a page that waits for something, the way on is said once it is there. */}
+          {forward.kind === 'website' && (!isColleagueWindow || demoDone) && (
+            <div style={S.websiteHandoffBlock}>{forward.note}</div>
+          )}
         </div>
       </div>
     );
@@ -999,7 +1104,6 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       : passed && forward.kind === 'website'
         ? `${feedbackText(outcome, step.successMessage)} ${forward.note}`
         : feedbackText(outcome, feedbackMsg);
-  const feedbackKind: Outcome['kind'] = watching ? 'pass' : outcome.kind;
 
   return (
     <div style={S.banner}>
@@ -1015,13 +1119,22 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         )}
         <div style={S.instruction} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
-        {statusLine && <div style={S.demoStatus}>{statusLine}</div>}
-        {showHint && step.hint && !watching && <div style={S.hint}>{step.hint}</div>}
-        {feedbackLine && (
-          <div style={{ marginTop: 8 }}>
-            <span style={feedbackStyle(feedbackKind)}>{feedbackLine}</span>
-          </div>
+        {isColleagueWindow && step.colleagueWindow && (
+          <ColleagueWindow
+            surface={step.colleagueWindow.surface}
+            caption={step.colleagueWindow.caption}
+          />
         )}
+        {statusLine && <div style={S.demoStatus}>{statusLine}</div>}
+        {/* An action step that is done hands back to the website — say so here too,
+            not only in the floating toolbar. A passed verify already carries it. */}
+        {!watching && demoDone && forward.kind === 'website' && !feedbackLine && (
+          <div style={S.demoStatus}>{forward.note}</div>
+        )}
+        {showHint && step.hint && !watching && <div style={S.hint}>{step.hint}</div>}
+        {/* A verify result reads like the rest of the step — same size, no bold, no
+            box: its leading symbol (✅ pass, ❌ fail, ⚠️ missing) already says which. */}
+        {feedbackLine && <div style={{ marginTop: 8 }}>{feedbackLine}</div>}
       </div>
     </div>
   );
@@ -1055,19 +1168,6 @@ function stagePillStyle(index: number, current: number): React.CSSProperties {
   return { ...base, background: '#f0f2f5', color: '#8a94a2' };
 }
 
-function feedbackStyle(kind: Outcome['kind']): React.CSSProperties {
-  const base: React.CSSProperties = {
-    display: 'inline-block',
-    padding: '6px 10px',
-    borderRadius: 6,
-    fontSize: 14,
-    fontWeight: 600,
-  };
-  if (kind === 'pass') return { ...base, background: '#e6f5ea', color: '#1a7f37' };
-  if (kind === 'fail') return { ...base, background: '#fdecec', color: '#c0392b' };
-  return { ...base, background: '#fef6e0', color: '#9a6700' };
-}
-
 const S: Record<string, React.CSSProperties> = {
   coursePage: { height: '100%', overflowY: 'auto', background: '#fff' },
   courseInner: { maxWidth: 720, margin: '0 auto', padding: '32px 24px' },
@@ -1079,17 +1179,10 @@ const S: Record<string, React.CSSProperties> = {
     background: '#fef6e0',
     color: '#9a6700',
   },
-  demoStatus: { marginTop: 8, fontSize: 13, color: '#333' },
+  demoStatus: { marginTop: 8, color: '#333' },
   // "Continue on the website" closer (website-unfolding handoff), under a full page.
-  websiteHandoffBlock: {
-    marginTop: 12,
-    padding: '10px 14px',
-    borderRadius: 8,
-    fontSize: 14,
-    background: '#eef1f5',
-    color: '#556070',
-    border: '1px solid #d6dbe2',
-  },
+  // Plain text, as on the action pages: same size as the page, no box.
+  websiteHandoffBlock: { marginTop: 16, color: '#333' },
   banner: {
     height: '100%',
     boxSizing: 'border-box',
@@ -1097,7 +1190,10 @@ const S: Record<string, React.CSSProperties> = {
     background: '#fff',
     padding: '12px 18px',
   },
-  bannerMain: { minWidth: 0 },
+  // The step's text size, set once for the whole banner: the instruction, a widget
+  // under it (the colleague's token, her window) and the status line all read at one
+  // size instead of three.
+  bannerMain: { minWidth: 0, fontSize: 15, lineHeight: 1.5 },
   stageProgress: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   instruction: { fontSize: 15, lineHeight: 1.5, color: '#222' },
   hint: {

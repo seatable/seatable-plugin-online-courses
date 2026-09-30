@@ -56,7 +56,7 @@ import {
   loadAllCourses,
   resolveInitialStepId,
 } from './utils/custom-utils/courseContent';
-import { setCurrentStepId } from './utils/custom-utils/courseProgress';
+import { setCurrentStepId } from './utils/custom-utils/courseStore';
 
 // Plugin-window height presets (fraction of viewport, with a px floor): the full
 // lesson view vs the compact exercise banner at the bottom of the window.
@@ -953,7 +953,9 @@ const tb: Record<string, React.CSSProperties> = {
     fontSize: 12.5,
     lineHeight: 1.4,
   },
-  fb: { fontWeight: 600, marginTop: 6, paddingRight: 14 },
+  // No bold: the symbol says pass or fail. The colour stays — on this dark popup an
+  // info line has no symbol, and colour is what tells it from the instruction.
+  fb: { marginTop: 6, paddingRight: 14 },
   menu: { padding: 4, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 11 },
   menuItem: {
     textAlign: 'left',

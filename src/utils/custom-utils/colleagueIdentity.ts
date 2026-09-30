@@ -15,21 +15,34 @@
  *     posted with it leaves the recipient's notification centre showing a badge
  *     over an empty list. That route is a dead end and is not offered here.
  *
- * ⚠️ STORAGE: localStorage, never the plugin data store. That store is saved
- * INSIDE the base, and in this very course the base is shared with a colleague —
- * a credential put there would travel with every share. localStorage keeps it on
- * the learner's machine, which is where it belongs, and it is scoped to the
- * base's origin.
+ * STORAGE: the plugin datastore, which is saved inside the base (decided
+ * 2026-09-22, reversing an earlier localStorage spike). The base is shared with
+ * the colleague in Step 2, so she — and anyone else the learner shares it with —
+ * can read her own token there. That is the honest cost, and the course states it
+ * once where the token is pasted, together with what makes it acceptable: the
+ * second account is created for this course and reaches nothing but the exercise
+ * bases. What localStorage cost instead was worse for a course that runs over
+ * several sittings: a cleared cache, another browser or another machine and the
+ * learner is stuck mid-course with no clue why the colleague stopped acting.
  */
 
-const TOKEN_KEY = 'online-courses:colleague-account-token';
+import { getStoredColleagueToken, setStoredColleagueToken } from './courseStore';
 
 export interface HostConfig {
   server: string;
   workspaceID: string;
   baseName: string;
   dtableUuid: string;
+  /** The base's own colour, the one tinting its header. Always a usable hex. */
+  color: string;
 }
+
+/**
+ * The base's default colour. The host reports it as the literal string "None"
+ * rather than an empty value (measured 2026-09-22), so `||` and `??` both let it
+ * through and CSS then silently ignores it. Normalised here, once.
+ */
+export const BASE_DEFAULT_COLOR = '#ff8000';
 
 /**
  * Base identity, host first. `window.dtable` is what a real base injects;
@@ -46,40 +59,32 @@ export function hostConfig(): HostConfig {
     }
     return '';
   };
+  const colour = pick('dtableColor', 'dtable_color');
   return {
     server: pick('server').replace(/\/+$/, ''),
     workspaceID: pick('workspaceID', 'workspace_id'),
     baseName: pick('fileName', 'dtableName'),
     dtableUuid: pick('dtableUuid', 'dtable_uuid'),
+    color: colour && colour !== 'None' ? colour : BASE_DEFAULT_COLOR,
   };
 }
 
-/** Read the stored credential. A missing one is an ordinary answer, never a throw. */
+/**
+ * Read the stored credential. A missing one is an ordinary answer, never a throw.
+ * The dev config wins when it is set: the dev server has no base to store it in.
+ */
 export function getColleagueToken(): string {
   const fromConfig = (window as any).dtablePluginConfig?.colleagueAccountToken;
   if (fromConfig) return String(fromConfig).trim();
-  try {
-    return (localStorage.getItem(TOKEN_KEY) || '').trim();
-  } catch {
-    // Private windows and blocked site data both throw here.
-    return '';
-  }
+  return getStoredColleagueToken();
 }
 
 export function setColleagueToken(token: string): void {
-  try {
-    localStorage.setItem(TOKEN_KEY, token.trim());
-  } catch {
-    // Nothing to do: the step that needs it will say it is missing.
-  }
+  setStoredColleagueToken(token);
 }
 
 export function clearColleagueToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* ignore */
-  }
+  setStoredColleagueToken('');
 }
 
 export function hasColleagueToken(): boolean {

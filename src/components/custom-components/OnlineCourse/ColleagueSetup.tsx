@@ -7,6 +7,10 @@
  * it (a token can be pasted wrong, or the colleague's account can change), and a
  * course step is easy to find again.
  *
+ * It is also the one place the course says where the token is kept, and on what
+ * terms — see colleagueIdentity.ts. Said once, here, and not repeated at every
+ * step that acts for her.
+ *
  * Checking the token is not a formality. Pasting YOUR OWN token instead of hers is
  * the natural mistake, and nothing would complain: the plugin would simply act as
  * you, and the colleague would mysteriously sign every edit with the learner's own
@@ -50,10 +54,11 @@ const S: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     color: '#6c757d',
-    fontSize: 12,
+    fontSize: 'inherit',
     cursor: 'pointer',
     padding: 0,
     textDecoration: 'underline',
+    whiteSpace: 'nowrap',
   },
   card: {
     marginTop: 12,
@@ -62,15 +67,16 @@ const S: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     padding: '10px 12px',
     borderRadius: 8,
-    background: '#f2fbf5',
-    border: '1px solid #b7e4c7',
+    border: '1px solid #e3e6ea',
   },
   avatar: { width: 36, height: 36, borderRadius: '50%', flexShrink: 0 },
-  name: { fontWeight: 600, fontSize: 14 },
-  sub: { fontSize: 12, color: '#6c757d' },
-  error: { marginTop: 12, fontSize: 13, color: '#b02a37' },
-  done: { marginTop: 10, fontSize: 13, color: '#1a7f37', fontWeight: 600 },
-  note: { marginTop: 10, fontSize: 12, color: '#6c757d', lineHeight: 1.5 },
+  // One size throughout — the page's own — and one grey for everything that is not
+  // her name. Success is said ONCE, by the step's own status line below the widget;
+  // a green "All set" here only repeated it louder.
+  name: {},
+  sub: { color: '#6c757d' },
+  error: { marginTop: 12, color: '#b02a37' },
+  note: { marginTop: 10, color: '#6c757d', lineHeight: 1.5 },
 };
 
 interface Props {
@@ -146,14 +152,10 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
             <div style={S.sub}>{account.contactEmail || account.email}</div>
           </div>
         </div>
-        <div style={S.done}>
-          All set — the companion can now act for her. Head back to the website and carry on
-          with the course.
-        </div>
         <div style={{ ...S.note, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
           <span>
-            Is this your colleague, and not you? If you recognise yourself here, the plugin
-            would act in your own name for the rest of the course.
+            Is this your colleague, and not you? If you recognise yourself here, the plugin would
+            act in your own name for the rest of the course.
           </span>
           <button type="button" style={S.linkButton} onClick={forget}>
             Use another token
@@ -181,7 +183,11 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
         </button>
       </div>
       {error && <div style={S.error}>{error}</div>}
-      <div style={S.note}>The token is kept in this browser, not in your base.</div>
+      <div style={S.note}>
+        The token is saved with the plugin, inside this base — so it is still here next time, on any
+        machine. Anyone you share the base with can read it there, which is why this second account
+        is one you make for the course and use nowhere else.
+      </div>
     </div>
   );
 };

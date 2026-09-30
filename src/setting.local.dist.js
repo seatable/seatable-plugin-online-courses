@@ -17,11 +17,11 @@ export default {
   // ...or let the plugin obtain one from your credentials:
   // username: 'you@example.com',
   // password: '…',
-  // COURSE 3 EXPERIMENT — the COLLEAGUE's account token (Malika's, not yours).
+  // COURSE 3 — the COLLEAGUE's account token (Malika's, not yours).
   // Deliberately a separate key: reusing `accountToken` above would make the
-  // Course-4 automation grading authenticate as her in dev. In a real base the
-  // spike reads it from localStorage instead, never from the plugin data store
-  // (that store lives inside the base). See colleagueStoreWrite.ts.
+  // Course-4 automation grading authenticate as her in dev. Set here it wins over
+  // anything stored, which is what the dev server needs — in a real base the setup
+  // step saves it in the plugin datastore. See colleagueIdentity.ts.
   // colleagueAccountToken: '89ab[...]cdef',
   // default language of the plugin
   lang: 'en',

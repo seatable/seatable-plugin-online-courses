@@ -49,8 +49,12 @@ export interface IPluginDataStore extends Pick<
   // Per-course marks for actions that must not be offered twice by accident —
   // today only Step 4's rewind, which would delete the delivery the learner has
   // just had the AI read back in. Session state would forget it the moment they
-  // paged to another step. See courseProgress.ts.
+  // paged to another step. See courseStore.ts.
   courseFlags?: { [courseId: string]: { [key: string]: boolean } };
+  // Course 3 stages a colleague and acts for her with her own account token,
+  // kept here so it survives a cleared cache, another browser or another machine.
+  // See colleagueIdentity.ts for the trade that decision makes.
+  colleagueAccountToken?: string;
   // Last position (top-left, px) of the floating "movable icon" puck, so it
   // re-pops where the learner left it next time. Defaults to the bottom-left.
   floatIconPos?: { x: number; y: number };

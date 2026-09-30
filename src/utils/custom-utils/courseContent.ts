@@ -18,9 +18,10 @@
 import { AnyGradeRule } from './grader';
 import { RewindSpec } from './rewindDelivery';
 import { ColleagueWriteSpec } from './colleagueStoreWrite';
+import { ColleagueReplySpec } from './colleagueComment';
 import { WebhookBurstSpec } from './webhookBurst';
 import { AutomationStage } from './automationGrade';
-import { getCurrentStepId } from './courseProgress';
+import { getCurrentStepId } from './courseStore';
 
 // Base URL of the Hugo-built course content. One sub-directory per courseId,
 // each containing manifest.json + the step HTML fragments.
@@ -84,7 +85,8 @@ export interface CourseStep {
     | 'webhook-burst'
     | 'write-lines'
     | 'colleague-write'
-    | 'colleague-setup';
+    | 'colleague-setup'
+    | 'colleague-window';
   /**
    * Label for a demo step's action button, when the generic one would be vague.
    * Say what the button DOES in the base ("Create new delivery"), not what it
@@ -143,6 +145,31 @@ export interface CourseStep {
    * why the REST route cannot serve Step 4.
    */
   colleagueWrite?: ColleagueWriteSpec;
+  /**
+   * Optional reply the colleague posts in the row's thread AFTER `colleagueWrite`
+   * (Course 3, Step 3: she does what was asked, then says so). See colleagueComment.ts
+   * for how it reaches the learner without a mention.
+   */
+  colleagueReply?: ColleagueReplySpec;
+  /**
+   * Edits the colleague makes on OTHER rows, after `colleagueWrite` and its reply
+   * (Course 3, Steps 3b and 4). They are there for Step 4: its base log, filtered on
+   * her, should read like the history of someone who works in the base — a run of
+   * similar entries, with the Status change buried among them rather than on top.
+   * Same-minute entries on other rows do not blur Step 4's search: each entry names
+   * its row, and the time only has to tell James Bennett's two entries apart. Keep
+   * them off Status (the quiz counts the active customers), Email (the key of Step
+   * 5's Compare and copy) and James Bennett's row (Step 4 reads its row log).
+   */
+  colleagueSideWrites?: ColleagueWriteSpec[];
+  /**
+   * Which of the colleague's two surfaces the 'colleague-window' step draws.
+   * 'home' is her account bell, where a SHARED BASE lands (Step 2); 'base' is the
+   * in-base one, where a COMMENT or an @mention lands (Step 3). They are separate
+   * inboxes, so the surface is stated by the step rather than guessed — drawing
+   * the wrong one teaches the opposite of the lesson. See ColleagueWindow.tsx.
+   */
+  colleagueWindow?: { surface: 'home' | 'base'; caption?: string };
   /**
    * Payload of the 'seed-discrepancy' action (Step 3): the plugin creates a delivery
    * and a short-delivered line so the learner's scheduled rule has something to find.
@@ -290,10 +317,10 @@ const DELIVERY_LINES: Record<string, any>[] = [
 // or checks the finished rule. Grading reads the automation CONFIG over REST, so
 // it works BEFORE any data has flowed through the rule (see automationGrade.ts).
 const LINK_AUTOMATION_HTML = `
-  <b>Build your first automation.</b> On the <b>Line items</b> table, create an automation that links
-  every new line to its <b>Product</b> and its <b>Document</b> by matching references — no links entered by
-  hand. Choose <b>Guide me</b> to build it one stage at a time (each checked before the next), or
-  <b>Just check it</b> if you’ve already built it.`;
+  Build your first automation. On the Line items table, create an automation that links
+  every new line to its Product and its Document by matching references — no links entered by
+  hand. Choose Guide me to build it one stage at a time (each checked before the next), or
+  Just check it if you’ve already built it.`;
 
 // Step 3's seeded delivery comes from a DIFFERENT supplier than the seeded note, and
 // the two references in play do not belong to the same party: the delivery reference
@@ -306,13 +333,13 @@ const SEED_DELIVERY_REFERENCE = '2026-08-4417';
 const SEED_PO_REFERENCE = '2588/2026';
 
 const REVIEWER_HTML = `
-  <b>Give your rule something to find.</b> A scheduled rule only shows what it is worth on a delivery
+  Give your rule something to find. A scheduled rule only shows what it is worth on a delivery
   that actually needs attention — so rather than have you stage one, the plugin does it: it creates a
-  <b>new delivery</b> and one line received short of what was ordered. Your step-2 automation attaches
+  new delivery and one line received short of what was ordered. Your step-2 automation attaches
   the line on its own; the plugin waits until it has.</p>
-  <p>Then go to the <b>Automations editor</b> and press <b>Run now</b> on your reviewer rule — no need to
+  <p>Then go to the Automations editor and press Run now on your reviewer rule — no need to
   wait for the hour you set. Come back and verify: what is checked is not that a reviewer is there, but
-  that <b>your automation</b>, and not you, is the one that put it there.`;
+  that your automation, and not you, is the one that put it there.`;
 
 const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
   {
@@ -320,8 +347,8 @@ const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
     stage: 'created',
     instruction: 'Add a new rule in the Automations editor and give it a name.',
     hint: 'The name field of the rule has to be focused out for it to exist',
-    html: `<b>Create the automation.</b> Open the <b>Automations editor</b> and add a new rule and 
-      give it a name, then click <b>Check</b>.`,
+    html: `Create the automation. Open the Automations editor and add a new rule and 
+      give it a name, then click Check.`,
   },
   {
     title: 'Trigger + guard',
@@ -329,18 +356,18 @@ const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
     instruction:
       'Trigger on “When a row is added”, with Product reference and Document reference both not empty.',
     hint: 'Set the conditions in the Trigger settings panel',
-    html: `<b>Set the trigger — and guard it.</b> Choose <b>“When a row is added”</b>, then add two
-      <b>conditions</b> so it only runs on complete lines: <b>Product reference</b> is <b>not empty</b>
-      <b>and</b> <b>Document reference</b> is <b>not empty</b>.`,
+    html: `Set the trigger — and guard it. Choose “When a row is added”, then add two
+      conditions so it only runs on complete lines: Product reference is not empty
+      and Document reference is not empty.`,
   },
   {
     title: 'Link the product',
     stage: 'action:0',
     instruction: 'Add an “Add links” action matching Product reference to a product’s Reference.',
     hint: 'Choose the Add links action, then the Product column it should fill',
-    html: `<b>Link the product.</b> Add an <b>Add links</b> action that fills the
-      <b>Product</b> column: the line’s <b>Product reference</b> should equal a product’s
-      <b>Reference</b>.`,
+    html: `Link the product. Add an Add links action that fills the
+      Product column: the line’s Product reference should equal a product’s
+      Reference.`,
   },
   {
     title: 'Link the document',
@@ -348,17 +375,17 @@ const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
     instruction:
       'Add a second “Add links” action matching Document reference to a document’s Delivery reference.',
     hint: 'The same action again, this time filling Document',
-    html: `<b>Link the document.</b> Add a second <b>Add links</b> action that fills the
-      <b>Document</b> column: the line’s <b>Document reference</b> should equal a document’s
-      <b>Delivery reference</b>. That completes your automation.`,
+    html: `Link the document. Add a second Add links action that fills the
+      Document column: the line’s Document reference should equal a document’s
+      Delivery reference. That completes your automation.`,
   },
 ];
 
 const WATCH_HTML = `
-  <b>Watch it work.</b> Your rule is built, but nothing has set it off yet — so let's give it
-  something. First <b>open the Line items table</b> so you can see it happen, then let the plugin
+  Watch it work. Your rule is built, but nothing has set it off yet — so let's give it
+  something. First open the Line items table so you can see it happen, then let the plugin
   bring in the delivery lines, as if your supplier had sent through a tidy list of what was loaded
-  onto the truck. Keep an eye on the <b>Product</b> and <b>Document</b> columns as the lines land:
+  onto the truck. Keep an eye on the Product and Document columns as the lines land:
   neither is part of what the plugin writes, and both fill themselves in.`;
 
 // Course-4 Step 5 — the learner points a native webhook at a test endpoint and has
@@ -404,19 +431,19 @@ const API_DELIVERY_REFERENCE = 'DN-2026-000871';
 const API_PO_REFERENCE = '2634/2026';
 
 const API_CREATE_HTML = `
-  <b>Play the supplier's system — the first half.</b> One of your suppliers now generates its
+  Play the supplier's system — the first half. One of your suppliers now generates its
   delivery note when the truck is loaded and sends it straight to your base. That conversation has
   two halves: the header of the note, then its lines. The plugin lays down the header, so that the
   half you do by hand stays small enough to read.</p>
-  <p>A new document appears in <b>Documents</b> with the reference <b>${API_DELIVERY_REFERENCE}</b>
+  <p>A new document appears in Documents with the reference ${API_DELIVERY_REFERENCE}
   and no file attached — there is nothing to photograph any more.</p>
-  <p>Then it is your turn, back on the website: push at least one line into <b>Line items</b> from
-  the API reference. Come back here at <b>Step 7b</b> when it is sent.`;
+  <p>Then it is your turn, back on the website: push at least one line into Line items from
+  the API reference. Come back here at Step 7b when it is sent.`;
 
 const API_VERIFY_HTML = `
-  <b>The second half is yours.</b> From the API reference, push at least one line into
-  <b>Line items</b>: the reference <b>${API_DELIVERY_REFERENCE}</b> in <b>Document reference</b>, a
-  product from your catalog in <b>Product reference</b>, and a <b>Qty</b>.</p>
+  The second half is yours. From the API reference, push at least one line into
+  Line items: the reference ${API_DELIVERY_REFERENCE} in Document reference, a
+  product from your catalog in Product reference, and a Qty.</p>
   <p>What is checked is not only that your line arrived, but that it attached itself — to its
   product and to its document — through the automation you built back in step 2, and that it really
   came in from outside: a row typed into the grid by hand does not count here.`;
@@ -443,8 +470,8 @@ const NOTE_2_LINES: Record<string, any>[] = [
 ];
 
 const WEBHOOK_HTML = `
-  <b>Give your webhook something to say.</b> With your webhook pointed at the test endpoint, the plugin
-  will make a change you know the shape of: it adds a row to <b>Products</b>, edits it a few seconds
+  Give your webhook something to say. With your webhook pointed at the test endpoint, the plugin
+  will make a change you know the shape of: it adds a row to Products, edits it a few seconds
   later, then deletes it — leaving your catalog exactly as it was. Keep the test page beside your base: the
   three changes are spaced so you can watch each one land on both sides. If nothing reaches the endpoint, try
   moving both pages into the same browser window.</p>
@@ -454,13 +481,13 @@ const WEBHOOK_HTML = `
 // The far end of authored step 5: the second note has arrived and its lines have to
 // reach Line items before the dock can be told anything.
 const WRITE_LINES_HTML = `
-  <b>Let the plugin do the typing.</b> The second delivery note is in your base, and its lines are not.
+  Let the plugin do the typing. The second delivery note is in your base, and its lines are not.
   Copying three barcodes off a photograph teaches nothing, so the plugin writes them for you — the same
   lines a clean reading of that note would have produced.</p>
-  <p>They land in <b>Line items</b> carrying their references, so the rule you built in step 2 attaches
+  <p>They land in Line items carrying their references, so the rule you built in step 2 attaches
   each one to its product and its document as it arrives. Nothing is checked here.</p>
   <p>Then finish the way the office finishes: read the list against the note, and press
-  <b>Notify the dock</b> on the document.`;
+  Notify the dock on the document.`;
 
 // Course-4 Step 4 — the AI chain is built, and there is nothing to feed it: the
 // delivery note it would read is already in the base, lines and all. The plugin
@@ -500,11 +527,11 @@ export const EXAMPLE_WRITE_LABEL = 'Write the lines';
 export const EXAMPLE_FIX_LABEL = 'Fix the lines';
 
 const REWIND_HTML = `
-  <b>Take the delivery back out.</b> You have the chain — what you do not have is anything to feed
+  Take the delivery back out. You have the chain — what you do not have is anything to feed
   it: that delivery is already in your base, lines and all. Let the plugin remove them, and the
   document with them, so the same note can arrive the way it really would. Your stock goes back to
   where it was too.</p>
-  <p>Then receive it for real: in the <b>Delivery check</b> app, open <b>New delivery note</b>, attach
+  <p>Then receive it for real: in the Delivery check app, open New delivery note, attach
   the photo of the delivery note and submit. Watch the reading, the extraction and the script do the
   rest — then come back and verify.</p>
   <p>If the extraction goes off the rails, the plugin writes the delivery's lines for you — whole if it
@@ -600,11 +627,11 @@ function introHtml(c: CourseMeta): string {
   let note = '';
   if (c.access === 'external') {
     const shown = (c.helpUrl || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">📌 This course is <b>currently not supported by the plugin</b>, but you can follow it on <a href="${c.helpUrl}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>.</div>`;
+    note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">📌 This course is currently not supported by the plugin, but you can follow it on <a href="${c.helpUrl}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>.</div>`;
   } else if (c.access === 'soon') {
-    note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">🚧 <b>Coming soon.</b></div>`;
+    note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">🚧 Coming soon.</div>`;
   }
-  return `<h1>${c.name}</h1><p class="lead">${c.intro}</p>${note}`;
+  return `<h1>${c.name}</h1><p>${c.intro}</p>${note}`;
 }
 
 // Welcome (active): a short, fully in-plugin tour so first-time learners get
@@ -619,10 +646,10 @@ function welcomeContentSteps(): CourseStep[] {
       title: 'Step 1 · Welcome',
       html: `
         <h1>Welcome 👋</h1>
-        <p class="lead">This little panel is your course companion. It walks you through
+        <p>This little panel is your course companion. It walks you through
         hands-on exercises and checks your work right here in your own base.</p>
         <p>Take a minute to get familiar with it — then you'll be ready for any course.
-        Use <b>Next</b> at the top to move through this tour.</p>`,
+        Use Next at the top to move through this tour.</p>`,
     },
     {
       id: 'w2',
@@ -630,10 +657,10 @@ function welcomeContentSteps(): CourseStep[] {
       title: 'Step 2 · How a course works',
       html: `
         <h1>How a course works</h1>
-        <p>You follow each course mainly on the <b>website</b>. At certain points it asks you to
-        <b>open this plugin and pick a step</b> — that's where you do something in your base and
+        <p>You follow each course mainly on the website. At certain points it asks you to
+        open this plugin and pick a step — that's where you do something in your base and
         the plugin checks it for you.</p>
-        <p>Use the <b>list on the left</b> to jump between the plugin's steps. Steps are numbered
+        <p>Use the list on the left to jump between the plugin's steps. Steps are numbered
         to match the website (Step&nbsp;2, Step&nbsp;6…), so a gap in the numbers just means those
         steps happen on the site.</p>`,
     },
@@ -650,7 +677,7 @@ function welcomeContentSteps(): CourseStep[] {
           <li><i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> (or <i class="dtable-font dtable-icon-right"></i> <b>Next</b>) — check your work, then move on once it passes.</li>
         </ul>
         <p>On the far right are the window controls: <i class="dtable-font dtable-icon-full-screen"></i>
-        <b>shrink to a toolbar</b> and <i class="dtable-font dtable-icon-x"></i> <b>close</b>.</p>`,
+        shrink to a toolbar and <i class="dtable-font dtable-icon-x"></i> close.</p>`,
     },
     {
       id: 'w4',
@@ -658,9 +685,9 @@ function welcomeContentSteps(): CourseStep[] {
       title: 'Step 4 · The movable toolbar',
       html: `
         <h1>The movable toolbar</h1>
-        <p>Working in your base and the panel is in the way? Click <b>shrink</b>
+        <p>Working in your base and the panel is in the way? Click shrink
         (<i class="dtable-font dtable-icon-full-screen"></i>, top-right) to collapse it into a small
-        <b>toolbar</b> you can drag anywhere.</p>
+        toolbar you can drag anywhere.</p>
         <p>While it's a toolbar the whole base stays clickable — nothing is blocked — and you keep the
         essentials:</p>
         <ul style="line-height:1.7;">
@@ -677,9 +704,9 @@ function welcomeContentSteps(): CourseStep[] {
       title: 'Step 5 · Try the toolbar',
       instruction: 'Shrink to the toolbar and drag it into the lower-right corner, then Verify.',
       html: `
-        <b>Your turn.</b> Click <b>shrink</b> (<i class="dtable-font dtable-icon-full-screen"></i>,
-        top-right) to collapse this panel into the toolbar, drag it into the <b>lower-right quarter</b>
-        of your screen, then press <i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> on
+        Your turn. Click shrink (<i class="dtable-font dtable-icon-full-screen"></i>,
+        top-right) to collapse this panel into the toolbar, drag it into the lower-right quarter
+        of your screen, then press <i class="dtable-font dtable-icon-check-mark"></i> Verify on
         the toolbar.`,
       hint: 'Shrink with the ⤢ icon at the top-right; drag using the ⠿ handle on the toolbar; then click the ✓ on the toolbar. “Lower-right” means the bottom-right quarter of your whole screen.',
       grade: { kind: 'plugin-ui', check: 'toolbar-lower-right' },
@@ -951,66 +978,176 @@ function course4ContentSteps(): CourseStep[] {
 }
 
 /**
- * Course 3 — EXPERIMENT ONLY, not course content.
+ * ⚠️ Where the token is KEPT is stated by the setup widget (ColleagueSetup.tsx),
+ * not by this prose — deliberately. Course content is on its way out of the
+ * plugin and into Hugo, and a sentence describing the plugin's storage would then
+ * sit in a file that no longer ships with the code deciding it. The widget cannot
+ * drift from it; a translated help page can.
  *
- * One step, one question: can the plugin make an edit that the base log renders
- * as the colleague's own — "Row James Bennett modified", signed by her, with
- * Restore available? Measured 2026-09-16, no REST route can (bulk op, row name
- * lost, and on 6.2.12 no before-values either). The store route is the candidate;
- * this is what runs it. See colleagueStoreWrite.ts.
+ * Course 3 — the plugin's pages, one or two per course step: 2a/2b (Malika joins,
+ * her home page), 3a/3b (her window in the base, her answer), 4 (her status
+ * change). Her edits go through her own store — see colleagueStoreWrite.ts for
+ * why no REST route could give the log the shape Step 4 teaches.
  */
 function course3ContentSteps(): CourseStep[] {
   return [
     {
       id: 'cs00',
-      type: 'exercise',
-      title: 'Setup · your colleague\u2019s token',
+      // A full page: nothing in the base to watch while pasting a token.
+      type: 'course',
+      title: 'Step 2a · Malika joins you',
       instruction:
         'Paste your colleague\u2019s account token below, and check that the plugin greets the right person.',
       demo: 'colleague-setup',
-      demoDoneMessage:
-        '\u2705 Your colleague is configured \u2014 the companion can act for her. Carry on with the course on the website.',
-      continuesOn: 'website',
+      demoDoneMessage: '\u2705 Your colleague is configured \u2014 the companion can act for her.',
+      // 2a flows straight into 2b: nothing on the website sits between the two, and
+      // 2b's "before" (her home page without the base) is the next thing to see.
+      // Across numbered steps the learner goes back to the website instead.
+      continuesOn: 'plugin',
       html: `
         <h1>Your colleague\u2019s token</h1>
-        <p class="lead">One piece of setup, once. It is what lets this companion act for Malika \u2014 so that
+        <p>One piece of setup, once. It is what lets this companion act for Malika \u2014 so that
         you never have to sign in as her.</p>
-        <p>In <b>her</b> account, open <b>Personal settings</b> and copy the account token. Paste it here.</p>
-        <p>The token is kept in this browser, not in your base.</p>
+        <p>In her account, open Personal settings and copy the account token. Paste it here.</p>
+      `,
+    },
+    {
+      id: 'cv02',
+      type: 'course',
+      demoDoneMessage: '\u2705 This base is shared with Malika, with Read-Write permission.',
+      // Read on the website next: the course text goes on before the next page.
+      continuesOn: 'website',
+      title: 'Step 2b · Malika\u2019s home page',
+      instruction:
+        'Share this base with Malika, then press Refresh here and open her bell \u2014 the share lands on her home page.',
+      demo: 'colleague-window',
+      colleagueWindow: { surface: 'home' },
+      html: `
+        <h1>Malika\u2019s home page</h1>
+        <p>What Malika sees, without signing in as her: her real bell, and the bases shared
+        with her.</p>
+        <p>Share this base with her, then press Refresh \u2014 as she would reload her page. Her
+        bell shows the share, and Shared with me lists the base. Revoke the share and refresh again
+        to see her access go; then share it again as Read-Write.</p>
+      `,
+    },
+    {
+      id: 'cv03',
+      type: 'course',
+      demoDoneMessage: '\u2705 Your mention has reached Malika.',
+      // 3a hands straight on to 3b in-plugin once the mention has reached her: the
+      // website text between them is about this same window, and says to move on.
+      continuesOn: 'plugin',
+      title: 'Step 3a · Malika\u2019s window in this base',
+      instruction:
+        'After each comment you write on James Bennett, press Refresh here and look at her bell.',
+      demo: 'colleague-window',
+      colleagueWindow: { surface: 'base' },
+      html: `
+        <h1>Malika\u2019s window in this base</h1>
+        <p>What Malika sees inside this base. The bell here is the base\u2019s own: the share from Step 2
+        is not in it. On her home page, these notifications are listed under Bases.</p>
+        <p>After each comment you write on James Bennett, press Refresh, as she would reload the base.
+        Your first comment brings her nothing. Once you mention her, she is part of the conversation,
+        and every new comment on the row reaches her \u2014 mentioned or not.</p>
+      `,
+    },
+    {
+      id: 'ca01',
+      type: 'exercise',
+      title: 'Step 3b · Malika answers',
+      instruction:
+        'Let Malika do what you asked: she updates James Bennett\u2019s industry, then replies to you.',
+      demo: 'colleague-write',
+      demoLabel: 'Let Malika answer',
+      demoDoneMessage:
+        '\u2705 Malika has set James Bennett\u2019s industry to Technology and replied in the thread.',
+      watchTable: 'Customers',
+      continuesOn: 'website',
+      colleagueWrite: {
+        table: 'Customers',
+        match: { column: 'Full Name', equals: 'James Bennett' },
+        cells: { Industry: 'Technology' },
+      },
+      // No mention, on purpose: the learner wrote the request, so they are subscribed
+      // to the row's conversation and the reply reaches them anyway — Step 3b's point.
+      colleagueReply: {
+        table: 'Customers',
+        match: { column: 'Full Name', equals: 'James Bennett' },
+        text: 'Done \u2014 James Bennett\u2019s industry is now Technology.',
+      },
+      colleagueSideWrites: [
+        {
+          table: 'Customers',
+          match: { column: 'Full Name', equals: 'Clara Moreau' },
+          cells: { 'Job Title': 'Head of Operations' },
+        },
+        {
+          table: 'Customers',
+          match: { column: 'Full Name', equals: 'Harry S\u00e1nchez' },
+          cells: { Phone: '+44 63 770 2688' },
+        },
+        {
+          table: 'Customers',
+          match: { column: 'Full Name', equals: 'In\u00e8s Weber' },
+          cells: { 'Job Title': 'Head of Communications' },
+        },
+      ],
+      html: `
+        <h1>Malika answers</h1>
+        <p>Malika has read your request. With the button below, she does what you asked: she changes
+        James Bennett\u2019s industry from Manufacturing to Technology, then replies in the comment
+        thread.</p>
+        <p>While she is in the base, she also updates a few other customers of her own \u2014 you will
+        come across those changes in Step 4.</p>
+        <p>Then look at your own bell, in this base. Her reply does not mention you, yet it has reached
+        you: you started this conversation, so you are part of it.</p>
       `,
     },
     {
       id: 'cw01',
-
       type: 'exercise',
-      title: 'Experiment · the colleague edits a row',
+      title: 'Step 4 · Malika changes a status',
       instruction:
-        'Open the Customers table, then run this. It should look exactly like Malika editing the row herself.',
+        'Let Malika mark James Bennett as a client \u2014 then read her change in the logs, on the website.',
       demo: 'colleague-write',
       demoLabel: 'Let Malika change the status',
       demoDoneMessage:
-        'Malika has set James Bennett to Client. Open the base log (versions icon → Logs) and read the entry.',
+        '\u2705 Malika has updated a few customers \u2014 among them, James Bennett\u2019s status, from Prospect to Client.',
       watchTable: 'Customers',
+      continuesOn: 'website',
+      // Made through her own store, so the log shows exactly what a hand edit in the
+      // grid would: "Row James Bennett modified", signed by her, with Restore
+      // available — validated in the UI on 2026-09-16. See colleagueStoreWrite.ts.
       colleagueWrite: {
         table: 'Customers',
         match: { column: 'Full Name', equals: 'James Bennett' },
         cells: { Status: 'Client' },
       },
+      // After the status change, so it sits below them in the newest-first base log.
+      colleagueSideWrites: [
+        {
+          table: 'Customers',
+          match: { column: 'Full Name', equals: 'Manon Fischer' },
+          cells: { 'Job Title': 'Senior Project Manager' },
+        },
+        {
+          table: 'Customers',
+          match: { column: 'Full Name', equals: 'Pablo Rousseau' },
+          cells: { Phone: '+31 10 874 1390' },
+        },
+        {
+          table: 'Customers',
+          match: { column: 'Full Name', equals: 'Emily Bakker' },
+          cells: { 'Job Title': 'Facilities Manager' },
+        },
+      ],
       html: `
-        <h1>Experiment · the colleague edits a row</h1>
-        <p class="lead">Does a write driven through the colleague's own store look like she made it by hand?</p>
-        <p><b>Before you run it</b>, give the plugin her account token — copied from her
-        <i>Personal settings</i> page. It is read from your browser only, never written into the base:</p>
-        <pre style="white-space:pre-wrap;font-size:12px;background:#f6f7f9;padding:8px 10px;border-radius:6px;">localStorage.setItem('online-courses:colleague-account-token', 'PASTE_HER_TOKEN')</pre>
-        <p>Then open the <code>Customers</code> table and press the button. Afterwards, open the base log
-        from the versions icon and check three things:</p>
-        <ol>
-          <li>does the entry read <b>Row James Bennett modified</b> — with the row's name — rather than
-          “The number of modified rows is: 1”?</li>
-          <li>is it signed with <b>her name</b>, instead of “API” or “anonymous”?</li>
-          <li>does its menu offer <b>Restore</b>, and does restoring put the status back?</li>
-        </ol>
-        <p>Three yeses and Step 4 can be staged without a second browser window.</p>
+        <h1>Malika changes a status</h1>
+        <p>Malika believes James Bennett has just signed. With the button below, she gets to work in
+        the grid: among a few other updates to your customers, she changes his status from Prospect
+        to Client.</p>
+        <p>Then go back to the website to find her change in the logs.</p>
       `,
     },
   ];
