@@ -581,8 +581,6 @@ export const COURSES: CourseMeta[] = [
   {
     id: 'course-3',
     name: 'Course 3 — Collaboration',
-    // EXPERIMENT (2026-09-16): opened up so the colleague-write spike can be run
-    // in a real base. Put this back to 'external' if the course ships without it.
     access: 'active',
     helpUrl: 'https://seatable.com/help/online-course-3/',
     intro:
