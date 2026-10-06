@@ -5,7 +5,7 @@
 new view of your data: it walks you through the hands-on exercises of a course and **checks
 your work directly in your own base**.
 
-![The Online courses plugin open on a base, showing the current exercise and its Verify button](docs/online-courses-plugin.png)
+![The Online courses plugin open on a base, with the list of steps on the left and the current exercise and its Verify button on the right](docs/online-courses-plugin.png)
 
 ## How it works with the courses
 
