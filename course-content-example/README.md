@@ -111,6 +111,13 @@ actions (`seed`, `rewind`, `watch`, `burst`, `automationStages`, …) are docume
 These payloads are part of the content, but the code that runs them is not: a manifest can
 only use an action this version of the plugin knows.
 
+**Rule — say it before doing it.** The plugin never changes a base on its own: every action
+runs only when the learner presses its button, and the step's text says beforehand what it
+will create, change or remove — including what a second run removes first (a step with
+`reset` clears what its previous run left, before seeding again). The help page promises
+this ("it tells you each time what it is about to do"); a new action step keeps that promise
+in its `html`, and its `demoLabel` names what the button does in the base.
+
 ## Serving it
 
 - **CORS**: the plugin runs on the SeaTable origin and fetches cross-origin, so the host
