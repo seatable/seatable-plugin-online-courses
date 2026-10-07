@@ -1,0 +1,40 @@
+{
+  "title": "Curso de introducción al plugin",
+  "intro": "Una breve presentación del plugin: cómo funciona un curso, para qué sirven los botones y cómo reducirlo a una barra de herramientas móvil.",
+  "steps": {
+    "welcome": {
+      "title": "Paso 1 · Bienvenida",
+      "html": "<h1>Bienvenido 👋</h1> <p>Este pequeño panel le acompaña a lo largo de los cursos: le guía por los ejercicios prácticos y comprueba su trabajo directamente en su base.</p> <p>Tómese un minuto para conocerlo y podrá empezar cualquier curso. Pulse Siguiente, arriba, para avanzar en esta presentación.</p>"
+    },
+    "how-a-course-works": {
+      "title": "Paso 2 · Cómo funciona un curso",
+      "html": "<h1>Cómo funciona un curso</h1> <p>Cada curso se sigue principalmente en el sitio web. En determinados momentos le pide que abra este plugin y elija un paso: ahí es donde actúa en su base, y el plugin comprueba lo que ha hecho.</p> <p>Use la lista de la izquierda para pasar de un paso del plugin a otro. Los pasos están numerados como en el sitio web (paso&nbsp;2, paso&nbsp;6…): un salto en la numeración solo significa que esos pasos tienen lugar en el sitio.</p>"
+    },
+    "room-for-your-base": {
+      "title": "Paso 3 · Ajustar la altura del panel",
+      "instruction": "Arrastre el asa situada arriba en el centro de este panel para hacerlo más alto o más bajo, y pulse Comprobar.",
+      "html": "Algunas páginas, como esta, son ejercicios: el panel se reduce a una franja en la parte inferior para que su base siga a la vista mientras trabaja en ella. Los ejercicios llevan <i class=\"dtable-font dtable-icon-rename\"></i> en la lista de la izquierda; las demás páginas se abren a altura completa. Arrastre el asa situada arriba en el centro de este panel para hacerlo más alto o más bajo, y pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> Comprobar, arriba. La altura elegida se mantiene para los ejercicios siguientes.",
+      "successMessage": "Hecho: los próximos ejercicios se abrirán a esa altura."
+    },
+    "the-buttons": {
+      "title": "Paso 4 · Los botones",
+      "hint": "Esto es una pista: permanece oculta hasta que la pide. Pulse Ocultar pista para cerrarla.",
+      "html": "<h1>Los botones</h1> <p>La barra superior contiene todo lo que necesita para el paso actual:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>Atrás</b>: volver al paso anterior.</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>Pista</b>: mostrar una pista cuando se atasca.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Comprobar</b> (o <i class=\"dtable-font dtable-icon-right\"></i> <b>Siguiente</b>): comprobar su trabajo y avanzar cuando esté validado.</li> </ul> <p>A la derecha están los controles de la ventana: <i class=\"dtable-font dtable-icon-full-screen\"></i> para reducirla a una barra de herramientas y <i class=\"dtable-font dtable-icon-x\"></i> para cerrarla.</p>"
+    },
+    "the-movable-toolbar": {
+      "title": "Paso 5 · Reducir el plugin",
+      "html": "<h1>Reducir el plugin</h1> <p>¿El panel le molesta para trabajar en su base? Haga clic en el icono de reducir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, arriba a la derecha) para convertirlo en una pequeña barra de herramientas que puede mover a donde quiera.</p> <p>Mientras está reducido, toda la base sigue accesible, nada queda bloqueado, y conserva lo esencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Mover</b>: colóquela donde no le moleste.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: muestre la consigna (y una pista) en cualquier momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Comprobar</b>: compruebe su trabajo sin volver a abrir el panel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: vuelva a abrir el panel completo.</li> </ul> <p>En el paso siguiente, le toca a usted.</p>"
+    },
+    "try-the-toolbar": {
+      "title": "Paso 6 · Le toca a usted",
+      "instruction": "Reduzca el plugin a la barra de herramientas, llévela a la esquina inferior derecha y pulse Comprobar.",
+      "hint": "Reduzca con el icono <i class=\"dtable-font dtable-icon-full-screen\"></i> de arriba a la derecha; mueva la barra con el asa <i class=\"dtable-font dtable-icon-drag\"></i>; después pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> en la barra de herramientas. «Abajo a la derecha» significa el cuarto inferior derecho de toda su pantalla.",
+      "html": "Su turno: haga clic en el icono de reducir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, arriba a la derecha) para convertir este panel en la barra de herramientas, arrástrela al cuarto inferior derecho de su pantalla y pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> Comprobar en la barra.",
+      "successMessage": "Perfecto, ya domina la barra de herramientas 🎉 Vuelva a abrir el plugin y pulse Siguiente para terminar la presentación."
+    },
+    "youre-ready": {
+      "title": "Paso 7 · Elija su curso",
+      "html": "<h1>Elija su curso</h1> <p>La presentación ha terminado. Elija un curso en la lista de la izquierda para empezar: cada uno se abre con su introducción.</p> <p>Este curso de introducción sigue en la lista: puede volver a él cuando quiera.</p>"
+    }
+  }
+}

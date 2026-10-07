@@ -1,0 +1,39 @@
+{
+  "title": "Curso 3 — Colaboração",
+  "intro": "Trabalhe com outras pessoas sobre os seus dados: partilhe, editem em conjunto e mantenham-se sincronizados.<br><br>Inclui partilha e permissões, grupos, comentários e menções, histórico de alterações, conjuntos de dados comuns e o quadro branco.",
+  "steps": {
+    "malika-joins-you": {
+      "title": "Passo 2a · A Malika junta-se a si",
+      "instruction": "Cole abaixo o token de conta da sua colega e verifique se o plugin cumprimenta a pessoa certa.",
+      "hint": "Na secção Account-Token das Configurações pessoais dela, poderá ter primeiro de clicar em Generate Account-Token, se ela nunca teve um.",
+      "html": "<h1>O token da sua colega</h1> <p>Uma única configuração, uma só vez. É ela que permite ao plugin agir pela Malika, sem que tenha de iniciar sessão com a conta dela.</p> <p>Na conta dela, abra Configurações pessoais e copie o token de conta. Cole-o aqui.</p>",
+      "demoDoneMessage": "✅ A sua colega está configurada: o plugin pode agir por ela."
+    },
+    "malikas-home-page": {
+      "title": "Passo 2b · A página inicial da Malika",
+      "instruction": "Partilhe esta base com a Malika, clique em Atualizar aqui e abra o sino dela: a partilha chega à página inicial dela.",
+      "html": "<h1>A página inicial da Malika</h1> <p>O que a Malika vê, sem iniciar sessão com a conta dela: o sino verdadeiro e as bases partilhadas com ela.</p> <p>Partilhe esta base com ela e clique em Atualizar, como se ela recarregasse a página. O sino mostra a partilha, e a base aparece em Compartilhou comigo. Retire a partilha e atualize de novo para ver o acesso desaparecer; depois volte a partilhar a base com a permissão Ler escrever.</p>",
+      "demoDoneMessage": "✅ Esta base está partilhada com a Malika, com a permissão Ler escrever."
+    },
+    "malikas-window-in-this-base": {
+      "title": "Passo 3a · O que a Malika vê na base",
+      "instruction": "Depois de cada comentário que escrever em James Bennett, clique em Atualizar aqui e veja o sino dela.",
+      "html": "<h1>O que a Malika vê na base</h1> <p>Esta é a janela dela nesta base. O sino aqui é o da base: a partilha do passo 2 não aparece. Na página inicial dela, estas notificações ficam em Bases.</p> <p>Depois de cada comentário em James Bennett, clique em Atualizar, como se ela recarregasse a base. O seu primeiro comentário não lhe chega. Assim que a menciona, ela passa a fazer parte da conversa, e cada novo comentário na linha chega até ela, mencione-a ou não.</p>",
+      "demoDoneMessage": "✅ A sua menção chegou à Malika."
+    },
+    "malika-answers": {
+      "title": "Passo 3b · A Malika responde",
+      "instruction": "Deixe a Malika fazer o que pediu: ela atualiza o setor de James Bennett e depois responde-lhe.",
+      "html": "<h1>A Malika responde</h1> <p>A Malika leu o seu pedido. Com o botão acima, ela faz o que pediu: muda o setor de James Bennett de Manufacturing para Technology e responde na conversa.</p> <p>Já que está na base, atualiza também alguns outros clientes de que trata: vai encontrar essas alterações no passo 4.</p> <p>Veja depois o seu próprio sino, nesta base. A resposta dela não o menciona e, mesmo assim, chegou até si: foi quem iniciou esta conversa, por isso faz parte dela.</p>",
+      "demoLabel": "Deixar a Malika responder",
+      "demoDoneMessage": "✅ A Malika mudou o setor de James Bennett para Technology e respondeu na conversa."
+    },
+    "malika-changes-a-status": {
+      "title": "Passo 4 · A Malika altera um estado",
+      "instruction": "Deixe a Malika marcar James Bennett como cliente e depois procure a alteração dela nos registos, no site.",
+      "html": "<h1>A Malika altera um estado</h1> <p>A Malika acha que James Bennett acabou de assinar. Com o botão acima, ela põe-se a trabalhar na grelha: entre algumas outras atualizações dos seus clientes, muda o estado dele de Prospect para Client.</p> <p>Volte depois ao site para encontrar a alteração dela nos registos.</p>",
+      "demoLabel": "Deixar a Malika alterar o estado",
+      "demoDoneMessage": "✅ A Malika atualizou alguns clientes, entre eles o estado de James Bennett, de Prospect para Client."
+    }
+  }
+}

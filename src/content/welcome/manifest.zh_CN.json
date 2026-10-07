@@ -1,0 +1,40 @@
+{
+  "title": "插件入门课程",
+  "intro": "插件简介：课程如何进行、各个按钮的作用，以及如何把插件缩小为可移动的工具栏。",
+  "steps": {
+    "welcome": {
+      "title": "第 1 步 · 欢迎",
+      "html": "<h1>欢迎 👋</h1> <p>这个小面板会在整个课程中陪伴你：它引导你完成实践练习，并直接在你的表格中检查你的操作。</p> <p>花一分钟熟悉它，之后你就可以开始任何课程。点击顶部的“下一步”继续浏览。</p>"
+    },
+    "how-a-course-works": {
+      "title": "第 2 步 · 课程如何进行",
+      "html": "<h1>课程如何进行</h1> <p>每门课程主要在网站上学习。在某些时候，课程会让你打开这个插件并选择一个步骤：你在那里对表格进行操作，插件会检查你的结果。</p> <p>用左侧的列表在插件的各个步骤之间切换。步骤编号与网站一致（第&nbsp;2&nbsp;步、第&nbsp;6&nbsp;步…）：编号中间有空缺，只表示那些步骤在网站上进行。</p>"
+    },
+    "room-for-your-base": {
+      "title": "第 3 步 · 调整面板高度",
+      "instruction": "拖动面板顶部中间的把手，让面板变高或变矮，然后点击“检查”。",
+      "html": "有些页面（比如这一页）是练习：面板会缩成屏幕底部的一条，这样你在表格中操作时表格始终可见。练习在左侧列表中带有 <i class=\"dtable-font dtable-icon-rename\"></i> 标记；其他页面以全高打开。拖动面板顶部中间的把手，让面板变高或变矮，然后点击顶部的 <i class=\"dtable-font dtable-icon-check-mark\"></i> “检查”。你选择的高度会保留给之后的练习。",
+      "successMessage": "完成——之后的练习都会以这个高度打开。"
+    },
+    "the-buttons": {
+      "title": "第 4 步 · 按钮",
+      "hint": "这是一条提示：在你请求之前它一直隐藏。点击“隐藏提示”即可收起。",
+      "html": "<h1>按钮</h1> <p>顶部栏包含当前步骤所需的一切：</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>上一步</b>：返回上一个步骤。</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>提示</b>：卡住时显示提示。</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>检查</b>（或 <i class=\"dtable-font dtable-icon-right\"></i> <b>下一步</b>）：检查你的操作，通过后继续。</li> </ul> <p>最右侧是窗口控制：<i class=\"dtable-font dtable-icon-full-screen\"></i> 缩小为工具栏，<i class=\"dtable-font dtable-icon-x\"></i> 关闭。</p>"
+    },
+    "the-movable-toolbar": {
+      "title": "第 5 步 · 缩小插件",
+      "html": "<h1>缩小插件</h1> <p>面板挡住了你在表格中的操作？点击缩小图标（<i class=\"dtable-font dtable-icon-full-screen\"></i>，右上角），把它变成一个可以随意拖动的小工具栏。</p> <p>缩小后，整个表格都可以操作，没有任何遮挡，常用功能也都还在：</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>移动</b>：把它放到不碍事的地方。</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>信息</b>：随时显示说明（和提示）。</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>检查</b>：无需展开即可检查你的操作。</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>展开</b>：恢复完整面板。</li> </ul> <p>下一步就轮到你了。</p>"
+    },
+    "try-the-toolbar": {
+      "title": "第 6 步 · 轮到你了",
+      "instruction": "把插件缩小为工具栏，拖到右下角，然后点击“检查”。",
+      "hint": "用右上角的 <i class=\"dtable-font dtable-icon-full-screen\"></i> 图标缩小；用工具栏上的 <i class=\"dtable-font dtable-icon-drag\"></i> 把手拖动；然后点击工具栏上的 <i class=\"dtable-font dtable-icon-check-mark\"></i>。“右下角”指整个屏幕的右下四分之一。",
+      "html": "轮到你了：点击缩小图标（<i class=\"dtable-font dtable-icon-full-screen\"></i>，右上角）把这个面板变成工具栏，把它拖到屏幕的右下四分之一处，然后点击工具栏上的 <i class=\"dtable-font dtable-icon-check-mark\"></i> “检查”。",
+      "successMessage": "太好了，你已经掌握了工具栏 🎉 展开插件，然后点击“下一步”结束本课程。"
+    },
+    "youre-ready": {
+      "title": "第 7 步 · 选择你的课程",
+      "html": "<h1>选择你的课程</h1> <p>入门介绍到此结束。在左侧列表中选择一门课程开始学习：每门课程都从简介开始。</p> <p>这门入门课程会一直留在列表中，你可以随时回来查看。</p>"
+    }
+  }
+}

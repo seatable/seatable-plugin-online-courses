@@ -1,0 +1,39 @@
+{
+  "title": "课程 3 — 协作",
+  "intro": "与他人一起处理数据：共享、共同编辑、保持同步。<br><br>包括共享与权限、群组、评论与提及、修改历史、公共数据集和白板。",
+  "steps": {
+    "malika-joins-you": {
+      "title": "第 2a 步 · Malika 加入",
+      "instruction": "在下方粘贴你同事的账号令牌，并确认插件问候的是正确的人。",
+      "hint": "在她的“个人设置”的“账号令牌”部分，如果她从未生成过令牌，可能需要先点击“生成账号令牌”。",
+      "html": "<h1>你同事的令牌</h1> <p>只需设置一次。有了它，插件就能代 Malika 操作，你永远不必登录她的账号。</p> <p>在她的账号中打开“个人设置”，复制账号令牌，粘贴到这里。</p>",
+      "demoDoneMessage": "✅ 你的同事已设置好——插件可以代她操作了。"
+    },
+    "malikas-home-page": {
+      "title": "第 2b 步 · Malika 的首页",
+      "instruction": "把这个表格共享给 Malika，然后点击这里的“刷新”并打开她的铃铛——共享会出现在她的首页。",
+      "html": "<h1>Malika 的首页</h1> <p>无需登录她的账号就能看到 Malika 看到的内容：她真实的铃铛，以及共享给她的表格。</p> <p>把这个表格共享给她，然后点击“刷新”，就像她重新加载页面一样。她的铃铛会显示这次共享，表格会出现在“共享给我的”中。取消共享并再次刷新，看看她的访问权限消失；然后再以“可读写”权限重新共享。</p>",
+      "demoDoneMessage": "✅ 这个表格已共享给 Malika，权限为“可读写”。"
+    },
+    "malikas-window-in-this-base": {
+      "title": "第 3a 步 · Malika 在表格中看到的内容",
+      "instruction": "每次在 James Bennett 上写完评论后，点击这里的“刷新”，看看她的铃铛。",
+      "html": "<h1>Malika 在表格中看到的内容</h1> <p>这是她在这个表格中的窗口。这里的铃铛属于表格本身：第 2 步的共享不在其中。在她的首页上，这些通知列在“表格”下。</p> <p>每次在 James Bennett 上写完评论后点击“刷新”，就像她重新加载表格一样。你的第一条评论她收不到。一旦你提及她，她就成为对话的一员，此后这一行的每条新评论都会通知她——无论是否提及她。</p>",
+      "demoDoneMessage": "✅ 你的提及已送达 Malika。"
+    },
+    "malika-answers": {
+      "title": "第 3b 步 · Malika 回复",
+      "instruction": "让 Malika 完成你的请求：她会更新 James Bennett 的行业，然后回复你。",
+      "html": "<h1>Malika 回复</h1> <p>Malika 看到了你的请求。点击上方的按钮，她就会照做：把 James Bennett 的行业从 Manufacturing 改为 Technology，然后在评论中回复。</p> <p>既然她已经在表格里，她还会更新几位她负责的其他客户——你会在第 4 步看到这些修改。</p> <p>然后看看你自己在这个表格中的铃铛。她的回复没有提及你，却仍然送达了你：这段对话是你发起的，所以你也在其中。</p>",
+      "demoLabel": "让 Malika 回复",
+      "demoDoneMessage": "✅ Malika 已把 James Bennett 的行业改为 Technology，并在评论中回复。"
+    },
+    "malika-changes-a-status": {
+      "title": "第 4 步 · Malika 修改状态",
+      "instruction": "让 Malika 把 James Bennett 标记为客户，然后到网站上去日志里查看她的修改。",
+      "html": "<h1>Malika 修改状态</h1> <p>Malika 认为 James Bennett 刚刚签约。点击上方的按钮，她就会在表格中开始工作：在对你客户的几处其他更新中，她把他的状态从 Prospect 改为 Client。</p> <p>然后回到网站，在日志中找到她的修改。</p>",
+      "demoLabel": "让 Malika 修改状态",
+      "demoDoneMessage": "✅ Malika 更新了几位客户，其中包括 James Bennett 的状态：从 Prospect 改为 Client。"
+    }
+  }
+}

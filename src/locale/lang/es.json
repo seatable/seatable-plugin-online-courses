@@ -156,16 +156,16 @@
     "page_load_failed": "⚠️ No se pudo cargar esta página.",
     "preparing": "Preparando…",
     "rewind": {
-      "again": "Rebobinar de nuevo",
+      "again": "Retirar de nuevo",
       "done_one": "✅ {count} línea y el documento eliminados. Ahora reciba la entrega de nuevo desde la aplicación.",
       "done_other": "✅ {count} líneas y el documento eliminados. Ahora reciba la entrega de nuevo desde la aplicación.",
       "done_stock_one": "✅ {count} línea y el documento eliminados, stock restablecido. Ahora reciba la entrega de nuevo desde la aplicación.",
       "done_stock_other": "✅ {count} líneas y el documento eliminados, stock restablecido. Ahora reciba la entrega de nuevo desde la aplicación.",
-      "failed": "No se pudo rebobinar la entrega.",
+      "failed": "No se pudo retirar la entrega.",
       "nothing": "✅ No queda nada que eliminar: esa entrega ya no está en su base. Recíbala de nuevo desde la aplicación.",
-      "run": "Rebobinar la entrega"
+      "run": "Retirar la entrega"
     },
-    "rewinding": "Rebobinando…",
+    "rewinding": "Retirando…",
     "seed": {
       "failed": "No se pudo preparar la entrega.",
       "not_linked": "⚠️ La entrega está ahí, pero su línea todavía no está vinculada: compruebe la automatización que construyó en el paso 2 y ejecute su regla.",
