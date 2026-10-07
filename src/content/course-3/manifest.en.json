@@ -5,6 +5,7 @@
     "malika-joins-you": {
       "title": "Step 2a · Malika joins you",
       "instruction": "Paste your colleague’s account token below, and check that the plugin greets the right person.",
+      "hint": "In the Account-Token section of her Personal settings, you may first have to generate an account token, if she has never had one.",
       "html": "<h1>Your colleague’s token</h1> <p>One piece of setup, once. It is what lets this companion act for Malika — so that you never have to sign in as her.</p> <p>In her account, open Personal settings and copy the account token. Paste it here.</p>",
       "demoDoneMessage": "✅ Your colleague is configured — the companion can act for her."
     },
