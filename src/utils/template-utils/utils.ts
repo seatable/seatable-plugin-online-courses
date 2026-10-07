@@ -112,28 +112,6 @@ export const generatorBase64Code = (keyLength = 4) => {
   return key;
 };
 
-export const generatorPresetId = (presets: Array<{ _id: string }>): string => {
-  let preset_id: string = '',
-    isUnique = false;
-
-  const isIdUnique = (id: string): boolean => {
-    return presets?.every((item) => {
-      return item._id !== id;
-    });
-  };
-
-  while (!isUnique) {
-    preset_id = generatorBase64Code(4);
-    isUnique = isIdUnique(preset_id);
-
-    if (isUnique) {
-      break;
-    }
-  }
-
-  return preset_id;
-};
-
 export const getImageThumbnailUrl = (url: string, size?: number): string => {
   const server = pluginContext.getSetting('server');
   let isInternalLink = url.indexOf(server) > -1;
@@ -264,38 +242,6 @@ export const truncateTableName = (tableName: string) => {
   }
 
   return tableName;
-};
-
-/**
- * Checks whether a preset name already exists in the presets array, excluding the current index.
- *
- * @param {string} presetName - The name of the preset to check for existence.
- * @param {PresetsArray} presets - An array of presets to search for duplicates.
- * @param {number} currentIndex - The index of the preset to exclude from the check.
- * @returns {boolean} - Returns true if the preset name already exists, excluding the current index.
- */
-export const isUniquePresetName = (
-  presetName: string,
-  presets: PresetsArray,
-  currentIndex: number
-): boolean => {
-  // Using the `some` method to check if any preset (excluding the current index) has the same name
-  return presets.some((preset, index) => index !== currentIndex && preset.name === presetName);
-};
-
-export const appendPresetSuffix = (name: string, nameList: string[], suffix: string): string => {
-  if (!nameList.includes(name.trim())) {
-    return name;
-  } else {
-    let count = nameList.filter(
-      (n) =>
-        n === name.trim() ||
-        (n.match(/ \d+(?=[^ \d]*$)/) &&
-          n.slice(0, -n.match(/ \d+(?=[^ \d]*$)/)![0].length) === name.trim())
-    ).length;
-    let _name = suffix === 'new' ? `${name.trim()} ${count}` : `${name.trim()} ${suffix}`;
-    return appendPresetSuffix(_name, nameList, suffix);
-  }
 };
 
 /**
@@ -467,26 +413,6 @@ export const createDefaultPluginDataStore = (
   };
   window.dtableSDK.updatePluginSettings(pluginName, updatedDefaultDataStore);
   return updatedDefaultDataStore;
-};
-
-/**
- * Creates default preset settings based on the provided array of tables.
- *
- * @param {TableArray} allTables - An array containing all available tables in the application.
- * @returns {object} defaultPresetSettings - Default settings for a preset.
- */
-export const createDefaultPresetSettings = (allTables: TableArray) => {
-  // Extract information for the default table and view
-  const tableInfo = { value: allTables[0]._id, label: allTables[0].name };
-  const viewInfo = { value: allTables[0].views[0]._id, label: allTables[0].views[0].name };
-
-  // Create and return the default preset settings object
-  return {
-    shown_image_name: 'Image',
-    shown_title_name: 'Title',
-    selectedTable: tableInfo,
-    selectedView: viewInfo,
-  };
 };
 
 export const findPresetName = (presets: PresetsArray, presetId: string) => {

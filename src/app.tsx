@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+import { t } from './locale/t';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 // Import of Component
 import Header from './components/template-components/Header';
-import PluginSettings from './components/template-components/PluginSettings';
 import PluginPresets from './components/template-components/PluginPresets';
 import ResizableWrapper, { clampHeight } from './components/template-components/ResizableWrapper';
 import CustomPlugin from './components/custom-components/index';
@@ -14,7 +14,6 @@ import {
   IAppProps,
   IPluginDataStore,
 } from './utils/template-interfaces/App.interface';
-import { AuditTableDisplayState } from './utils/custom-interfaces/AuditTypes';
 import {
   TableArray,
   TableViewArray,
@@ -145,15 +144,12 @@ const App: React.FC<IAppProps> = (props) => {
 
   // Boolean state to show/hide the plugin's components
   const [isShowState, setIsShowState] = useState<AppIsShowState>(INITIAL_IS_SHOW_STATE);
-  const { isShowPlugin, isShowSettings, isLoading, isShowPresets } = isShowState;
+  const { isShowPlugin, isLoading, isShowPresets } = isShowState;
   // Tables, Presets, Views as dataStates. The main data of the plugin
   const [allTables, setAllTables] = useState<TableArray>([]);
   const [activeTableViews, setActiveTableViews] = useState<TableViewArray>([]);
   const [pluginDataStore, setPluginDataStore] = useState<IPluginDataStore>(DEFAULT_PLUGIN_DATA);
   const [pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
-  // Transient: true while the on-demand performance analysis is in flight.
-  // Used by PluginSettings to disable the staleness-rerun link.
-  const [perfRunning, setPerfRunning] = useState(false);
   // appActiveState: Define the app's active Preset + (Table + View) state using the useState hook
   const [appActiveState, setAppActiveState] = useState<AppActiveState>(INITIAL_CURRENT_STATE);
   // Destructure properties from the app's active state for easier access
@@ -455,140 +451,12 @@ const App: React.FC<IAppProps> = (props) => {
     setAppActiveState(updatedActiveState);
   };
 
-  const updatePresets = (
-    _activePresetIdx: number,
-    updatedPresets: PresetsArray,
-    pluginDataStore: IPluginDataStore,
-    activePresetId: string,
-    callBack: any = null
-  ) => {
-    let _pluginDataStore = {
-      ...pluginDataStore,
-      activePresetId: activePresetId,
-      activePresetIdx: _activePresetIdx,
-    };
-    const updatedActiveState = (prevState: AppActiveState) => ({
-      ...prevState,
-      activePresetIdx: _activePresetIdx,
-    });
-
-    setAppActiveState((prevState: AppActiveState) => updatedActiveState(prevState));
-    setPluginPresets(updatedPresets);
-    setPluginDataStore(pluginDataStore);
-    updatePluginDataStore(_pluginDataStore);
-  };
-
   const updatePluginDataStore = (pluginDataStore: IPluginDataStore) => {
     window.dtableSDK.updatePluginSettings(PLUGIN_NAME, pluginDataStore);
   };
 
-  const updateActiveData = () => {
-    let allTables: TableArray = cleanAllTables();
-    let tableOfPresetOne = pluginPresets[0].settings?.selectedTable || {
-      value: allTables[0]._id,
-      label: allTables[0].name,
-    };
-    let viewOfPresetOne = pluginPresets[0].settings?.selectedView || {
-      value: allTables[0].views[0]._id,
-      label: allTables[0].views[0].name,
-    };
-    let table = allTables.find((t) => t._id === tableOfPresetOne.value)!;
-    let view = table?.views.find((v) => v._id === viewOfPresetOne.value)!;
-
-    const newPresetActiveState: AppActiveState = {
-      activePresetId: pluginPresets[0]._id,
-      activePresetIdx: 0,
-      activeTable: table,
-      activeTableName: table.name,
-      activeTableView: view,
-      activeViewRows: [],
-    };
-
-    setAppActiveState(newPresetActiveState);
-  };
-
-  const toggleSettings = () => {
-    if (isMobile() && isShowState.isShowPresets) {
-      togglePresets();
-    }
-
-    setIsShowState((prevState) => ({ ...prevState, isShowSettings: !prevState.isShowSettings }));
-  };
-
   const togglePresets = () => {
-    if (isMobile() && isShowState.isShowSettings) {
-      toggleSettings();
-    }
-
     setIsShowState((prevState) => ({ ...prevState, isShowPresets: !prevState.isShowPresets }));
-  };
-
-  const getAccountToken = (): string => {
-    // Shared across all presets — stored at store level
-    return pluginDataStore.accountToken || '';
-  };
-
-  const handleSaveAccountToken = (token: string) => {
-    const updatedStore = { ...pluginDataStore, accountToken: token };
-    setPluginDataStore(updatedStore);
-    updatePluginDataStore(updatedStore);
-  };
-
-  const getVerifyUrls = (): boolean => {
-    const activePreset = pluginPresets[activePresetIdx];
-    return activePreset?.customSettings?.verifyUrls ?? false;
-  };
-
-  const handleVerifyUrlsChange = (value: boolean) => {
-    const updatedPresets = pluginPresets.map((preset, idx) =>
-      idx === activePresetIdx
-        ? { ...preset, customSettings: { ...preset.customSettings, verifyUrls: value } }
-        : preset
-    );
-    const updatedStore = { ...pluginDataStore, presets: updatedPresets };
-    setPluginPresets(updatedPresets);
-    setPluginDataStore(updatedStore);
-    updatePluginDataStore(updatedStore);
-  };
-
-  const getAutoRerun = (): boolean => {
-    const activePreset = pluginPresets[activePresetIdx];
-    return activePreset?.customSettings?.autoRerun ?? false;
-  };
-
-  const handleAutoRerunChange = (value: boolean) => {
-    const updatedPresets = pluginPresets.map((preset, idx) =>
-      idx === activePresetIdx
-        ? { ...preset, customSettings: { ...preset.customSettings, autoRerun: value } }
-        : preset
-    );
-    const updatedStore = { ...pluginDataStore, presets: updatedPresets };
-    setPluginPresets(updatedPresets);
-    setPluginDataStore(updatedStore);
-    updatePluginDataStore(updatedStore);
-  };
-
-  const getAuditTableDisplay = (): AuditTableDisplayState => {
-    const activePreset = pluginPresets[activePresetIdx];
-    const saved = activePreset?.customSettings?.auditTableDisplay;
-    if (saved) return saved;
-    // Default: all tables selected.
-    return {
-      selectedTables: allTables.map((t) => t._id),
-      isAllSelected: true,
-    };
-  };
-
-  const handleAuditTableDisplayChange = (display: AuditTableDisplayState) => {
-    const updatedPresets = pluginPresets.map((preset, idx) =>
-      idx === activePresetIdx
-        ? { ...preset, customSettings: { ...preset.customSettings, auditTableDisplay: display } }
-        : preset
-    );
-    const updatedStore = { ...pluginDataStore, presets: updatedPresets };
-    setPluginPresets(updatedPresets);
-    setPluginDataStore(updatedStore);
-    updatePluginDataStore(updatedStore);
   };
 
   if (!isShowPlugin) {
@@ -604,19 +472,11 @@ const App: React.FC<IAppProps> = (props) => {
       <div style={{ display: floating ? 'none' : 'contents' }}>
         {/* presets  */}
         <PluginPresets
-          appActiveState={appActiveState}
-          allTables={allTables}
           pluginPresets={pluginPresets}
           activePresetIdx={activePresetIdx}
-          pluginDataStore={pluginDataStore}
           isShowPresets={isShowPresets}
           onTogglePresets={togglePresets}
-          onToggleSettings={toggleSettings}
           onSelectPreset={onSelectPreset}
-          updatePresets={updatePresets}
-          updateActiveData={updateActiveData}
-          isShowState={isShowState}
-          setIsShowState={setIsShowState}
           courses={courses}
           activeCourseId={activeCourseId}
           activeStepId={activeStepId}
@@ -630,9 +490,7 @@ const App: React.FC<IAppProps> = (props) => {
             stepTitle={activeStep?.title}
             controls={floatControls}
             isShowPresets={isShowPresets}
-            isShowSettings={isShowSettings}
             onTogglePresets={togglePresets}
-            toggleSettings={toggleSettings}
             togglePlugin={onPluginToggle}
             onFloat={onFloat}
           />
@@ -648,10 +506,6 @@ const App: React.FC<IAppProps> = (props) => {
                 appActiveState={appActiveState}
                 allTables={allTables}
                 pluginDataStore={pluginDataStore}
-                verifyUrls={getVerifyUrls()}
-                auditTableDisplay={getAuditTableDisplay()}
-                autoRerun={getAutoRerun()}
-                onPerfRunningChange={setPerfRunning}
                 courseManifest={activeManifest}
                 courseStepId={activeStepId}
                 onSelectStep={(stepId) => onSelectStep(activeCourseId, stepId)}
@@ -660,24 +514,6 @@ const App: React.FC<IAppProps> = (props) => {
                 onContentHeight={reportContentHeight}
               />
             </div>
-
-            <PluginSettings
-              allTables={allTables}
-              appActiveState={appActiveState}
-              activeTableViews={activeTableViews}
-              pluginPresets={pluginPresets}
-              isShowSettings={isShowSettings}
-              onToggleSettings={toggleSettings}
-              onSaveAccountToken={handleSaveAccountToken}
-              accountToken={getAccountToken()}
-              verifyUrls={getVerifyUrls()}
-              onVerifyUrlsChange={handleVerifyUrlsChange}
-              auditTableDisplay={getAuditTableDisplay()}
-              onAuditTableDisplayChange={handleAuditTableDisplayChange}
-              autoRerun={getAutoRerun()}
-              onAutoRerunChange={handleAutoRerunChange}
-              perfRunning={perfRunning}
-            />
           </div>
         </div>
       </div>
@@ -778,7 +614,7 @@ const FloatToolbar: React.FC<{
         <img src={pluginIcon} alt="" draggable={false} style={tb.logo} />
         <i
           className="dtable-font dtable-icon-drag"
-          title="Drag to move it"
+          title={t('controls.drag')}
           onMouseDown={startDrag}
           style={tb.drag}
         />
@@ -786,7 +622,7 @@ const FloatToolbar: React.FC<{
         <button
           type="button"
           style={tb.btn}
-          title="Show the instruction"
+          title={t('controls.show_instruction')}
           onClick={() => {
             setMenuOpen(false);
             setInfoOpen((v) => !v);
@@ -796,7 +632,7 @@ const FloatToolbar: React.FC<{
         <button
           type="button"
           style={{ ...tb.btn, ...(controls?.onBack ? null : tb.btnOff) }}
-          title="Back"
+          title={t('controls.back')}
           disabled={!controls?.onBack}
           onClick={controls?.onBack}>
           <i className="dtable-font dtable-icon-left" style={tb.glyph} />
@@ -810,7 +646,7 @@ const FloatToolbar: React.FC<{
               ...(primaryFailed ? tb.btnFail : null),
               ...(primary.busy || primary.disabled ? tb.btnOff : null),
             }}
-            title={primary.busy ? 'Checking…' : primary.title}
+            title={primary.busy ? t('controls.checking') : primary.title}
             disabled={primary.busy || primary.disabled}
             onClick={() => {
               if (!primary.menu) return primary.onClick();
@@ -821,7 +657,7 @@ const FloatToolbar: React.FC<{
             {primary.menu && <i className="dtable-font dtable-icon-drop-down" style={tb.caret} />}
           </button>
         )}
-        <button type="button" style={tb.btn} title="Reopen the course" onClick={onExpand}>
+        <button type="button" style={tb.btn} title={t('controls.reopen')} onClick={onExpand}>
           <i className="dtable-font dtable-icon-full-screen" style={tb.glyph} />
         </button>
       </div>
@@ -859,7 +695,7 @@ const FloatToolbar: React.FC<{
           <button
             type="button"
             style={tb.popClose}
-            title="Close"
+            title={t('controls.close')}
             onClick={() => setInfoOpen(false)}>
             <i className="dtable-font dtable-icon-x" style={{ fontSize: 11 }} />
           </button>
@@ -867,7 +703,9 @@ const FloatToolbar: React.FC<{
           {controls.help && (
             <div style={tb.hintWrap}>
               <button type="button" style={tb.hintToggle} onClick={controls.help.toggle}>
-                {controls.help.shown ? '▾ Hide hint' : '▸ Show hint'}
+                {controls.help.shown
+                  ? t('controls.hide_hint_toggle')
+                  : t('controls.show_hint_toggle')}
               </button>
               {controls.help.shown && (
                 <div style={tb.hintText} dangerouslySetInnerHTML={{ __html: controls.help.text }} />

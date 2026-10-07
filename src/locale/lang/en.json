@@ -1,27 +1,261 @@
 {
-  "settings_headline": "Settings",
-  "preset_new": "New chart",
-  "preset_warn_exist": "Please enter a unique name",
-  "custom_plugin": {
-    "close": "Close"
+  "action": {
+    "add_row_failed": "Could not add the row to {table}.",
+    "adding_row": "Adding a row…",
+    "adding_short_line": "Adding a short-delivered line…",
+    "clearing_extraction": "Clearing what the extraction produced…",
+    "create_row_failed": "could not create the {table} row",
+    "creating_delivery": "Creating a delivery…",
+    "deleting_it": "Deleting it…",
+    "editing_it": "Editing it…",
+    "labelling_document": "Labelling the document…",
+    "looking_delivery": "Looking for the delivery…",
+    "removing_document": "Removing the document…",
+    "removing_lines": "Removing the delivery lines…",
+    "stock_back": "Putting the stock back…",
+    "table_not_found": "Table \"{table}\" not found in this base.",
+    "waiting_attach": "Waiting for your automation to attach it…",
+    "writing_correct_lines": "Writing the correct lines…"
   },
-  "settings": {
-    "account_token": "Account Token",
-    "account_token_placeholder": "Enter your account token",
-    "hide": "Hide",
-    "show": "Show",
-    "save": "Save",
-    "token_saved": "Token saved",
-    "login_generate": "Generate with login",
-    "login_title": "Generate Account Token",
-    "login_email": "Email",
-    "login_password": "Password",
-    "login_otp": "2FA Code",
-    "login_cancel": "Cancel",
-    "login_submit": "Login",
-    "login_loading": "Logging in...",
-    "login_2fa_required": "Two-factor authentication required",
-    "account_token_desc": "Required for the assets and performance audits. Generate one from your SeaTable account settings.",
-    "login_disclaimer": "Your credentials are sent directly to your SeaTable server and are not stored."
+  "automation": {
+    "a_link_missing": "a link action is missing",
+    "add_conditions": "add both conditions — Product reference and Document reference are not empty",
+    "add_link_action": "add the “Add links” action linking {source} to {target}",
+    "conditions_required": "both not-empty conditions (Product reference and Document reference) are required",
+    "link_action_missing": "the link action is missing",
+    "link_missing_for": "the “Add links” action for {source} → {target} is missing",
+    "no_new_rule": "no NEW automation rule yet — add one, name it, and save it",
+    "no_rule": "no automation rule yet — add one, name it, and save it",
+    "read_failed": "could not read the automations",
+    "rule_gone": "the rule you created is gone — create it again",
+    "wrong_table": "no automation on \"{table}\" yet",
+    "wrong_table_pinned": "your rule doesn’t trigger on \"{table}\" yet",
+    "wrong_trigger": "the trigger isn’t “when a new row is added”"
+  },
+  "colleague": {
+    "already_set": "{row} is already {values} — nothing to change. Put the value back first, then run this again.",
+    "base_bell_failed": "Her in-base notifications answered {status}",
+    "base_token_failed": "Could not get a base token for her ({status}).",
+    "cannot_open": "She cannot open this base — check the token, and that the base is still shared with her.",
+    "checking_landed": "Checking that her change reached the base…",
+    "column_not_found": "Column \"{column}\" not found in \"{table}\".",
+    "connect_failed": "Could not connect to the base as her — her change was not made. Try again in a moment.",
+    "making_change": "Making her change…",
+    "no_reason": "no reason given",
+    "no_row_where": "No row where {column} is {value}.",
+    "no_table_named": "No table named {table} in this base.",
+    "no_token": "No colleague token yet.",
+    "no_token_step2": "No colleague token yet — the course asks for it in Step 2.",
+    "not_flushed": "The change was made locally but never reached the server — the store never flushed it. Check that her token is valid and that the socket connected.",
+    "not_landed": "Her change was sent but does not show in the base. Nothing else was done — try again.",
+    "opening_base": "Opening the base as her…",
+    "refused": "SeaTable refused her change: {reason}.",
+    "reply_refused": "Her reply was refused ({status}).",
+    "row_not_found": "No row where {column} is \"{value}\".",
+    "signing_in": "Signing in as your colleague…",
+    "table_not_found": "Table \"{table}\" not found in the base she sees."
+  },
+  "colleague_setup": {
+    "checking": "Checking…",
+    "is_this_her": "Is this your colleague, and not you? If you recognise yourself here, the plugin would act in your own name for the rest of the course.",
+    "no_name": "(no name)",
+    "placeholder": "Paste your colleague's account token",
+    "rejected": "SeaTable did not accept that token. Check that you copied it whole, from your colleague's Personal settings page, and that it is for this server.",
+    "storage_note": "The token is saved with the plugin, inside this base — so it is still here next time, on any machine. Anyone you share the base with can read it there, which is why this second account is one you make for the course and use nowhere else.",
+    "stored_rejected": "The stored token is no longer accepted. Paste it again.",
+    "use_another": "Use another token"
+  },
+  "colleague_window": {
+    "a_base": "a base",
+    "a_record": "a record",
+    "a_team": "a team",
+    "access_through_group": "Malika can already open {base} through a group. Remove her from that group to follow this step: otherwise sharing and revoking change nothing for her.",
+    "bell_failed": "Could not read her notifications.",
+    "bell_label": "Malika's notifications",
+    "bell_label_unread": "Malika's notifications, {count} unread",
+    "caption_base": "What Malika sees in her own window, in this base",
+    "caption_home": "What Malika sees on her own home page",
+    "entry": {
+      "added_to_group": "{who} has added you to {group}",
+      "comment": "Added a new comment for record named {row}.",
+      "shared_base": "{who} has shared a base named {base} to you."
+    },
+    "no_access": "{base} is not shared with her, so she cannot open it — and the companion cannot act for her in it until you share it with her again.",
+    "permission_r": "Read-Only",
+    "permission_rw": "Read-Write",
+    "permission_unknown": "unknown permission",
+    "refresh": "Refresh",
+    "shared_failed": "Could not read her shared bases.",
+    "shared_with_permission": "{base} shared with {permission} permission",
+    "someone": "Someone",
+    "token_missing": "Her token is missing or no longer accepted — go back to the setup step."
+  },
+  "controls": {
+    "back": "Back",
+    "checking": "Checking…",
+    "close": "Close",
+    "drag": "Drag to move it",
+    "hide_hint": "Hide hint",
+    "hide_hint_toggle": "▾ Hide hint",
+    "hint": "Hint",
+    "reopen": "Reopen the course",
+    "show_hint_toggle": "▸ Show hint",
+    "show_instruction": "Show the instruction",
+    "shrink_toolbar": "Shrink to a movable toolbar"
+  },
+  "course": {
+    "automation": {
+      "build": "Build the automation",
+      "check_mine": "Check my automation",
+      "guide_me": "Guide me step by step",
+      "just_check": "I built it — just check it",
+      "next_stage": "Next stage",
+      "stage_complete": "Stage complete — on to the next."
+    },
+    "burst": {
+      "done": "✅ Done — {count} changes, so {count} requests to read at the other end.",
+      "failed": "Could not make the change.",
+      "run": "Make a change"
+    },
+    "check": "Check",
+    "colleague": {
+      "configured": "Your colleague is configured.",
+      "edit": "Let the colleague edit",
+      "failed": "Could not make the change as the colleague.",
+      "replying": "Malika is replying…",
+      "side_writes": "Malika updates a few other customers…",
+      "written": "✅ Written on row {row}. Now open the base log and read the entry: does it name the row, is it signed by her, and does its menu offer Restore?"
+    },
+    "error": "❌ {message}",
+    "feedback": {
+      "fail": "❌ Not yet — {reason}.",
+      "missing": "⚠️ Couldn't find {what} in the base. Check that the base matches the exercise.",
+      "pass": "✅ {message}",
+      "pass_default": "Well done — the shared master is back in sync."
+    },
+    "handoff_default": "The next step continues on the website ↩",
+    "intro": {
+      "external": "📌 This course is currently not supported by the plugin, but you can follow it on {link}.",
+      "soon": "🚧 Coming soon."
+    },
+    "introduction": "Introduction",
+    "lines": {
+      "attached": "✅ {written}, and {reference} put on your document so your rule can attach them.",
+      "done": "✅ {written}.",
+      "failed": "Could not write the lines.",
+      "fix": "Fix the lines",
+      "no_document": "⚠️ {written} — but no document carries {reference}, so your rule has nothing to attach them to. Create the delivery note first, then write the lines again.",
+      "write": "Write the lines",
+      "written_one": "{count} line written",
+      "written_other": "{count} lines written",
+      "written_replacing_one": "{count} line written, replacing the {removed} the extraction produced",
+      "written_replacing_other": "{count} lines written, replacing the {removed} the extraction produced"
+    },
+    "list_and": " and ",
+    "loading": "Loading…",
+    "next": "Next",
+    "open_table_first": "Open “{table}” first",
+    "open_view_first": "Open the “{view}” view first",
+    "page_load_failed": "⚠️ Couldn’t load this page.",
+    "preparing": "Preparing…",
+    "rewind": {
+      "again": "Rewind again",
+      "done_one": "✅ {count} line and the document removed. Now receive the delivery again from the app.",
+      "done_other": "✅ {count} lines and the document removed. Now receive the delivery again from the app.",
+      "done_stock_one": "✅ {count} line and the document removed, stock put back. Now receive the delivery again from the app.",
+      "done_stock_other": "✅ {count} lines and the document removed, stock put back. Now receive the delivery again from the app.",
+      "failed": "Could not rewind the delivery.",
+      "nothing": "✅ Nothing left to remove — that delivery is already out of your base. Receive it again from the app.",
+      "run": "Rewind the delivery"
+    },
+    "rewinding": "Rewinding…",
+    "seed": {
+      "failed": "Could not prepare the delivery.",
+      "not_linked": "⚠️ The delivery is there, but its line has not been linked yet — check the automation you built in step 2, then run your rule.",
+      "note_ready": "✅ The delivery note is in your base, with no lines and no file. Push one from the API explorer, then verify.",
+      "prepare": "Prepare the delivery",
+      "short_ready": "✅ A short delivery is waiting. Run your rule, then verify."
+    },
+    "start_over": "Start over",
+    "verify": "Verify",
+    "watch": {
+      "add_lines": "Add the delivery lines",
+      "added": "Added {count} lines. Waiting for your automation…",
+      "failed": "Could not add the delivery lines.",
+      "linked": "✅ {columns} filled in on all {count} lines.",
+      "look_again": "Look again",
+      "not_found": "The new lines could not be found after writing them.",
+      "stalled": "⏳ {linked}/{total} lines linked — {missing} still empty. Automations can take a moment; give it a few seconds and look again. If it stays empty, check your rule's conditions and its Add links actions.",
+      "waiting": "Waiting for your automation… {linked}/{total} lines linked.",
+      "writing": "Writing the delivery lines…",
+      "wrong_table": "You’re looking at “{current}”. Open the “{table}” table so you can watch the lines land — then add them."
+    },
+    "working": "Working…",
+    "writing": "Writing…",
+    "wrong_table": "You’re looking at “{current}”. Open “{table}” first, or you will miss what happens.",
+    "wrong_view": "Open the “{view}” view of “{table}” first — in this one the change happens off-screen and you will miss it."
+  },
+  "courses": {
+    "checkpoints_caption": "Plugin checkpoints — follow the rest of the course on the website",
+    "collapse": "Collapse course",
+    "done": "done",
+    "exercise": "exercise",
+    "exercise_title": "Exercise — the panel shrinks so you can work in your base",
+    "expand": "Expand course",
+    "shrink_icon": "Shrink to a movable icon"
+  },
+  "grade": {
+    "checkbox_mismatch": "{table} · {column} is {actual}, expected {expected}",
+    "checked": "checked",
+    "empty": "(empty)",
+    "no_matching_row": "no matching row",
+    "rows": {
+      "none": "no {noun} in {table} — {min} expected",
+      "not_linked": "{count} {noun} in {table}, but {columns} not linked yet",
+      "only": "only {count} {noun} in {table} — {min} expected"
+    },
+    "rows_noun": "rows with {column} \"{value}\"",
+    "unchecked": "unchecked",
+    "value_mismatch": "{table} · {column} is \"{actual}\", expected \"{expected}\"",
+    "what": {
+      "column": "column \"{column}\" in \"{table}\"",
+      "row": "row \"{row}\" in \"{table}\"",
+      "table": "table \"{table}\""
+    }
+  },
+  "oplog": {
+    "no_row_matching": "no {table} row has {column} = {value}",
+    "no_rows": "there are no rows in {table}",
+    "not_from_api": "the {noun} is there, but it did not come in through the API",
+    "not_set_by_automation": "no automation has set {column} on a matching {table} row yet",
+    "prepared_row_gone": "the {table} row prepared for this exercise is gone",
+    "read_failed": "could not read the activity log",
+    "row_noun": "row"
+  },
+  "seatable_ui": {
+    "add_base_or_folder": "Add a base or folder",
+    "add_folder": "Add a folder",
+    "apps": "Apps",
+    "bases": "Bases",
+    "general": "General({count})",
+    "my_bases": "My bases",
+    "no_notifications": "No notifications",
+    "notification": "Notification",
+    "shared_with_me": "Shared with me"
+  },
+  "time": {
+    "days_one": "{count} day ago",
+    "days_other": "{count} days ago",
+    "hours_one": "{count} hour ago",
+    "hours_other": "{count} hours ago",
+    "just_now": "just now",
+    "minutes_one": "{count} minute ago",
+    "minutes_other": "{count} minutes ago"
+  },
+  "ui_check": {
+    "lower_right": "drag the toolbar into the lower-right quarter of the screen",
+    "read_failed": "could not read the plugin window",
+    "resize": "drag the grip at the top center of the panel up or down first",
+    "shrink": "shrink the plugin to the toolbar first (the shrink icon, top-right)"
   }
 }

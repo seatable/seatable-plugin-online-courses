@@ -37,6 +37,7 @@
  */
 
 import { colleagueAccountGet, colleagueBaseToken, hostConfig } from './colleagueIdentity';
+import { t } from '../../locale/t';
 
 export interface BellEntry {
   id: number;
@@ -229,7 +230,7 @@ export async function colleagueBaseNotifications(): Promise<BellEntry[]> {
   const resp = await fetch(`${server}/api-gateway/api/v2/dtables/${dtableUuid}/notifications/`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   });
-  if (!resp.ok) throw new Error(`Her in-base notifications answered ${resp.status}`);
+  if (!resp.ok) throw new Error(t('colleague.base_bell_failed', { status: resp.status }));
   const body = await resp.json();
   const list = body?.notification_list || body?.notifications || [];
   return list.map((n: any) => ({

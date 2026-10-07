@@ -1,10 +1,8 @@
-import { AppActiveState, AppIsShowState, IPluginDataStore } from '../App.interface';
+import { AppActiveState } from '../App.interface';
 import { SelectOption } from '../PluginSettings.interface';
-import { TableArray } from '../Table.interface';
 import { CourseManifest } from '../../custom-utils/courseContent';
 
 export interface IPresetsProps {
-  appActiveState: AppActiveState;
   pluginPresets: PresetsArray;
   activePresetIdx: number;
   onSelectPreset: (presetId: string, newPresetActiveState?: AppActiveState) => void;
@@ -20,20 +18,8 @@ export interface IPresetsProps {
   // Shrink the plugin to the floating icon (same action as the header button);
   // wired to the plugin logo at the top of the panel.
   onFloat?: () => void;
-  updatePresets: (
-    currentIdx: number,
-    presets: PresetsArray,
-    _pluginDataStore: IPluginDataStore,
-    type: string
-  ) => void;
-  pluginDataStore: IPluginDataStore;
   isShowPresets: boolean;
-  allTables: TableArray;
   onTogglePresets: () => void;
-  onToggleSettings: () => void;
-  updateActiveData: () => void;
-  isShowState: AppIsShowState;
-  setIsShowState: (value: React.SetStateAction<AppIsShowState>) => void;
 }
 
 export interface IPresetsState {

@@ -24,6 +24,7 @@
 
 import { AutomationRuleRule, Outcome } from './grader';
 import { getColumn, getTableByName } from './sdkRead';
+import { t } from '../../locale/t';
 
 // SeaTable stamps automation-rule link actions with this action type.
 const LINK_ACTION_TYPE = 'link_records';
@@ -165,23 +166,30 @@ interface ResolvedRule {
 // `missing` outcome (base doesn't match the exercise) if any name can't be found.
 function resolveRule(rule: AutomationRuleRule): ResolvedRule | { missing: string } {
   const triggerTable = getTableByName(rule.trigger_table);
-  if (!triggerTable) return { missing: `table "${rule.trigger_table}"` };
+  if (!triggerTable) return { missing: t('grade.what.table', { table: rule.trigger_table }) };
 
   const conditions: ResolvedRule['conditions'] = [];
   for (const c of rule.conditions || []) {
     const col = getColumn(triggerTable, c.column);
-    if (!col) return { missing: `column "${c.column}" in "${rule.trigger_table}"` };
+    if (!col)
+      return { missing: t('grade.what.column', { column: c.column, table: rule.trigger_table }) };
     conditions.push({ key: col.key, predicate: c.predicate });
   }
 
   const linkActions: ResolvedRule['linkActions'] = [];
   for (const la of rule.link_actions || []) {
     const sourceCol = getColumn(triggerTable, la.source_column);
-    if (!sourceCol) return { missing: `column "${la.source_column}" in "${rule.trigger_table}"` };
+    if (!sourceCol)
+      return {
+        missing: t('grade.what.column', { column: la.source_column, table: rule.trigger_table }),
+      };
     const targetTable = getTableByName(la.target_table);
-    if (!targetTable) return { missing: `table "${la.target_table}"` };
+    if (!targetTable) return { missing: t('grade.what.table', { table: la.target_table }) };
     const targetCol = getColumn(targetTable, la.target_column);
-    if (!targetCol) return { missing: `column "${la.target_column}" in "${la.target_table}"` };
+    if (!targetCol)
+      return {
+        missing: t('grade.what.column', { column: la.target_column, table: la.target_table }),
+      };
     linkActions.push({
       sourceKey: sourceCol.key,
       targetTableId: targetTable._id,
@@ -264,7 +272,7 @@ export async function gradeAutomationRule(
   try {
     rules = await fetchAutomationRules();
   } catch (err: any) {
-    return { kind: 'fail', reason: err?.message || 'could not read the automations' };
+    return { kind: 'fail', reason: err?.message || t('automation.read_failed') };
   }
 
   // 'created' — the learner has just ADDED and named a rule; nothing else is
@@ -280,9 +288,7 @@ export async function gradeAutomationRule(
     if (fresh.length === 0) {
       return {
         kind: 'fail',
-        reason: ignore.size
-          ? 'no NEW automation rule yet — add one, name it, and save it'
-          : 'no automation rule yet — add one, name it, and save it',
+        reason: ignore.size ? t('automation.no_new_rule') : t('automation.no_rule'),
       };
     }
     // Pin the most recently created one (highest id) so every later stage checks
@@ -298,7 +304,7 @@ export async function gradeAutomationRule(
     ? rules.filter((rl) => String(rl?.id ?? '') === String(guided.pinRuleId))
     : rules;
   if (guided.pinRuleId && pinned.length === 0) {
-    return { kind: 'fail', reason: 'the rule you created is gone — create it again' };
+    return { kind: 'fail', reason: t('automation.rule_gone') };
   }
 
   // Later stages need a rule that at least triggers on the right table.
@@ -307,8 +313,8 @@ export async function gradeAutomationRule(
     return {
       kind: 'fail',
       reason: guided.pinRuleId
-        ? `your rule doesn’t trigger on "${rule.trigger_table}" yet`
-        : `no automation on "${rule.trigger_table}" yet`,
+        ? t('automation.wrong_table_pinned', { table: rule.trigger_table })
+        : t('automation.wrong_table', { table: rule.trigger_table }),
     };
   }
 
@@ -318,11 +324,11 @@ export async function gradeAutomationRule(
     }
     // Distinguish a wrong trigger from missing conditions for a helpful message.
     if (!candidates.some((rl) => hasTrigger(rl, resolved))) {
-      return { kind: 'fail', reason: 'the trigger isn’t “when a new row is added”' };
+      return { kind: 'fail', reason: t('automation.wrong_trigger') };
     }
     return {
       kind: 'fail',
-      reason: 'add both conditions — Product reference and Document reference are not empty',
+      reason: t('automation.add_conditions'),
     };
   }
 
@@ -335,8 +341,8 @@ export async function gradeAutomationRule(
     return {
       kind: 'fail',
       reason: src
-        ? `add the “Add links” action linking ${src.source_column} to ${src.target_table}`
-        : 'the link action is missing',
+        ? t('automation.add_link_action', { source: src.source_column, target: src.target_table })
+        : t('automation.link_action_missing'),
     };
   }
 
@@ -349,12 +355,12 @@ export async function gradeAutomationRule(
     candidates.find((rl) => hasTrigger(rl, resolved)) ||
     candidates[0];
   if (!hasTrigger(best, resolved)) {
-    return { kind: 'fail', reason: 'the trigger isn’t “when a new row is added”' };
+    return { kind: 'fail', reason: t('automation.wrong_trigger') };
   }
   if (!hasConditions(best, resolved)) {
     return {
       kind: 'fail',
-      reason: 'both not-empty conditions (Product reference and Document reference) are required',
+      reason: t('automation.conditions_required'),
     };
   }
   const missingLink = resolved.linkActions.findIndex((la) => !hasLinkAction(best, la));
@@ -362,7 +368,7 @@ export async function gradeAutomationRule(
   return {
     kind: 'fail',
     reason: src
-      ? `the “Add links” action for ${src.source_column} → ${src.target_table} is missing`
-      : 'a link action is missing',
+      ? t('automation.link_missing_for', { source: src.source_column, target: src.target_table })
+      : t('automation.a_link_missing'),
   };
 }

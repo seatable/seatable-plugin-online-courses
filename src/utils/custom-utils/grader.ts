@@ -19,6 +19,7 @@
 
 import { cellLabel, getColumn, getTableByName } from './sdkRead';
 import { linkStatus } from './watchAutomation';
+import { t } from '../../locale/t';
 
 export type Outcome =
   | { kind: 'idle' }
@@ -167,11 +168,21 @@ type RowResult =
 // cell is a `fail` (the learner hasn't done it yet).
 function gradeRow(table: any, exp: ExpectedRow): RowResult {
   const row = (table.rows || []).find((r: any) => r._id === exp.row_id);
-  if (!row) return { ok: false, missing: true, what: `row "${exp.row_id}" in "${table.name}"` };
+  if (!row)
+    return {
+      ok: false,
+      missing: true,
+      what: t('grade.what.row', { row: exp.row_id, table: table.name }),
+    };
 
   for (const [colName, expectedRaw] of Object.entries(exp.row)) {
     const col = getColumn(table, colName);
-    if (!col) return { ok: false, missing: true, what: `column "${colName}" in "${table.name}"` };
+    if (!col)
+      return {
+        ok: false,
+        missing: true,
+        what: t('grade.what.column', { column: colName, table: table.name }),
+      };
 
     // Checkbox: compare as booleans (unchecked can be false, '' or absent, so a
     // label comparison won't do). Expected `true`/`'true'` = checked, else unchecked.
@@ -182,7 +193,12 @@ function gradeRow(table: any, exp: ExpectedRow): RowResult {
         return {
           ok: false,
           missing: false,
-          reason: `${table.name} · ${colName} is ${actualBool ? 'checked' : 'unchecked'}, expected ${expectedBool ? 'checked' : 'unchecked'}`,
+          reason: t('grade.checkbox_mismatch', {
+            table: table.name,
+            column: colName,
+            actual: actualBool ? t('grade.checked') : t('grade.unchecked'),
+            expected: expectedBool ? t('grade.checked') : t('grade.unchecked'),
+          }),
         };
       }
       continue;
@@ -194,7 +210,12 @@ function gradeRow(table: any, exp: ExpectedRow): RowResult {
       return {
         ok: false,
         missing: false,
-        reason: `${table.name} · ${colName} is "${actual ?? '(empty)'}", expected "${expected ?? '(empty)'}"`,
+        reason: t('grade.value_mismatch', {
+          table: table.name,
+          column: colName,
+          actual: actual ?? t('grade.empty'),
+          expected: expected ?? t('grade.empty'),
+        }),
       };
     }
   }
@@ -204,7 +225,7 @@ function gradeRow(table: any, exp: ExpectedRow): RowResult {
 /** Evaluate a grade rule against the current base state. */
 export function grade(rule: GradeRule): Outcome {
   const table = getTableByName(rule.table_name);
-  if (!table) return { kind: 'missing', what: `table "${rule.table_name}"` };
+  if (!table) return { kind: 'missing', what: t('grade.what.table', { table: rule.table_name }) };
   if (!rule.expected?.length) return { kind: 'missing', what: 'grade rule has no expected rows' };
 
   const results = rule.expected.map((exp) => gradeRow(table, exp));
@@ -215,7 +236,7 @@ export function grade(rule: GradeRule): Outcome {
     const failed = results.find((r) => !r.ok && !r.missing) as { reason: string } | undefined;
     if (failed) return { kind: 'fail', reason: failed.reason };
     const miss = results.find((r) => !r.ok && (r as any).missing) as { what: string } | undefined;
-    return { kind: 'missing', what: miss?.what ?? 'no matching row' };
+    return { kind: 'missing', what: miss?.what ?? t('grade.no_matching_row') };
   }
 
   // match === 'all': any missing → missing; any fail → fail; else pass.
@@ -229,10 +250,13 @@ export function grade(rule: GradeRule): Outcome {
 /** Count the rows matching a `rows-exist` rule against the current base state. */
 export function gradeRowsExist(rule: RowsExistRule): Outcome {
   const table = getTableByName(rule.table_name);
-  if (!table) return { kind: 'missing', what: `table "${rule.table_name}"` };
+  if (!table) return { kind: 'missing', what: t('grade.what.table', { table: rule.table_name }) };
   const column = getColumn(table, rule.where.column);
   if (!column) {
-    return { kind: 'missing', what: `column "${rule.where.column}" in "${rule.table_name}"` };
+    return {
+      kind: 'missing',
+      what: t('grade.what.column', { column: rule.where.column, table: rule.table_name }),
+    };
   }
 
   const wanted = String(rule.where.equals);
@@ -240,16 +264,19 @@ export function gradeRowsExist(rule: RowsExistRule): Outcome {
     (r: any) => cellLabel(column, r[column.key]) === wanted
   );
   const min = rule.min_count ?? 1;
-  const noun = rule.noun ?? `rows with ${rule.where.column} "${wanted}"`;
+  const noun = rule.noun ?? t('grade.rows_noun', { column: rule.where.column, value: wanted });
 
   const wantLinks = rule.linked_columns ?? [];
   if (!wantLinks.length) {
     if (matching.length >= min) return { kind: 'pass' };
     return {
       kind: 'fail',
-      reason: `${matching.length === 0 ? 'no' : `only ${matching.length}`} ${noun} in ${
-        rule.table_name
-      } — ${min} expected`,
+      reason: t(matching.length === 0 ? 'grade.rows.none' : 'grade.rows.only', {
+        count: matching.length,
+        noun,
+        table: rule.table_name,
+        min,
+      }),
     };
   }
 
@@ -267,15 +294,21 @@ export function gradeRowsExist(rule: RowsExistRule): Outcome {
   if (matching.length >= min) {
     return {
       kind: 'fail',
-      reason: `${matching.length} ${noun} in ${rule.table_name}, but ${progress.missing
-        .map((n) => `"${n}"`)
-        .join(' and ')} not linked yet`,
+      reason: t('grade.rows.not_linked', {
+        count: matching.length,
+        noun,
+        table: rule.table_name,
+        columns: progress.missing.map((n) => `"${n}"`).join(t('course.list_and')),
+      }),
     };
   }
   return {
     kind: 'fail',
-    reason: `${matching.length === 0 ? 'no' : `only ${matching.length}`} ${noun} in ${
-      rule.table_name
-    } — ${min} expected`,
+    reason: t(matching.length === 0 ? 'grade.rows.none' : 'grade.rows.only', {
+      count: matching.length,
+      noun,
+      table: rule.table_name,
+      min,
+    }),
   };
 }

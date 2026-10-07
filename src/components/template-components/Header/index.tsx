@@ -3,9 +3,7 @@ import styles from '../../../styles/template-styles/Plugin.module.scss';
 import stylesPPresets from '../../../styles/template-styles/PluginPresets.module.scss';
 import { IHeaderProps } from '../../../utils/template-interfaces/Header.interface';
 import { HiOutlineChevronDoubleRight } from 'react-icons/hi2';
-import intl from 'react-intl-universal';
-import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
-const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
+import { t } from '../../../locale/t';
 
 const Header: React.FC<IHeaderProps> = (props) => {
   const { presetName, isShowPresets, onTogglePresets, togglePlugin, stepTitle, controls, onFloat } =
@@ -58,7 +56,7 @@ const Header: React.FC<IHeaderProps> = (props) => {
               disabled={!controls.onBack}
               onClick={controls.onBack}>
               <i className="dtable-font dtable-icon-left" style={hs.glyph} />
-              <span>Back</span>
+              <span>{t('controls.back')}</span>
             </button>
             {controls.help && (
               <button
@@ -66,7 +64,7 @@ const Header: React.FC<IHeaderProps> = (props) => {
                 style={{ ...hs.ghost, ...(controls.help.shown ? hs.ghostActive : null) }}
                 onClick={controls.help.toggle}>
                 <i className="dtable-font dtable-icon-help-center" style={hs.glyph} />
-                <span>{controls.help.shown ? 'Hide hint' : 'Hint'}</span>
+                <span>{controls.help.shown ? t('controls.hide_hint') : t('controls.hint')}</span>
               </button>
             )}
             {primary && (
@@ -74,14 +72,14 @@ const Header: React.FC<IHeaderProps> = (props) => {
                 <button
                   type="button"
                   style={{ ...hs.primary, ...(primary.busy || primary.disabled ? hs.off : null) }}
-                  title={primary.busy ? 'Checking…' : primary.title}
+                  title={primary.busy ? t('controls.checking') : primary.title}
                   disabled={primary.busy || primary.disabled}
                   onClick={() => {
                     if (!primary.menu) return primary.onClick();
                     setMenuOpen((v) => !v);
                   }}>
                   <i className={`dtable-font ${primaryGlyph}`} style={hs.glyph} />
-                  <span>{primary.busy ? 'Checking…' : primary.title}</span>
+                  <span>{primary.busy ? t('controls.checking') : primary.title}</span>
                   {primary.menu && (
                     <i className="dtable-font dtable-icon-drop-down" style={hs.caret} />
                   )}
@@ -115,7 +113,7 @@ const Header: React.FC<IHeaderProps> = (props) => {
           <span
             className={styles.plugin_header_icon_btn}
             onClick={onFloat}
-            title="Shrink to a movable toolbar">
+            title={t('controls.shrink_toolbar')}>
             <span className="dtable-font dtable-icon-full-screen" style={{ border: 'none' }}></span>
           </span>
         )}
@@ -123,7 +121,7 @@ const Header: React.FC<IHeaderProps> = (props) => {
           <span
             className="dtable-font dtable-icon-x"
             style={{ border: 'none' }}
-            title={intl.get('custom_plugin.close').d(`${d.custom_plugin.close}`)}></span>
+            title={t('controls.close')}></span>
         </span>
       </div>
     </div>

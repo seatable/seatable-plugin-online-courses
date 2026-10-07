@@ -36,6 +36,7 @@
 
 import { cellLabel, findRowByMatch, getColumn, getTableByName } from './sdkRead';
 import { learnerAppendRows, learnerUpdateRow } from './learnerWrite';
+import { t } from '../../locale/t';
 
 function sdk(): any {
   return (window as any).dtableSDK;
@@ -98,7 +99,7 @@ function linkedIdsByRow(table: any, rows: any[], columnName: string): Record<str
  */
 function findDeliveryLines(spec: RewindSpec, documentRowId: string | null): any[] {
   const table = getTableByName(spec.lines.table_name);
-  if (!table) throw new Error(`Table "${spec.lines.table_name}" not found in this base.`);
+  if (!table) throw new Error(t('action.table_not_found', { table: spec.lines.table_name }));
   const rows: any[] = table.rows || [];
   const refColumn = getColumn(table, spec.lines.reference_column);
   const links = documentRowId ? linkedIdsByRow(table, rows, spec.lines.link_column) : {};
@@ -132,7 +133,7 @@ export function countDeliveryLines(spec: RewindSpec): number {
 function deleteRows(tableName: string, rowIds: string[]): number {
   if (!rowIds.length) return 0;
   const table = getTableByName(tableName);
-  if (!table) throw new Error(`Table "${tableName}" not found in this base.`);
+  if (!table) throw new Error(t('action.table_not_found', { table: tableName }));
   sdk().deleteRowsByIds(table, rowIds);
   return rowIds.length;
 }
@@ -195,7 +196,7 @@ export async function rewindDelivery(
 ): Promise<RewindResult> {
   const documentTable = getTableByName(spec.document.table_name);
   if (!documentTable) {
-    throw new Error(`Table "${spec.document.table_name}" not found in this base.`);
+    throw new Error(t('action.table_not_found', { table: spec.document.table_name }));
   }
   const documentRow = findRowByMatch(
     documentTable,
@@ -203,13 +204,13 @@ export async function rewindDelivery(
     spec.document.reference
   );
 
-  onTick?.('Looking for the delivery…');
+  onTick?.(t('action.looking_delivery'));
   const lineRows = findDeliveryLines(spec, documentRow?._id ?? null);
 
-  onTick?.('Putting the stock back…');
+  onTick?.(t('action.stock_back'));
   const products = await undoStock(spec, lineRows);
 
-  onTick?.('Removing the delivery lines…');
+  onTick?.(t('action.removing_lines'));
   const lines = deleteRows(
     spec.lines.table_name,
     lineRows.map((r) => r._id)
@@ -217,7 +218,7 @@ export async function rewindDelivery(
 
   // The document goes last: its links are how we found part of the lines.
   if (documentRow) {
-    onTick?.('Removing the document…');
+    onTick?.(t('action.removing_document'));
     sdk().deleteRowById(documentTable, documentRow._id);
   }
 
@@ -269,7 +270,7 @@ export async function reloadDeliveryLines(
         })
       : [];
     if (unlabelled.length === 1) {
-      onTick?.('Labelling the document…');
+      onTick?.(t('action.labelling_document'));
       await learnerUpdateRow(spec.document.table_name, unlabelled[0]._id, {
         [spec.document.reference_column]: spec.document.reference,
       });
@@ -282,7 +283,7 @@ export async function reloadDeliveryLines(
     }
   }
 
-  onTick?.('Clearing what the extraction produced…');
+  onTick?.(t('action.clearing_extraction'));
   const existing = findDeliveryLines(spec, documentRow?._id ?? null);
   // Stock is deliberately NOT touched here: these lines are the extraction's own
   // output, and nothing has been validated on them yet.
@@ -291,7 +292,7 @@ export async function reloadDeliveryLines(
     existing.map((r) => r._id)
   );
 
-  onTick?.('Writing the correct lines…');
+  onTick?.(t('action.writing_correct_lines'));
   const added = await learnerAppendRows(spec.lines.table_name, rows);
   return { removed, added, documentLabelled, documentFound: !!documentRow };
 }

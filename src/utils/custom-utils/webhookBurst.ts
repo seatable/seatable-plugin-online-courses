@@ -35,6 +35,7 @@
 import { getTableByName } from './sdkRead';
 import { learnerUpdateRow } from './learnerWrite';
 import { appendRowsTracked } from './watchAutomation';
+import { t } from '../../locale/t';
 
 function sdk(): any {
   return (window as any).dtableSDK;
@@ -72,19 +73,19 @@ export async function webhookBurst(
   onTick?: (note: string) => void
 ): Promise<WebhookBurstResult> {
   const table = getTableByName(spec.table_name);
-  if (!table) throw new Error(`Table "${spec.table_name}" not found in this base.`);
+  if (!table) throw new Error(t('action.table_not_found', { table: spec.table_name }));
   const pause = spec.pause_ms ?? 5000;
 
-  onTick?.('Adding a row…');
+  onTick?.(t('action.adding_row'));
   const ids = await appendRowsTracked(spec.table_name, [spec.row]);
-  if (ids.length !== 1) throw new Error(`Could not add the row to ${spec.table_name}.`);
+  if (ids.length !== 1) throw new Error(t('action.add_row_failed', { table: spec.table_name }));
   await wait(pause);
 
-  onTick?.('Editing it…');
+  onTick?.(t('action.editing_it'));
   await learnerUpdateRow(spec.table_name, ids[0], spec.edit);
   await wait(pause);
 
-  onTick?.('Deleting it…');
+  onTick?.(t('action.deleting_it'));
   // Re-read the table: the store may have swapped the object under us during the
   // pauses, and deleting through a stale one would silently do nothing.
   const current = getTableByName(spec.table_name) || table;

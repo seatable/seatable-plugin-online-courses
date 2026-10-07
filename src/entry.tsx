@@ -10,11 +10,11 @@ const SeaTablePlugin = {
       window.dtable && Object.keys(AVAILABLE_LOCALES).includes(window.dtable.lang)
         ? window.dtable.lang
         : DEFAULT_LOCALE;
-    intl.init({ currentLocale: lang, locales: AVAILABLE_LOCALES });
+    intl.init({ currentLocale: lang, fallbackLocale: 'en', locales: AVAILABLE_LOCALES });
     const container = document.querySelector('#plugin-wrapper') as HTMLElement;
     if (!container) return;
 
-    const rootKey = '__audit_plugin_root';
+    const rootKey = '__online_courses_plugin_root';
     let root = (container as any)[rootKey];
     if (!root) {
       root = createRoot(container);

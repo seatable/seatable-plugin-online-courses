@@ -51,7 +51,7 @@ class SeaTablePlugin {
   static async execute(lang = currentLang) {
     await this.init();
     currentLang = lang;
-    intl.init({ currentLocale: lang, locales: AVAILABLE_LOCALES });
+    intl.init({ currentLocale: lang, fallbackLocale: 'en', locales: AVAILABLE_LOCALES });
     const rootElement = document.querySelector('#plugin-wrapper');
     if (!root) {
       root = createRoot(rootElement);

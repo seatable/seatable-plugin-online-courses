@@ -2,9 +2,7 @@ import { FloatControls } from '../custom-interfaces/FloatControls';
 
 export interface IHeaderProps {
   presetName: string | undefined;
-  isShowSettings: boolean;
   isShowPresets: boolean;
-  toggleSettings: () => void;
   togglePlugin: () => void;
   onTogglePresets: () => void;
   // Current step's title — shown as the header label (falls back to the course name).

@@ -9,10 +9,8 @@ export interface IAppProps {
 }
 export interface AppIsShowState {
   isShowPlugin: boolean;
-  isShowSettings: boolean;
   isLoading: boolean;
   isShowPresets: boolean;
-  isShowWaiting: boolean;
 }
 
 // AppActiveState is a state that holds the active state of what is shown in the plugin
@@ -41,7 +39,6 @@ export interface IPluginDataStore extends Pick<
 > {
   presets: PresetsArray;
   pluginName: string;
-  accountToken?: string;
   // Course progress: the id of the last-reached step, keyed by courseId. One
   // plugin serves all seven courses, so it's a per-course map. Content lives in
   // Hugo (not here) — the datastore only remembers where to resume.

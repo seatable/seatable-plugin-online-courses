@@ -33,6 +33,7 @@
  */
 
 import { appendRowsTracked, awaitLinks } from './watchAutomation';
+import { t } from '../../locale/t';
 
 export interface SeedSpec {
   /** The document to create (column NAME → display value). */
@@ -67,21 +68,21 @@ export async function seedDiscrepancy(
   spec: SeedSpec,
   onTick?: (note: string) => void
 ): Promise<SeedResult> {
-  onTick?.('Creating a delivery…');
+  onTick?.(t('action.creating_delivery'));
   const docIds = await appendRowsTracked(spec.document.table_name, [spec.document.row]);
   if (docIds.length !== 1) {
-    throw new Error(`could not create the ${spec.document.table_name} row`);
+    throw new Error(t('action.create_row_failed', { table: spec.document.table_name }));
   }
 
   if (!spec.lines) return { documentRowId: docIds[0] };
 
-  onTick?.('Adding a short-delivered line…');
+  onTick?.(t('action.adding_short_line'));
   const lineIds = await appendRowsTracked(spec.lines.table_name, spec.lines.rows);
 
   // The line has to reach the document before the document counts it, and that is
   // the learner's own automation's job — so this wait doubles as a check that it
   // still works.
-  onTick?.('Waiting for your automation to attach it…');
+  onTick?.(t('action.waiting_attach'));
   const outcome = await awaitLinks(spec.lines.table_name, lineIds, spec.lines.link_columns, {
     timeoutMs: 15000,
   });

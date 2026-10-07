@@ -30,6 +30,7 @@ import {
 } from './grader';
 import { cellLabel, getColumn, getTableByName } from './sdkRead';
 import { gradeAutomationRule } from './automationGrade';
+import { t } from '../../locale/t';
 
 // The op_user value SeaTable stamps on automation-rule writes.
 const AUTOMATION_OP_USER = 'Automation Rule';
@@ -47,8 +48,8 @@ function sdk(): any {
 //     `dtableSDK.config` is not guaranteed to carry them there.
 //   - development: the plugin self-initializes the SDK, so `dtableSDK.config` holds them
 //     and `window.dtable` is absent.
-// Same precedence as `fetchMetaData` in template-utils/utils.ts and as the audit path in
-// performanceAuditTest4.ts, which is the one verified against a real base.
+// Same precedence as `fetchMetaData` in template-utils/utils.ts (the order once
+// verified against a real base by the audit plugin this one was built from).
 function gatewayConfig(): { server: string; baseToken: string; baseUuid: string } {
   const host = (window as any).dtable || {};
   const cfg = sdk()?.config || {};
@@ -121,12 +122,18 @@ export async function gradeAutomationSet(
   opts: { rowIds?: string[] } = {}
 ): Promise<Outcome> {
   const table = getTableByName(rule.table_name);
-  if (!table) return { kind: 'missing', what: `table "${rule.table_name}"` };
+  if (!table) return { kind: 'missing', what: t('grade.what.table', { table: rule.table_name }) };
   if (!getColumn(table, rule.column)) {
-    return { kind: 'missing', what: `column "${rule.column}" in "${rule.table_name}"` };
+    return {
+      kind: 'missing',
+      what: t('grade.what.column', { column: rule.column, table: rule.table_name }),
+    };
   }
   if (rule.condition && !getColumn(table, rule.condition.column)) {
-    return { kind: 'missing', what: `column "${rule.condition.column}" in "${rule.table_name}"` };
+    return {
+      kind: 'missing',
+      what: t('grade.what.column', { column: rule.condition.column, table: rule.table_name }),
+    };
   }
 
   // Pinned rows win over the condition: when the plugin created the row itself, that
@@ -142,10 +149,14 @@ export async function gradeAutomationSet(
     return {
       kind: 'fail',
       reason: opts.rowIds?.length
-        ? `the ${rule.table_name} row prepared for this exercise is gone`
+        ? t('oplog.prepared_row_gone', { table: rule.table_name })
         : rule.condition
-          ? `no ${rule.table_name} row has ${rule.condition.column} = ${rule.condition.equals}`
-          : `there are no rows in ${rule.table_name}`,
+          ? t('oplog.no_row_matching', {
+              table: rule.table_name,
+              column: rule.condition.column,
+              value: String(rule.condition.equals),
+            })
+          : t('oplog.no_rows', { table: rule.table_name }),
     };
   }
 
@@ -157,12 +168,12 @@ export async function gradeAutomationSet(
       }
     }
   } catch (err: any) {
-    return { kind: 'fail', reason: err?.message || 'could not read the activity log' };
+    return { kind: 'fail', reason: err?.message || t('oplog.read_failed') };
   }
 
   return {
     kind: 'fail',
-    reason: `no automation has set ${rule.column} on a matching ${rule.table_name} row yet`,
+    reason: t('oplog.not_set_by_automation', { column: rule.column, table: rule.table_name }),
   };
 }
 
@@ -224,11 +235,11 @@ export async function gradeRowsExistWritten(rule: RowsExistRule): Promise<Outcom
       if (rowWrittenByApp(await fetchRowActivities(row._id)).ok) return { kind: 'pass' };
     }
   } catch (err: any) {
-    return { kind: 'fail', reason: err?.message || 'could not read the activity log' };
+    return { kind: 'fail', reason: err?.message || t('oplog.read_failed') };
   }
 
-  const noun = rule.noun ?? 'row';
-  return { kind: 'fail', reason: `the ${noun} is there, but it did not come in through the API` };
+  const noun = rule.noun ?? t('oplog.row_noun');
+  return { kind: 'fail', reason: t('oplog.not_from_api', { noun }) };
 }
 
 // "Dirty" UI-state check for the Welcome tour: is the plugin shrunk to the floating
@@ -239,20 +250,20 @@ export async function gradeRowsExistWritten(rule: RowsExistRule): Promise<Outcom
 function gradePluginUi(rule: PluginUiRule): Outcome {
   const host = document.querySelector('#plugin-wrapper') as HTMLElement | null;
   const modal = host?.firstElementChild as HTMLElement | null;
-  if (!host || !modal) return { kind: 'fail', reason: 'could not read the plugin window' };
+  if (!host || !modal) return { kind: 'fail', reason: t('ui_check.read_failed') };
   // Set by ResizableWrapper when the learner lets go of the resize handle.
   if (rule.check === 'banner-resized') {
     if (host.dataset.userResized === '1') return { kind: 'pass' };
     return {
       kind: 'fail',
-      reason: 'drag the grip at the top center of the panel up or down first',
+      reason: t('ui_check.resize'),
     };
   }
   const floating = host.style.pointerEvents === 'none';
   if (!floating) {
     return {
       kind: 'fail',
-      reason: 'shrink the plugin to the toolbar first (the shrink icon, top-right)',
+      reason: t('ui_check.shrink'),
     };
   }
   if (rule.check === 'toolbar-lower-right') {
@@ -260,7 +271,7 @@ function gradePluginUi(rule: PluginUiRule): Outcome {
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
     if (cx > window.innerWidth / 2 && cy > window.innerHeight / 2) return { kind: 'pass' };
-    return { kind: 'fail', reason: 'drag the toolbar into the lower-right quarter of the screen' };
+    return { kind: 'fail', reason: t('ui_check.lower_right') };
   }
   return { kind: 'fail', reason: 'unknown plugin-ui check' };
 }

@@ -26,6 +26,7 @@
 
 import { colleagueBaseToken, hostConfig } from './colleagueIdentity';
 import { findRowByMatch, getTableByName } from './sdkRead';
+import { t } from '../../locale/t';
 
 export interface ColleagueReplySpec {
   /** Table holding the row, e.g. 'Customers'. */
@@ -38,9 +39,12 @@ export interface ColleagueReplySpec {
 
 export async function colleagueReply(spec: ColleagueReplySpec): Promise<string> {
   const table = getTableByName(spec.table);
-  if (!table) throw new Error(`No table named ${spec.table} in this base.`);
+  if (!table) throw new Error(t('colleague.no_table_named', { table: spec.table }));
   const row = findRowByMatch(table, spec.match.column, spec.match.equals);
-  if (!row) throw new Error(`No row where ${spec.match.column} is ${spec.match.equals}.`);
+  if (!row)
+    throw new Error(
+      t('colleague.no_row_where', { column: spec.match.column, value: spec.match.equals })
+    );
 
   const { server } = hostConfig();
   const { accessToken, dtableUuid } = await colleagueBaseToken();
@@ -57,6 +61,6 @@ export async function colleagueReply(spec: ColleagueReplySpec): Promise<string> 
       body: JSON.stringify({ comment: spec.text }),
     }
   );
-  if (!resp.ok) throw new Error(`Her reply was refused (${resp.status}).`);
+  if (!resp.ok) throw new Error(t('colleague.reply_refused', { status: resp.status }));
   return spec.text;
 }

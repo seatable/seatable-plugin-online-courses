@@ -38,6 +38,7 @@
  * when the second window did.)
  */
 
+import { t, tNodes } from '../../../locale/t';
 import React, { useEffect, useRef, useState } from 'react';
 import { hostConfig } from '../../../utils/custom-utils/colleagueIdentity';
 import { cellLabel, getColumn, getTables } from '../../../utils/custom-utils/sdkRead';
@@ -302,12 +303,14 @@ function ago(iso: string): string {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return '';
   const mins = Math.floor((Date.now() - then) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  const unit = (name: string, count: number) =>
+    t(`time.${name}_${count === 1 ? 'one' : 'other'}`, { count });
+  if (mins < 1) return t('time.just_now');
+  if (mins < 60) return unit('minutes', mins);
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return unit('hours', hours);
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  return unit('days', days);
 }
 
 /**
@@ -358,23 +361,30 @@ function entryText(entry: BellEntry, who: string): React.ReactNode {
     case 'share_dtable_to_group':
       return (
         <>
-          {who || 'Someone'} has shared a base named{' '}
-          <span style={S.highlight}>{d?.dtable?.name || 'a base'}</span> to you.
+          {tNodes('colleague_window.entry.shared_base', {
+            who: who || t('colleague_window.someone'),
+            base: (
+              <span style={S.highlight}>{d?.dtable?.name || t('colleague_window.a_base')}</span>
+            ),
+          })}
         </>
       );
     case 'add_user_to_group':
       return (
         <>
-          <span style={S.highlight}>{who || 'Someone'}</span> has added you to{' '}
-          {d?.group_name || 'a team'}
+          {tNodes('colleague_window.entry.added_to_group', {
+            who: <span style={S.highlight}>{who || t('colleague_window.someone')}</span>,
+            group: d?.group_name || t('colleague_window.a_team'),
+          })}
         </>
       );
     case 'row_comment':
     case 'comment':
       return (
         <>
-          Added a new comment for record named{' '}
-          <span style={S.highlight}>{rowName(d) || 'a record'}</span>.
+          {tNodes('colleague_window.entry.comment', {
+            row: <span style={S.highlight}>{rowName(d) || t('colleague_window.a_record')}</span>,
+          })}
         </>
       );
     default:
@@ -491,9 +501,9 @@ const AddTile: React.FC<{ label: string }> = ({ label }) => (
  * than guessed at.
  */
 function permissionLabel(p: string): string {
-  if (p === 'rw') return 'Read-Write';
-  if (p === 'r') return 'Read-Only';
-  return p || 'unknown permission';
+  if (p === 'rw') return t('colleague_window.permission_rw');
+  if (p === 'r') return t('colleague_window.permission_r');
+  return p || t('colleague_window.permission_unknown');
 }
 
 const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailure }) => {
@@ -528,11 +538,7 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
     setError('');
     colleagueAccountInfo()
       .then((acc) => !cancelled && setWho({ name: acc.name, avatarUrl: acc.avatarUrl }))
-      .catch(
-        () =>
-          !cancelled &&
-          setError('Her token is missing or no longer accepted — go back to the setup step.')
-      );
+      .catch(() => !cancelled && setError(t('colleague_window.token_missing')));
     const read =
       surface === 'home'
         ? colleagueBell().then((b) => ({ entries: b.entries, unseen: b.unseen }))
@@ -549,7 +555,7 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
         setUnseen(n);
       })
       .catch(
-        (err: any) => !cancelled && setError(err?.message || 'Could not read her notifications.')
+        (err: any) => !cancelled && setError(err?.message || t('colleague_window.bell_failed'))
       );
     if (surface === 'home') {
       colleagueSharedBases()
@@ -605,12 +611,10 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
       <div style={S.captionRow}>
         <div style={S.caption}>
           {caption ??
-            (onHome
-              ? 'What Malika sees on her own home page'
-              : 'What Malika sees in her own window, in this base')}
+            (onHome ? t('colleague_window.caption_home') : t('colleague_window.caption_base'))}
         </div>
         <button type="button" style={S.refresh} onClick={() => setReloads((n) => n + 1)}>
-          Refresh
+          {t('colleague_window.refresh')}
         </button>
       </div>
 
@@ -632,7 +636,11 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
               style={S.bellButton}
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
-              aria-label={`Malika's notifications${unseen ? `, ${unseen} unread` : ''}`}>
+              aria-label={
+                unseen
+                  ? t('colleague_window.bell_label_unread', { count: unseen })
+                  : t('colleague_window.bell_label')
+              }>
               <i
                 className="dtable-font dtable-icon-notice"
                 style={{ fontSize: onHome ? 20 : 16, color: iconColour }}
@@ -649,20 +657,22 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
         </div>
         {open && (
           <div style={{ ...S.panel, width: onHome ? 530 : 320 }}>
-            <div style={S.panelTitle}>Notification</div>
+            <div style={S.panelTitle}>{t('seatable_ui.notification')}</div>
             {onHome && (
               <div style={S.tabs}>
                 {/* The bracketed count is the UNREAD of that category alone: the
                     bell's badge is the sum across the three (5 = General(4) + Bases(1)).
                     Bases and Apps stay bare — this endpoint answers for General, and a
                     number we cannot read would be a number we invented. */}
-                <span style={S.tabOn}>General({unread})</span>
-                <span style={S.tabOff}>Bases</span>
-                <span style={S.tabOff}>Apps</span>
+                <span style={S.tabOn}>{t('seatable_ui.general', { count: unread })}</span>
+                <span style={S.tabOff}>{t('seatable_ui.bases')}</span>
+                <span style={S.tabOff}>{t('seatable_ui.apps')}</span>
               </div>
             )}
             {error && <div style={S.error}>{error}</div>}
-            {!error && entries.length === 0 && <div style={S.empty}>No notifications</div>}
+            {!error && entries.length === 0 && (
+              <div style={S.empty}>{t('seatable_ui.no_notifications')}</div>
+            )}
             {entries.map((entry) => {
               const from = person(entry, people);
               return (
@@ -691,23 +701,25 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
             <span style={S.sectionIcon}>
               <PersonIcon />
             </span>
-            My bases
+            {t('seatable_ui.my_bases')}
           </div>
           <div style={S.grid}>
             {mine?.map((b) => (
               <BaseTile key={b.uuid || b.name} base={b} fallbackColor={ORANGE} />
             ))}
-            <AddTile label="Add a base or folder" />
+            <AddTile label={t('seatable_ui.add_base_or_folder')} />
           </div>
 
           <div style={S.sectionTitle}>
             <span style={S.sectionIcon}>
               <i className="dtable-font dtable-icon-share-with-me" />
             </span>
-            Shared with me
+            {t('seatable_ui.shared_with_me')}
           </div>
           <div style={S.grid}>
-            {shared === null && <div style={S.pageEmpty}>Could not read her shared bases.</div>}
+            {shared === null && (
+              <div style={S.pageEmpty}>{t('colleague_window.shared_failed')}</div>
+            )}
             {shared?.map((b) => {
               // The chip SeaTable puts on a shared tile names the base's OWNER
               // workspace — for a group base, the group ("Commercial") — behind a
@@ -730,7 +742,7 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
                 </BaseTile>
               );
             })}
-            <AddTile label="Add a folder" />
+            <AddTile label={t('seatable_ui.add_folder')} />
           </div>
         </div>
       )}
@@ -739,7 +751,10 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
       {onHome &&
         shared?.filter(isThisBase).map((b) => (
           <div key="permission" style={S.pageNote}>
-            {b.name} shared with {permissionLabel(b.permission)} permission
+            {t('colleague_window.shared_with_permission', {
+              base: b.name,
+              permission: permissionLabel(b.permission),
+            })}
           </div>
         ))}
       {/* She can open the base, yet it is not in her "Shared with me": the access
@@ -749,17 +764,13 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
           would not take her access away. Said plainly, with the way out. */}
       {onHome && hasAccess === true && shared !== null && !sharedDirectly && (
         <div style={S.pageNote}>
-          Malika can already open {baseName} through a group. Remove her from that group to follow
-          this step: otherwise sharing and revoking change nothing for her.
+          {t('colleague_window.access_through_group', { base: baseName })}
         </div>
       )}
       {/* Said only once the answer is in: before the first share and after the
           revocation alike, this is the state the step wants the learner to see. */}
       {onHome && hasAccess === false && (
-        <div style={S.pageNote}>
-          {baseName} is not shared with her, so she cannot open it — and the companion cannot act
-          for her in it until you share it with her again.
-        </div>
+        <div style={S.pageNote}>{t('colleague_window.no_access', { base: baseName })}</div>
       )}
     </div>
   );

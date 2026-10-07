@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   CourseManifest,
   CourseStep,
-  EXAMPLE_FIX_LABEL,
-  EXAMPLE_WRITE_LABEL,
   fetchStepHtml,
   findStep,
   stepIndex,
@@ -39,6 +37,7 @@ import {
   tableHasView,
 } from '../../../utils/custom-utils/watchAutomation';
 import { FloatControls } from '../../../utils/custom-interfaces/FloatControls';
+import { t } from '../../../locale/t';
 
 /**
  * Online courses plugin — manifest-driven runner (Course 3 — Collaboration + others).
@@ -96,12 +95,10 @@ type Forward =
   | { kind: 'website'; note: string }
   | { kind: 'end' };
 
-const DEFAULT_HANDOFF = 'The next step continues on the website ↩';
-
 function forwardFor(step: CourseStep, nextStep?: CourseStep): Forward {
   if (step.continuesOn === 'plugin' && nextStep) return { kind: 'next', step: nextStep };
   if (step.continuesOn === 'website')
-    return { kind: 'website', note: step.handoffNote ?? DEFAULT_HANDOFF };
+    return { kind: 'website', note: step.handoffNote ?? t('course.handoff_default') };
   // Unset (plugin front-matter like the Introduction): plain structural nav.
   return nextStep ? { kind: 'next', step: nextStep } : { kind: 'end' };
 }
@@ -232,7 +229,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setHtml('');
     fetchStepHtml(manifest.courseId, step)
       .then((h) => !cancelled && setHtml(h))
-      .catch(() => !cancelled && setHtml('<p>⚠️ Couldn’t load this page.</p>'));
+      .catch(() => !cancelled && setHtml(`<p>${t('course.page_load_failed')}</p>`));
     return () => {
       cancelled = true;
     };
@@ -305,7 +302,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
    */
   const actionPrimary = (title: string, onClick: () => void): FloatControls['primary'] => {
     if (demoDone)
-      return { icon: 'run', title: 'Start over', onClick: startOver, busy: demoRunning };
+      return { icon: 'run', title: t('course.start_over'), onClick: startOver, busy: demoRunning };
     // Both reads now block, each measured against a real base: `tid`/`vid` are the
     // host's own selection, and the note was watched appearing on the default view
     // and clearing on the right one. Blocking is the point — an action nobody
@@ -316,8 +313,8 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       return {
         icon: 'run',
         title: wrongView
-          ? `Open the “${step.watchView}” view first`
-          : `Open “${step.watchTable}” first`,
+          ? t('course.open_view_first', { view: step.watchView ?? '' })
+          : t('course.open_table_first', { table: step.watchTable }),
         onClick: () => undefined,
         disabled: true,
       };
@@ -346,7 +343,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     // Back to "not done" for the duration: this may be a second run, and the ✅ of
     // the first would otherwise sit over the progress messages of this one.
     setDemoDone(false);
-    setDemoStatus('Preparing…');
+    setDemoStatus(t('course.preparing'));
     try {
       // Clear first when the step says what to clear, so running this twice replaces
       // the delivery instead of stacking a second one on the same reference — and so
@@ -359,13 +356,13 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       // one: what it hands back is a header waiting for lines the learner pushes.
       setDemoStatus(
         res.linked === undefined
-          ? '✅ The delivery note is in your base, with no lines and no file. Push one from the API explorer, then verify.'
+          ? t('course.seed.note_ready')
           : res.linked
-            ? '✅ A short delivery is waiting. Run your rule, then verify.'
-            : '⚠️ The delivery is there, but its line has not been linked yet — check the automation you built in step 2, then run your rule.'
+            ? t('course.seed.short_ready')
+            : t('course.seed.not_linked')
       );
     } catch (err: any) {
-      setDemoStatus(`❌ ${err?.message || 'Could not prepare the delivery.'}`);
+      setDemoStatus(t('course.error', { message: err?.message || t('course.seed.failed') }));
     }
     setDemoRunning(false);
   };
@@ -374,15 +371,13 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const runBurst = async () => {
     if (demoRunning || !step?.burst) return;
     setDemoRunning(true);
-    setDemoStatus('Working…');
+    setDemoStatus(t('course.working'));
     try {
       const res = await webhookBurst(step.burst, setDemoStatus);
-      setDemoStatus(
-        `✅ Done — ${res.operations} changes, so ${res.operations} requests to read at the other end.`
-      );
+      setDemoStatus(t('course.burst.done', { count: res.operations }));
       markDemoDone();
     } catch (err: any) {
-      setDemoStatus(`❌ ${err?.message || 'Could not make the change.'}`);
+      setDemoStatus(t('course.error', { message: err?.message || t('course.burst.failed') }));
     }
     setDemoRunning(false);
   };
@@ -395,25 +390,21 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     if (demoRunning || !step?.colleagueWrite) return;
     setDemoRunning(true);
     setDemoDone(false);
-    setDemoStatus('Working…');
+    setDemoStatus(t('course.working'));
     try {
       const res = await colleagueStoreWrite(step.colleagueWrite, setDemoStatus);
       if (step.colleagueReply) {
-        setDemoStatus('Malika is replying…');
+        setDemoStatus(t('course.colleague.replying'));
         await colleagueReply(step.colleagueReply);
       }
       for (const side of step.colleagueSideWrites ?? []) {
-        setDemoStatus('Malika updates a few other customers…');
+        setDemoStatus(t('course.colleague.side_writes'));
         await colleagueStoreWrite(side, () => undefined, { skipIfUnchanged: true });
       }
       markDemoDone();
-      setDemoStatus(
-        step.demoDoneMessage ??
-          `✅ Written on row ${res.rowId}. Now open the base log and read the entry: does it name the row, ` +
-            'is it signed by her, and does its menu offer Restore?'
-      );
+      setDemoStatus(step.demoDoneMessage ?? t('course.colleague.written', { row: res.rowId }));
     } catch (err: any) {
-      setDemoStatus(`❌ ${err?.message || 'Could not make the change as the colleague.'}`);
+      setDemoStatus(t('course.error', { message: err?.message || t('course.colleague.failed') }));
     }
     setDemoRunning(false);
   };
@@ -422,20 +413,21 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const runRewind = async () => {
     if (demoRunning || !step?.rewind) return;
     setDemoRunning(true);
-    setDemoStatus('Rewinding…');
+    setDemoStatus(t('course.rewinding'));
     try {
       const res = await rewindDelivery(step.rewind, setDemoStatus);
       setRewound(true);
       if (manifest) setCourseFlag(manifest.courseId, REWOUND_FLAG, true);
       setDemoStatus(
         res.document || res.lines
-          ? `✅ ${res.lines} line${res.lines === 1 ? '' : 's'} and the document removed${
-              res.products ? ', stock put back' : ''
-            }. Now receive the delivery again from the app.`
-          : '✅ Nothing left to remove — that delivery is already out of your base. Receive it again from the app.'
+          ? t(
+              `course.rewind.done${res.products ? '_stock' : ''}_${res.lines === 1 ? 'one' : 'other'}`,
+              { count: res.lines }
+            )
+          : t('course.rewind.nothing')
       );
     } catch (err: any) {
-      setDemoStatus(`❌ ${err?.message || 'Could not rewind the delivery.'}`);
+      setDemoStatus(t('course.error', { message: err?.message || t('course.rewind.failed') }));
     }
     setDemoRunning(false);
   };
@@ -445,30 +437,28 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const runLoadExample = async () => {
     if (demoRunning || !step?.example || !step?.rewind) return;
     setDemoRunning(true);
-    setDemoStatus('Writing…');
+    setDemoStatus(t('course.writing'));
     try {
       const res = await reloadDeliveryLines(step.rewind, step.example.rows, setDemoStatus);
       const reference = step.rewind.document.reference;
-      const written = `${res.added} line${res.added === 1 ? '' : 's'} written${
-        res.removed ? `, replacing the ${res.removed} the extraction produced` : ''
-      }`;
+      const written = t(
+        `course.lines.written${res.removed ? '_replacing' : ''}_${res.added === 1 ? 'one' : 'other'}`,
+        { count: res.added, removed: res.removed }
+      );
       // Whether these lines can attach is the whole point of the step, so say it
       // rather than leave the learner to notice an empty Document column.
       setDemoStatus(
         res.documentFound
-          ? `✅ ${written}${
-              res.documentLabelled
-                ? `, and ${reference} put on your document so your rule can attach them.`
-                : '.'
-            }`
-          : `⚠️ ${written} — but no document carries ${reference}, so your rule has nothing to ` +
-              `attach them to. Create the delivery note first, then write the lines again.`
+          ? res.documentLabelled
+            ? t('course.lines.attached', { written, reference })
+            : t('course.lines.done', { written })
+          : t('course.lines.no_document', { written, reference })
       );
       // Only a lifecycle step owns this flag; on Step 4 the safety net rides inside a
       // graded step and must not mark it done.
       if (isWriteLines) markDemoDone();
     } catch (err: any) {
-      setDemoStatus(`❌ ${err?.message || 'Could not write the lines.'}`);
+      setDemoStatus(t('course.error', { message: err?.message || t('course.lines.failed') }));
     }
     setDemoRunning(false);
   };
@@ -552,8 +542,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   // they're already there (or we can't tell) — the nudge only speaks up if needed.
   const watchTableNote =
     watch && wPhase === 'ready' && activeTable && activeTable !== watch.table_name
-      ? `You’re looking at “${activeTable}”. Open the “${watch.table_name}” table so you can watch ` +
-        `the lines land — then add them.`
+      ? t('course.watch.wrong_table', { current: activeTable, table: watch.table_name })
       : '';
 
   /**
@@ -576,10 +565,9 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     !!activeView &&
     activeView !== step.watchView;
   const tableNote = wrongTable
-    ? `You’re looking at “${activeTable}”. Open “${step!.watchTable}” first, or you will miss what happens.`
+    ? t('course.wrong_table', { current: activeTable ?? '', table: step!.watchTable ?? '' })
     : wrongView
-      ? `Open the “${step!.watchView}” view of “${step!.watchTable}” first — in this one the change ` +
-        `happens off-screen and you will miss it.`
+      ? t('course.wrong_view', { view: step!.watchView ?? '', table: step!.watchTable ?? '' })
       : '';
 
   // Poll the host's current table while a nudge could still be useful, so it clears
@@ -616,20 +604,25 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     const outcomeLinks = await awaitLinks(watch.table_name, rowIds, watch.link_columns, {
       onTick: (s) =>
         s.pending > 0 &&
-        setWatchNote(
-          `Waiting for your automation… ${s.total - s.pending}/${s.total} lines linked.`
-        ),
+        setWatchNote(t('course.watch.waiting', { linked: s.total - s.pending, total: s.total })),
     });
     if (outcomeLinks.kind === 'linked') {
-      setWatchNote(`✅ ${watch.link_columns.join(' and ')} filled in on all ${n} lines.`);
+      setWatchNote(
+        t('course.watch.linked', {
+          columns: watch.link_columns.join(t('course.list_and')),
+          count: n,
+        })
+      );
       setWatchPhase('linked');
       return;
     }
     const { pending, total, missing } = outcomeLinks.progress;
     setWatchNote(
-      `⏳ ${total - pending}/${total} lines linked — ${missing.join(' and ')} still empty. ` +
-        `Automations can take a moment; give it a few seconds and look again. If it stays empty, ` +
-        `check your rule's conditions and its Add links actions.`
+      t('course.watch.stalled', {
+        linked: total - pending,
+        total,
+        missing: missing.join(t('course.list_and')),
+      })
     );
     setWatchPhase('stalled');
   };
@@ -637,15 +630,15 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const runWatch = async () => {
     if (!watch || watchPhase === 'running') return;
     setWatchPhase('running');
-    setWatchNote('Writing the delivery lines…');
+    setWatchNote(t('course.watch.writing'));
     try {
       const rowIds = await appendRowsTracked(watch.table_name, watch.rows);
       setWatchRowIds(rowIds);
-      if (!rowIds.length) throw new Error('The new lines could not be found after writing them.');
-      setWatchNote(`Added ${rowIds.length} lines. Waiting for your automation…`);
+      if (!rowIds.length) throw new Error(t('course.watch.not_found'));
+      setWatchNote(t('course.watch.added', { count: rowIds.length }));
       await awaitWatchLinks(rowIds);
     } catch (err: any) {
-      setWatchNote(`❌ ${err?.message || 'Could not add the delivery lines.'}`);
+      setWatchNote(t('course.error', { message: err?.message || t('course.watch.failed') }));
       setWatchPhase('stalled');
     }
   };
@@ -690,7 +683,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     // the closer surfaces in `feedback` instead.
     const forwardPrimary: FloatControls['primary'] | undefined =
       forward.kind === 'next'
-        ? { icon: 'next', title: 'Next', onClick: () => onSelectStep(forward.step.id) }
+        ? { icon: 'next', title: t('course.next'), onClick: () => onSelectStep(forward.step.id) }
         : undefined;
     const passFeedback = (msg?: string): FloatControls['feedback'] =>
       outcome.kind !== 'idle'
@@ -715,11 +708,11 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         (wPhase === 'ready' && watchTableNote) || watch!.instruction || htmlToText(watch!.html);
       let primary: FloatControls['primary'] | undefined;
       if (wPhase === 'ready')
-        primary = { icon: 'run', title: 'Add the delivery lines', onClick: runWatch };
+        primary = { icon: 'run', title: t('course.watch.add_lines'), onClick: runWatch };
       else if (wPhase === 'running')
-        primary = { icon: 'run', title: 'Working…', onClick: () => {}, busy: true };
+        primary = { icon: 'run', title: t('course.working'), onClick: () => {}, busy: true };
       else if (wPhase === 'stalled')
-        primary = { icon: 'check', title: 'Look again', onClick: recheckWatch };
+        primary = { icon: 'check', title: t('course.watch.look_again'), onClick: recheckWatch };
       else primary = forwardPrimary; // linked → back to the normal forward
       let feedback: FloatControls['feedback'];
       if (wPhase === 'linked') {
@@ -743,7 +736,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         onBack,
         primary: demoDone ? forwardPrimary : undefined,
         feedback: demoDone
-          ? { kind: 'pass', text: step.demoDoneMessage ?? 'Your colleague is configured.' }
+          ? { kind: 'pass', text: step.demoDoneMessage ?? t('course.colleague.configured') }
           : undefined,
       };
     }
@@ -759,7 +752,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     if (isSeedDiscrepancy) {
       const runPrimary: FloatControls['primary'] = {
         icon: 'run',
-        title: step.demoLabel ?? 'Prepare the delivery',
+        title: step.demoLabel ?? t('course.seed.prepare'),
         onClick: runSeedDiscrepancy,
         busy: demoRunning,
       };
@@ -770,7 +763,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         return {
           instruction: text,
           onBack,
-          primary: actionPrimary(step.demoLabel ?? 'Prepare the delivery', runSeedDiscrepancy),
+          primary: actionPrimary(step.demoLabel ?? t('course.seed.prepare'), runSeedDiscrepancy),
           feedback: actionFeedback(),
         };
       }
@@ -780,7 +773,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         primary: passed
           ? forwardPrimary
           : seededDocId
-            ? { icon: 'check', title: 'Verify', onClick: onVerify, busy: verifying }
+            ? { icon: 'check', title: t('course.verify'), onClick: onVerify, busy: verifying }
             : runPrimary,
         feedback: passed
           ? passFeedback(step.successMessage)
@@ -799,7 +792,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       return {
         instruction: text,
         onBack,
-        primary: actionPrimary(step.demoLabel ?? 'Write the lines', runLoadExample),
+        primary: actionPrimary(step.demoLabel ?? t('course.lines.write'), runLoadExample),
         feedback: actionFeedback(),
       };
     }
@@ -810,7 +803,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       return {
         instruction: text,
         onBack,
-        primary: actionPrimary(step.demoLabel ?? 'Let the colleague edit', runColleagueWrite),
+        primary: actionPrimary(step.demoLabel ?? t('course.colleague.edit'), runColleagueWrite),
         feedback: actionFeedback(),
       };
     }
@@ -826,7 +819,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       return {
         instruction: text,
         onBack,
-        primary: actionPrimary('Make a change', runBurst),
+        primary: actionPrimary(t('course.burst.run'), runBurst),
         feedback: actionFeedback(),
       };
     }
@@ -837,7 +830,9 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     if (isRewind) {
       // Name the safety net for what it would actually do right now: write the
       // lines when the extraction left none, fix them when it produced some.
-      const label = countDeliveryLines(step.rewind!) ? EXAMPLE_FIX_LABEL : EXAMPLE_WRITE_LABEL;
+      const label = countDeliveryLines(step.rewind!)
+        ? t('course.lines.fix')
+        : t('course.lines.write');
       const loadExample = { label, onClick: runLoadExample };
       let primary: FloatControls['primary'] | undefined;
       if (passed) primary = forwardPrimary;
@@ -847,20 +842,20 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       else if (!rewound)
         primary = {
           icon: 'run',
-          title: 'Rewind the delivery',
+          title: t('course.rewind.run'),
           onClick: runRewind,
           busy: demoRunning,
         };
       else
         primary = {
           icon: 'check',
-          title: 'Verify',
+          title: t('course.verify'),
           onClick: onVerify,
           busy: verifying || demoRunning,
           menu: [
-            { label: 'Verify', onClick: onVerify },
+            { label: t('course.verify'), onClick: onVerify },
             loadExample,
-            { label: 'Rewind again', onClick: runRewind },
+            { label: t('course.rewind.again'), onClick: runRewind },
           ],
         };
       return {
@@ -909,11 +904,11 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           // Mirror the choice screen's two options as a dropdown on the primary.
           primary: {
             icon: 'next',
-            title: 'Build the automation',
+            title: t('course.automation.build'),
             onClick: guideMe,
             menu: [
-              { label: 'Guide me step by step', onClick: guideMe },
-              { label: 'I built it — just check it', onClick: justCheck },
+              { label: t('course.automation.guide_me'), onClick: guideMe },
+              { label: t('course.automation.just_check'), onClick: justCheck },
             ],
           },
         };
@@ -927,22 +922,27 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           },
           primary: passed
             ? forwardPrimary
-            : { icon: 'check', title: 'Check my automation', onClick: onVerify, busy: verifying },
+            : {
+                icon: 'check',
+                title: t('course.automation.check_mine'),
+                onClick: onVerify,
+                busy: verifying,
+              },
           feedback: passFeedback(step.successMessage),
         };
       }
       // Guided stepper.
       const stage = stages[autoStageIdx];
       const lastStage = autoStageIdx >= stages.length - 1;
-      const passMsg = lastStage ? step.successMessage : 'Stage complete — on to the next.';
+      const passMsg = lastStage ? step.successMessage : t('course.automation.stage_complete');
       let primary: FloatControls['primary'] | undefined;
       if (passed && !lastStage)
-        primary = { icon: 'next', title: 'Next stage', onClick: advanceStage };
+        primary = { icon: 'next', title: t('course.automation.next_stage'), onClick: advanceStage };
       else if (passed && lastStage) primary = forwardPrimary;
       else
         primary = {
           icon: 'check',
-          title: 'Check',
+          title: t('course.check'),
           onClick: verifyAutomationStage,
           busy: verifying,
         };
@@ -965,7 +965,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       onBack,
       primary: passed
         ? forwardPrimary
-        : { icon: 'check', title: 'Verify', onClick: onVerify, busy: verifying },
+        : { icon: 'check', title: t('course.verify'), onClick: onVerify, busy: verifying },
       feedback:
         passed && forward.kind === 'website'
           ? { kind: 'pass', text: `${feedbackText(outcome, step.successMessage)} ${forward.note}` }
@@ -1028,7 +1028,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     return (
       <div style={S.coursePage}>
         <div style={S.courseInner}>
-          <div style={{ marginBottom: 16 }}>Loading…</div>
+          <div style={{ marginBottom: 16 }}>{t('course.loading')}</div>
         </div>
       </div>
     );
@@ -1086,7 +1086,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const feedbackMsg = guided
     ? autoStageIdx >= stages.length - 1
       ? step.successMessage
-      : 'Stage complete — on to the next.'
+      : t('course.automation.stage_complete')
     : step.successMessage;
   // While waiting on the press, the status line carries the "open Line items" nudge
   // (empty once they're there, or if the host's table can't be read).
@@ -1149,11 +1149,13 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 function feedbackText(o: Outcome, successMessage?: string): string {
   switch (o.kind) {
     case 'pass':
-      return `✅ ${successMessage ?? 'Well done — the shared master is back in sync.'}`;
+      return t('course.feedback.pass', {
+        message: successMessage ?? t('course.feedback.pass_default'),
+      });
     case 'fail':
-      return `❌ Not yet — ${o.reason}.`;
+      return t('course.feedback.fail', { reason: o.reason });
     case 'missing':
-      return `⚠️ Couldn't find ${o.what} in the base. Check that the base matches the exercise.`;
+      return t('course.feedback.missing', { what: o.what });
     default:
       return '';
   }

@@ -27,6 +27,7 @@
  */
 
 import { getStoredColleagueToken, setStoredColleagueToken } from './courseStore';
+import { t } from '../../locale/t';
 
 export interface HostConfig {
   server: string;
@@ -94,7 +95,7 @@ export function hasColleagueToken(): boolean {
 /** A GET against the account API, authenticated as the colleague. */
 export async function colleagueAccountGet(path: string): Promise<any> {
   const token = getColleagueToken();
-  if (!token) throw new Error('No colleague token yet.');
+  if (!token) throw new Error(t('colleague.no_token'));
   const { server } = hostConfig();
   const resp = await fetch(`${server}${path}`, {
     headers: { Authorization: `Token ${token}`, Accept: 'application/json' },
@@ -114,7 +115,7 @@ export async function colleagueBaseToken(): Promise<{
   dtableUuid: string;
 }> {
   const token = getColleagueToken();
-  if (!token) throw new Error('No colleague token yet.');
+  if (!token) throw new Error(t('colleague.no_token'));
   const { server, workspaceID, baseName } = hostConfig();
   if (!server || !workspaceID || !baseName) {
     const missing = [
@@ -133,8 +134,8 @@ export async function colleagueBaseToken(): Promise<{
   if (!resp.ok) {
     throw new Error(
       resp.status === 403 || resp.status === 404
-        ? 'She cannot open this base — check the token, and that the base is still shared with her.'
-        : `Could not get a base token for her (${resp.status}).`
+        ? t('colleague.cannot_open')
+        : t('colleague.base_token_failed', { status: resp.status })
     );
   }
   const data = await resp.json();

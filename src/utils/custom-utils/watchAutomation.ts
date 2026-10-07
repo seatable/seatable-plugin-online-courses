@@ -36,6 +36,7 @@
  */
 
 import { getTableByName } from './sdkRead';
+import { t } from '../../locale/t';
 
 function sdk(): any {
   return (window as any).dtableSDK;
@@ -117,7 +118,7 @@ export async function appendRowsTracked(
   rows: Record<string, any>[]
 ): Promise<string[]> {
   const table = getTableByName(tableName);
-  if (!table) throw new Error(`Table "${tableName}" not found in this base.`);
+  if (!table) throw new Error(t('action.table_not_found', { table: tableName }));
   const before = new Set<string>((table.rows || []).map((r: any) => r._id));
 
   rows.forEach((cellsByName) => sdk().appendRow(table, cellsByName, undefined));

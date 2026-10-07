@@ -1,58 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getTableByName } from 'dtable-utils';
 import PresetItem from './PresetItem/index';
 import stylesPresets from '../../../styles/template-styles/PluginPresets.module.scss';
-import deepCopy from 'deep-copy';
 import icon from '../../../plugin-config/icon.png';
-import Preset from '../../../model/preset';
-import {
-  IPresetsProps,
-  PresetSettings,
-  PresetsArray,
-} from '../../../utils/template-interfaces/PluginPresets/Presets.interface';
-import {
-  appendPresetSuffix,
-  cleanAllTables,
-  createDefaultPresetSettings,
-  generatorPresetId,
-  getActiveTableAndActiveView,
-  isUniquePresetName,
-} from '../../../utils/template-utils/utils';
+import { IPresetsProps } from '../../../utils/template-interfaces/PluginPresets/Presets.interface';
 import { isStepDone, PROGRESS_EVENT } from '../../../utils/custom-utils/courseStore';
-import {
-  ACTIVE_PRESET_ID,
-  DEFAULT_PLUGIN_DATA,
-  PLUGIN_NAME,
-  PresetHandleAction,
-  TABLE_NAME,
-} from '../../../utils/template-constants';
-import {
-  IActiveTableAndView,
-  TableArray,
-  TableColumn,
-} from '../../../utils/template-interfaces/Table.interface';
-import PresetInput from './PresetInput';
-import useClickOut from '../../../hooks/useClickOut';
+import { PLUGIN_NAME } from '../../../utils/template-constants';
 import { AppActiveState } from '../../../utils/template-interfaces/App.interface';
 import { HiChevronDown, HiChevronRight, HiOutlineChevronDoubleLeft } from 'react-icons/hi2';
-import intl from 'react-intl-universal';
-import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from '../../../locale';
-const { [DEFAULT_LOCALE]: d } = AVAILABLE_LOCALES;
+import { t } from '../../../locale/t';
 
+// The left-hand panel: the fixed list of courses, each expanding to its steps. The
+// template's preset management (new / rename / duplicate / delete / export) is gone:
+// the course presets are seeded once and never edited — see custom-components/index.tsx.
 const PluginPresets: React.FC<IPresetsProps> = ({
-  appActiveState,
-  allTables,
   pluginPresets,
   activePresetIdx,
-  pluginDataStore,
   isShowPresets,
   onTogglePresets,
-  onToggleSettings,
   onSelectPreset,
-  updatePresets,
-  updateActiveData,
-  isShowState,
-  setIsShowState,
   courses,
   activeCourseId,
   activeStepId,
@@ -60,7 +25,6 @@ const PluginPresets: React.FC<IPresetsProps> = ({
   compact,
   onFloat,
 }) => {
-  const [presetName, setPresetName] = useState('');
   // Redraw the step checkmarks whenever a step is marked done or started over.
   const [, setProgressTick] = useState(0);
   useEffect(() => {
@@ -68,10 +32,6 @@ const PluginPresets: React.FC<IPresetsProps> = ({
     window.addEventListener(PROGRESS_EVENT, bump);
     return () => window.removeEventListener(PROGRESS_EVENT, bump);
   }, []);
-  const [presetNameAlreadyExists, setPresetNameAlreadyExists] = useState(false);
-  const [_pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
-  const [showNewPresetPopUp, setShowNewPresetPopUp] = useState<boolean>(false);
-  const [showEditPresetPopUp, setShowEditPresetPopUp] = useState<boolean>(false);
   // Left-panel tree: accordion — one course expanded at a time, defaulting to the
   // active course. The chevron toggles; selecting a course also opens it.
   const [openCourseId, setOpenCourseId] = useState<string>(activeCourseId ?? '');
@@ -96,203 +56,6 @@ const PluginPresets: React.FC<IPresetsProps> = ({
     activeStepRef.current?.scrollIntoView({ block: 'nearest' });
   }, [compact, activeStepId, activeCourseId, openCourseId]);
 
-  useEffect(() => {
-    setPluginPresets(pluginPresets);
-  }, [pluginPresets]);
-
-  const getSelectedTable = (tables: TableArray, settings: any = {}) => {
-    let selectedTable = getTableByName(settings[TABLE_NAME]);
-    if (!selectedTable) {
-      return tables[0];
-    }
-    return selectedTable;
-  };
-
-  const initPresetSetting = (settings = {}) => {
-    let initUpdated = {};
-    let tables = cleanAllTables();
-    let selectedTable = getSelectedTable(tables, settings);
-    let titleColumn = selectedTable.columns.find((column: TableColumn) => column.key === '0000');
-    let imageColumn = selectedTable.columns.find((column: TableColumn) => column.type === 'image');
-    let imageName = imageColumn ? imageColumn.name : null;
-    let titleName = titleColumn ? titleColumn.name : null;
-    initUpdated = Object.assign(
-      {},
-      { shown_image_name: imageName },
-      { shown_title_name: titleName }
-    );
-    return initUpdated;
-  };
-
-  // handle preset name change
-  const onChangePresetName = (e: React.FormEvent<HTMLInputElement>, type?: string) => {
-    setPresetNameAlreadyExists(false);
-    if (e.currentTarget.value.includes('  ')) {
-      return;
-    } else {
-      setPresetName(e.currentTarget.value);
-      onNewPresetSubmit(e, e.currentTarget.value, type);
-    }
-  };
-
-  useClickOut(() => {
-    setPresetNameAlreadyExists(false);
-  });
-
-  // Submit new/edited preset name
-  const onNewPresetSubmit = (
-    e: React.FormEvent<HTMLInputElement>,
-    __presetName: string,
-    type?: string
-  ) => {
-    let _presetName =
-      __presetName.trim() ||
-      presetName.trim() ||
-      DEFAULT_PLUGIN_DATA.presets[0].name + ' ' + _pluginPresets.length;
-    let _presetNames = _pluginPresets.map((p) => p.name);
-    const isUnique = isUniquePresetName(_presetName, _pluginPresets, activePresetIdx);
-
-    if (isUnique && type === PresetHandleAction.new) {
-      _presetName = appendPresetSuffix(_presetName, _presetNames, 'new');
-      setPresetNameAlreadyExists(false);
-    } else if (isUnique) {
-      setPresetNameAlreadyExists(true);
-      return;
-    }
-
-    if (type === PresetHandleAction.edit) {
-      editPreset(_presetName);
-    } else {
-      addPreset(type || PresetHandleAction.new, _presetName);
-      setShowNewPresetPopUp(false);
-    }
-
-    setPresetName(intl.get('preset_new'));
-    setShowEditPresetPopUp(type === PresetHandleAction.edit ? false : true);
-  };
-
-  // Toggle input field for add/edit preset
-  const togglePresetsUpdate = (e?: React.MouseEvent<HTMLElement>, type?: string) => {
-    if (type === PresetHandleAction.edit) {
-      const presetName = pluginPresets[activePresetIdx]?.name;
-      setPresetName(presetName);
-      setShowEditPresetPopUp((prev) => !prev);
-    } else {
-      setPresetName(intl.get('preset_new'));
-      setShowNewPresetPopUp((prev) => !prev);
-    }
-  };
-
-  // add new/duplicate preset
-  const addPreset = (
-    type: string,
-    presetName: string,
-    option?: { pId: string; pSettings: PresetSettings }
-  ) => {
-    let _presetSettings: PresetSettings =
-      type === PresetHandleAction.new
-        ? createDefaultPresetSettings(allTables)
-        : type === PresetHandleAction.duplicate && option?.pSettings
-          ? option.pSettings
-          : {};
-
-    setPluginPresets(_pluginPresets || []);
-    let _activePresetIdx = _pluginPresets?.length;
-    let _id: string = generatorPresetId(pluginPresets) || '';
-    localStorage.setItem(ACTIVE_PRESET_ID, _id);
-    let newPreset = new Preset({ _id, name: presetName });
-    let newPresetsArray = deepCopy(_pluginPresets);
-    newPresetsArray.push(newPreset);
-    let initUpdated = initPresetSetting();
-    newPresetsArray[_activePresetIdx].settings = Object.assign(_presetSettings, initUpdated);
-    pluginDataStore.presets = newPresetsArray;
-    updatePresets(_activePresetIdx, newPresetsArray, pluginDataStore, _id);
-    const _activeTableAndView: IActiveTableAndView = getActiveTableAndActiveView(
-      newPresetsArray,
-      allTables,
-      type,
-      option
-    );
-
-    // Update active state info
-    const newPresetActiveState: AppActiveState = {
-      activePresetId: _id,
-      activePresetIdx: _activePresetIdx,
-      activeTable: _activeTableAndView.table,
-      activeTableName: newPresetsArray[_activePresetIdx]?.settings?.selectedTable?.label!,
-      activeTableView: _activeTableAndView.view,
-    };
-
-    onSelectPreset(_id, newPresetActiveState);
-  };
-
-  // Duplicate a preset
-  const duplicatePreset = (p: any) => {
-    // anytofix
-    const { name, _id, settings } = p;
-    let _presetNames = _pluginPresets.map((p) => p.name);
-    let _presetName = appendPresetSuffix(name, _presetNames, 'copy');
-    addPreset(PresetHandleAction.duplicate, _presetName, { pId: _id, pSettings: settings });
-  };
-
-  // edit preset name
-  const editPreset = (presetName: string) => {
-    let newPluginPresets = deepCopy(pluginPresets);
-    let oldPreset = pluginPresets[activePresetIdx];
-    let _id: string = generatorPresetId(pluginPresets) || '';
-    let updatedPreset = new Preset({ ...oldPreset, _id, name: presetName });
-    localStorage.setItem(ACTIVE_PRESET_ID, _id);
-
-    newPluginPresets.splice(activePresetIdx, 1, updatedPreset);
-    pluginDataStore.presets = newPluginPresets;
-
-    updatePresets(activePresetIdx, newPluginPresets, pluginDataStore, _id);
-  };
-
-  // Delete the selected Preset
-  const deletePreset = () => {
-    let newPluginPresets = deepCopy(pluginPresets);
-    newPluginPresets.splice(activePresetIdx, 1);
-    if (activePresetIdx >= newPluginPresets.length) {
-      activePresetIdx = newPluginPresets.length - 1;
-    }
-    pluginDataStore.presets = newPluginPresets;
-    localStorage.setItem(ACTIVE_PRESET_ID, newPluginPresets[0]._id);
-    updatePresets(0, newPluginPresets, pluginDataStore, pluginDataStore.presets[0]._id);
-  };
-
-  const downloadImage = (dataUrl: string, fileName: string) => {
-    const a = document.createElement('a');
-
-    a.setAttribute('download', fileName + '.png');
-    a.setAttribute('href', dataUrl);
-    a.click();
-    setIsShowState({ ...isShowState, isShowWaiting: false });
-    // TODO: add FileSaver ?
-  };
-
-  // Rerun audit: preserve settings (like accountToken) but trigger a rerun
-  const resetPreset = () => {
-    let newPluginPresets = deepCopy(pluginPresets);
-    const oldPreset = pluginPresets[activePresetIdx];
-    newPluginPresets[activePresetIdx] = {
-      ...oldPreset,
-      customSettings: {
-        ...oldPreset.customSettings,
-        rerunAt: Date.now(),
-      },
-    };
-    pluginDataStore.presets = newPluginPresets;
-    updatePresets(activePresetIdx, newPluginPresets, pluginDataStore, oldPreset._id);
-  };
-
-  // Export the selected Preset
-  const exportPreset = () => {
-    // TODO: Implement export functionality for your custom plugin
-  };
-
-  // v0: drag-and-drop reordering removed — single fixed course preset.
-
   return (
     <div
       className={`${stylesPresets.presets}  ${!isShowPresets && stylesPresets.presets_collapsed}`}
@@ -307,7 +70,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
             alt="Plugin Icon"
             className={stylesPresets.presets_icon}
             onClick={onFloat}
-            title={onFloat ? 'Shrink to a movable icon' : undefined}
+            title={onFloat ? t('courses.shrink_icon') : undefined}
             style={onFloat ? { cursor: 'pointer' } : undefined}
           />
           <div className={stylesPresets.presets_name}>{PLUGIN_NAME}</div>
@@ -319,7 +82,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
             compact mode only the active course is shown (auto-scrolled to the
             current step). */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          {pluginPresets?.map((preset, i) => {
+          {pluginPresets?.map((preset) => {
             if (compact && preset._id !== activeCourseId) return null;
             const manifest = courses?.find((c) => c.courseId === preset._id);
             const steps = manifest?.steps ?? [];
@@ -342,7 +105,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                         ...treeStyles.chevronBtn,
                         ...(showTree ? null : treeStyles.chevronHidden),
                       }}
-                      aria-label={expanded ? 'Collapse course' : 'Expand course'}>
+                      aria-label={expanded ? t('courses.collapse') : t('courses.expand')}>
                       {showTree && (expanded ? <HiChevronDown /> : <HiChevronRight />)}
                     </button>
                   )}
@@ -350,31 +113,15 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                     <PresetItem
                       p={preset}
                       activePresetIdx={activePresetIdx}
-                      presetName={presetName}
                       pluginPresets={pluginPresets}
-                      presetNameAlreadyExists={presetNameAlreadyExists && activePresetIdx === i}
-                      onChangePresetName={(e: React.FormEvent<HTMLInputElement>) =>
-                        onChangePresetName(e, PresetHandleAction.edit)
-                      }
                       onSelectPreset={handleSelectPreset}
-                      deletePreset={deletePreset}
-                      exportPreset={exportPreset}
-                      resetPreset={resetPreset}
-                      duplicatePreset={duplicatePreset}
-                      togglePresetsUpdate={togglePresetsUpdate}
-                      showEditPresetPopUp={showEditPresetPopUp}
-                      onToggleSettings={onToggleSettings}
-                      isShowState={isShowState}
-                      setIsShowState={setIsShowState}
                     />
                   </div>
                 </div>
                 {showTree && expanded && (
                   <div style={treeStyles.stepsWrap}>
                     {hasWebsiteSteps && (
-                      <div style={treeStyles.stepsCaption}>
-                        Plugin checkpoints — follow the rest of the course on the website
-                      </div>
+                      <div style={treeStyles.stepsCaption}>{t('courses.checkpoints_caption')}</div>
                     )}
                     {steps.map((s) => {
                       const active = isActiveCourse && s.id === activeStepId;
@@ -396,7 +143,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                             <i
                               className="dtable-font dtable-icon-check-mark"
                               style={treeStyles.stepCheck}
-                              aria-label="done"
+                              aria-label={t('courses.done')}
                             />
                           ) : (
                             <span style={treeStyles.stepDot} />
@@ -408,8 +155,8 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                             <i
                               className="dtable-font dtable-icon-rename"
                               style={treeStyles.stepExercise}
-                              title="Exercise — the panel shrinks so you can work in your base"
-                              aria-label="exercise"
+                              title={t('courses.exercise_title')}
+                              aria-label={t('courses.exercise')}
                             />
                           )}
                         </button>
@@ -420,17 +167,6 @@ const PluginPresets: React.FC<IPresetsProps> = ({
               </div>
             );
           })}
-          {/* add new preset input  */}
-          {showNewPresetPopUp && (
-            <PresetInput
-              onChangePresetName={(e: React.FormEvent<HTMLInputElement>) =>
-                onChangePresetName(e, PresetHandleAction.new)
-              }
-              isEditing={showNewPresetPopUp}
-              setIsEditing={setShowNewPresetPopUp}
-              presetName={presetName}
-            />
-          )}
         </div>
       </div>
     </div>

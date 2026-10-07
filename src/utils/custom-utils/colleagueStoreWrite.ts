@@ -43,6 +43,7 @@ import { DTableStore } from 'dtable-store';
 import { RowUtils } from 'dtable-store';
 import { colleagueBaseToken, getColleagueToken, hostConfig } from './colleagueIdentity';
 import { cellLabel, findRowByMatch, getColumn, getTableByName } from './sdkRead';
+import { t } from '../../locale/t';
 
 export interface ColleagueWriteSpec {
   /** Table holding the row, e.g. 'Customers'. */
@@ -152,7 +153,7 @@ export async function colleagueStoreWrite(
 ): Promise<ColleagueWriteResult> {
   const accountToken = getColleagueToken();
   if (!accountToken) {
-    throw new Error('No colleague token yet — the course asks for it in Step 2.');
+    throw new Error(t('colleague.no_token_step2'));
   }
 
   const { server, workspaceID, baseName } = hostConfig();
@@ -165,10 +166,10 @@ export async function colleagueStoreWrite(
     throw new Error(`Base identity incomplete: ${missing.join(', ')} not on window.dtable.`);
   }
 
-  onStatus('Signing in as your colleague…');
+  onStatus(t('colleague.signing_in'));
   const { accessToken, dtableUuid } = await colleagueBaseToken();
 
-  onStatus('Opening the base as her…');
+  onStatus(t('colleague.opening_base'));
   // A second run on the same page would otherwise leave the first run's
   // connection open alongside the new one.
   closeStore(liveStore);
@@ -190,25 +191,28 @@ export async function colleagueStoreWrite(
   await store.loadDTable();
   store.syncWithServer();
   if (!(await waitForRoom(store))) {
-    throw new Error(
-      'Could not connect to the base as her — her change was not made. Try again in a moment.'
-    );
+    throw new Error(t('colleague.connect_failed'));
   }
 
   const tables: any[] = store.value?.tables || [];
   const tableIndex = tables.findIndex((t) => t.name === spec.table);
   if (tableIndex < 0) {
-    throw new Error(`Table "${spec.table}" not found in the base she sees.`);
+    throw new Error(t('colleague.table_not_found', { table: spec.table }));
   }
   const table = tables[tableIndex];
 
   const column = (table.columns || []).find((c: any) => c.name === spec.match.column);
-  if (!column) throw new Error(`Column "${spec.match.column}" not found in "${spec.table}".`);
+  if (!column)
+    throw new Error(
+      t('colleague.column_not_found', { column: spec.match.column, table: spec.table })
+    );
   const row = (table.rows || []).find(
     (r: any) => String(r[column.key] ?? '').trim() === spec.match.equals
   );
   if (!row) {
-    throw new Error(`No row where ${spec.match.column} is "${spec.match.equals}".`);
+    throw new Error(
+      t('colleague.row_not_found', { column: spec.match.column, value: spec.match.equals })
+    );
   }
 
   // Same conversion the SDK and the manual UI use: column NAME → key, display
@@ -240,15 +244,17 @@ export async function colleagueStoreWrite(
       };
     }
     throw new Error(
-      `${spec.match.equals} is already ${Object.values(spec.cells).join(', ')} — ` +
-        'nothing to change. Put the value back first, then run this again.'
+      t('colleague.already_set', {
+        row: spec.match.equals,
+        values: Object.values(spec.cells).join(', '),
+      })
     );
   }
 
-  onStatus('Making her change…');
+  onStatus(t('colleague.making_change'));
   let refused = '';
   const stopListening = store.eventBus.subscribe('operation-execute-error', (e: any) => {
-    refused = String(e?.message || e?.error_msg || 'no reason given');
+    refused = String(e?.message || e?.error_msg || t('colleague.no_reason'));
   });
   store.modifyRow(tableIndex, row._id, updated, oldData);
 
@@ -256,18 +262,13 @@ export async function colleagueStoreWrite(
   // that never left is the exact failure this function was first shipped with.
   const flushed = await waitForFlush(store);
   stopListening();
-  if (refused) throw new Error(`SeaTable refused her change: ${refused}.`);
+  if (refused) throw new Error(t('colleague.refused', { reason: refused }));
   if (!flushed) {
-    throw new Error(
-      'The change was made locally but never reached the server — the store never ' +
-        'flushed it. Check that her token is valid and that the socket connected.'
-    );
+    throw new Error(t('colleague.not_flushed'));
   }
-  onStatus('Checking that her change reached the base…');
+  onStatus(t('colleague.checking_landed'));
   if (!(await landedInHost(spec))) {
-    throw new Error(
-      'Her change was sent but does not show in the base. Nothing else was done — try again.'
-    );
+    throw new Error(t('colleague.not_landed'));
   }
 
   return {

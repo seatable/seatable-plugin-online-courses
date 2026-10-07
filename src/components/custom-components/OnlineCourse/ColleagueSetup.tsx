@@ -19,6 +19,7 @@
  * leaves the learner to recognise their colleague or spot themselves.
  */
 
+import { t } from '../../../locale/t';
 import React, { useEffect, useState } from 'react';
 import {
   clearColleagueToken,
@@ -102,7 +103,7 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
         onVerified?.(acc);
       })
       .catch(() => {
-        if (!cancelled) setError('The stored token is no longer accepted. Paste it again.');
+        if (!cancelled) setError(t('colleague_setup.stored_rejected'));
       });
     return () => {
       cancelled = true;
@@ -127,10 +128,7 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
       // Store nothing that does not work: a bad token left behind would fail
       // later, in a step that has no idea why.
       clearColleagueToken();
-      setError(
-        'SeaTable did not accept that token. Check that you copied it whole, from your ' +
-          "colleague's Personal settings page, and that it is for this server."
-      );
+      setError(t('colleague_setup.rejected'));
     }
     setBusy(false);
   };
@@ -148,17 +146,14 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
         <div style={S.card}>
           {account.avatarUrl && <img src={account.avatarUrl} alt="" style={S.avatar} />}
           <div>
-            <div style={S.name}>{account.name || '(no name)'}</div>
+            <div style={S.name}>{account.name || t('colleague_setup.no_name')}</div>
             <div style={S.sub}>{account.contactEmail || account.email}</div>
           </div>
         </div>
         <div style={{ ...S.note, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>
-            Is this your colleague, and not you? If you recognise yourself here, the plugin would
-            act in your own name for the rest of the course.
-          </span>
+          <span>{t('colleague_setup.is_this_her')}</span>
           <button type="button" style={S.linkButton} onClick={forget}>
-            Use another token
+            {t('colleague_setup.use_another')}
           </button>
         </div>
       </div>
@@ -172,22 +167,18 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
           type="password"
           style={S.input}
           value={value}
-          placeholder="Paste your colleague's account token"
+          placeholder={t('colleague_setup.placeholder')}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') check();
           }}
         />
         <button type="button" style={S.button} onClick={check} disabled={busy || !value.trim()}>
-          {busy ? 'Checking…' : 'Check'}
+          {busy ? t('colleague_setup.checking') : t('course.check')}
         </button>
       </div>
       {error && <div style={S.error}>{error}</div>}
-      <div style={S.note}>
-        The token is saved with the plugin, inside this base — so it is still here next time, on any
-        machine. Anyone you share the base with can read it there, which is why this second account
-        is one you make for the course and use nowhere else.
-      </div>
+      <div style={S.note}>{t('colleague_setup.storage_note')}</div>
     </div>
   );
 };

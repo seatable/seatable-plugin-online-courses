@@ -22,6 +22,7 @@ import { WebhookBurstSpec } from './webhookBurst';
 import { AutomationStage } from './automationGrade';
 import { getCurrentStepId } from './courseStore';
 import { fillParams, getCourseTexts } from './courseTexts';
+import { t } from '../../locale/t';
 
 // Base URL of the Hugo-built course content. One sub-directory per courseId,
 // each containing manifest.json + the step HTML fragments.
@@ -491,14 +492,6 @@ const REWIND_SPEC: RewindSpec = {
   },
 };
 
-/**
- * The safety net names itself for what it is about to do — there are either no
- * lines to speak of, or some the extraction got wrong. Exported: the runner puts
- * them on the button, and they must read the same in both places.
- */
-export const EXAMPLE_WRITE_LABEL = 'Write the lines';
-export const EXAMPLE_FIX_LABEL = 'Fix the lines';
-
 // The demo course roster. Each entry becomes a left-panel preset (id = preset _id)
 // AND a fallback manifest. The name and the intro of each course are in its text
 // files (`title`, `intro`). Courses 1–2 point learners to the website, and Courses
@@ -539,9 +532,10 @@ function introHtml(c: CourseMeta): string {
   let note = '';
   if (c.access === 'external') {
     const shown = (c.helpUrl || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">📌 This course is currently not supported by the plugin, but you can follow it on <a href="${c.helpUrl}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>.</div>`;
+    const link = `<a href="${c.helpUrl}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>`;
+    note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">${t('course.intro.external', { link })}</div>`;
   } else if (c.access === 'soon') {
-    note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">🚧 Coming soon.</div>`;
+    note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">${t('course.intro.soon')}</div>`;
   }
   return `<h1>${c.name}</h1><p>${c.intro}</p>${note}`;
 }
@@ -905,7 +899,7 @@ export function buildAllFallbackManifests(): CourseManifest[] {
       return { courseId: c.id, title: c.name, steps: welcomeContentSteps() };
     }
     const steps: CourseStep[] = [
-      { id: 'introduction', type: 'course', title: 'Introduction', html: introHtml(c) },
+      { id: 'introduction', type: 'course', title: t('course.introduction'), html: introHtml(c) },
     ];
     if (c.id === 'course-4') steps.push(...course4ContentSteps());
     if (c.id === 'course-3') steps.push(...course3ContentSteps());
