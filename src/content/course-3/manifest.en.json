@@ -1,0 +1,38 @@
+{
+  "title": "Course 3 — Collaboration",
+  "intro": "Work together on your data — share, co-edit, and keep everyone in sync.<br><br>Covers sharing and permissions, groups, comments and @mentions, the activity log, common datasets, and the whiteboard.",
+  "steps": {
+    "malika-joins-you": {
+      "title": "Step 2a · Malika joins you",
+      "instruction": "Paste your colleague’s account token below, and check that the plugin greets the right person.",
+      "html": "<h1>Your colleague’s token</h1> <p>One piece of setup, once. It is what lets this companion act for Malika — so that you never have to sign in as her.</p> <p>In her account, open Personal settings and copy the account token. Paste it here.</p>",
+      "demoDoneMessage": "✅ Your colleague is configured — the companion can act for her."
+    },
+    "malikas-home-page": {
+      "title": "Step 2b · Malika’s home page",
+      "instruction": "Share this base with Malika, then press Refresh here and open her bell — the share lands on her home page.",
+      "html": "<h1>Malika’s home page</h1> <p>What Malika sees, without signing in as her: her real bell, and the bases shared with her.</p> <p>Share this base with her, then press Refresh — as she would reload her page. Her bell shows the share, and Shared with me lists the base. Revoke the share and refresh again to see her access go; then share it again as Read-Write.</p>",
+      "demoDoneMessage": "✅ This base is shared with Malika, with Read-Write permission."
+    },
+    "malikas-window-in-this-base": {
+      "title": "Step 3a · Malika’s window in this base",
+      "instruction": "After each comment you write on James Bennett, press Refresh here and look at her bell.",
+      "html": "<h1>Malika’s window in this base</h1> <p>What Malika sees inside this base. The bell here is the base’s own: the share from Step 2 is not in it. On her home page, these notifications are listed under Bases.</p> <p>After each comment you write on James Bennett, press Refresh, as she would reload the base. Your first comment brings her nothing. Once you mention her, she is part of the conversation, and every new comment on the row reaches her — mentioned or not.</p>",
+      "demoDoneMessage": "✅ Your mention has reached Malika."
+    },
+    "malika-answers": {
+      "title": "Step 3b · Malika answers",
+      "instruction": "Let Malika do what you asked: she updates James Bennett’s industry, then replies to you.",
+      "html": "<h1>Malika answers</h1> <p>Malika has read your request. With the button below, she does what you asked: she changes James Bennett’s industry from Manufacturing to Technology, then replies in the comment thread.</p> <p>While she is in the base, she also updates a few other customers of her own — you will come across those changes in Step 4.</p> <p>Then look at your own bell, in this base. Her reply does not mention you, yet it has reached you: you started this conversation, so you are part of it.</p>",
+      "demoLabel": "Let Malika answer",
+      "demoDoneMessage": "✅ Malika has set James Bennett’s industry to Technology and replied in the thread."
+    },
+    "malika-changes-a-status": {
+      "title": "Step 4 · Malika changes a status",
+      "instruction": "Let Malika mark James Bennett as a client — then read her change in the logs, on the website.",
+      "html": "<h1>Malika changes a status</h1> <p>Malika believes James Bennett has just signed. With the button below, she gets to work in the grid: among a few other updates to your customers, she changes his status from Prospect to Client.</p> <p>Then go back to the website to find her change in the logs.</p>",
+      "demoLabel": "Let Malika change the status",
+      "demoDoneMessage": "✅ Malika has updated a few customers — among them, James Bennett’s status, from Prospect to Client."
+    }
+  }
+}

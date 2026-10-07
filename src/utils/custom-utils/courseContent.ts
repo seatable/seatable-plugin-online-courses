@@ -1,20 +1,19 @@
 /**
- * Course content sourcing — the plugin fetches lesson/exercise material from the
- * Hugo-built course site rather than bundling it in the plugin build, so course
- * material is maintained as HTML in Hugo (simpler) and one plugin serves all
- * seven courses. See [[content-sourcing-and-page-registry]].
+ * Course content — the steps of each course, as the plugin shows them.
  *
- * A course is a manifest (ordered steps) + one HTML fragment per step. Grade rules
- * (see grader.ts) travel inside the manifest, so exercises can be added/edited
- * without a plugin release.
+ * A course is split in two: its LOGIC, in this file (the steps and their order, the
+ * grade rules, what the plugin writes into a base), and its WORDS, in one JSON file
+ * per language under src/content/<courseId>/ (manifest.en.json, manifest.fr.json…,
+ * all of the same shape — see courseTexts.ts). `buildAllFallbackManifests()` puts the
+ * two together, in the language SeaTable is displayed in.
  *
- * Caveat: this is a cross-origin static fetch (NOT a Docker service, so it keeps
- * the "1-click, no external service" rule), but it needs CORS on the Hugo host and
- * an internet connection — a fully-offline self-hosted install can't reach it.
- * Full offline support is explicitly NOT a requirement; a bundled FALLBACK_MANIFEST
- * keeps the plugin demonstrable before/without the Hugo host.
+ * A course is a manifest (ordered steps) + one HTML body per step. Grade rules (see
+ * grader.ts) travel inside the manifest.
+ *
+ * The remote path below (CONTENT_BASE, fetchManifest, fetchStepHtml,
+ * USE_REMOTE_CONTENT) is kept, unused: the team chose bundled content (2026-10-06),
+ * but may come back to serving it from a host. See [[content-sourcing-and-page-registry]].
  */
-
 import { AnyGradeRule } from './grader';
 import { RewindSpec } from './rewindDelivery';
 import { ColleagueWriteSpec } from './colleagueStoreWrite';
@@ -22,6 +21,7 @@ import { ColleagueReplySpec } from './colleagueComment';
 import { WebhookBurstSpec } from './webhookBurst';
 import { AutomationStage } from './automationGrade';
 import { getCurrentStepId } from './courseStore';
+import { fillParams, getCourseTexts } from './courseTexts';
 
 // Base URL of the Hugo-built course content. One sub-directory per courseId,
 // each containing manifest.json + the step HTML fragments.
@@ -294,10 +294,75 @@ export function resolveInitialStepId(manifest: CourseManifest, courseId: string)
   return manifest.steps[0].id;
 }
 
-// --- offline fallback (keeps the plugin demonstrable before/without Hugo) -----
-// Reproduces the original Course-3 demo. The grade rule is row_id-based (matching
-// the gateway Update-Row shape), so we resolve the demo row's _id from the live
-// base — letting the row_id grader work against the current test base with no host.
+// --- the courses: logic here, words in src/content/<courseId>/manifest.<lang>.json ---
+// Everything below is what does not change with the language: the steps and their
+// order, the grade rules, and what the plugin writes into a base. The titles, bodies,
+// captions, hints and messages are added by `withTexts` from the course's text files
+// (see courseTexts.ts). A step written here needs its texts in manifest.en.json under
+// the same id, or it shows its id as a title and nothing else.
+
+/** A step as written in this file: everything but its words. */
+type StepLogic = Omit<CourseStep, 'title' | 'watch' | 'automationStages'> & {
+  watch?: Omit<NonNullable<CourseStep['watch']>, 'html' | 'instruction' | 'successMessage'>;
+  automationStages?: { stage: AutomationStage }[];
+};
+
+const STEP_TEXT_FIELDS = [
+  'title',
+  'instruction',
+  'hint',
+  'html',
+  'successMessage',
+  'handoffNote',
+  'demoLabel',
+  'demoDoneMessage',
+] as const;
+
+// Each `{name}` in the texts is filled from `params`, so a value the logic also uses
+// is written once, here.
+function withTexts(
+  courseId: string,
+  steps: StepLogic[],
+  params: Record<string, string> = {}
+): CourseStep[] {
+  const texts = getCourseTexts(courseId).steps;
+  const fill = (fields: Record<string, string | undefined> = {}) => {
+    const out: Record<string, string> = {};
+    Object.keys(fields).forEach((key) => {
+      const value = fields[key];
+      if (value != null) out[key] = fillParams(value, params);
+    });
+    return out;
+  };
+  return steps.map((logic) => {
+    const t = texts[logic.id] || {};
+    const words = fill(
+      STEP_TEXT_FIELDS.reduce((acc, field) => ({ ...acc, [field]: t[field] }), {})
+    );
+    const step = { ...logic, title: logic.id, ...words } as CourseStep;
+    if (logic.grade && t.grade?.noun != null) {
+      step.grade = { ...logic.grade, noun: fillParams(t.grade.noun, params) } as AnyGradeRule;
+    }
+    if (logic.colleagueWindow && t.colleagueWindow?.caption != null) {
+      step.colleagueWindow = {
+        ...logic.colleagueWindow,
+        caption: fillParams(t.colleagueWindow.caption, params),
+      };
+    }
+    if (logic.watch) {
+      step.watch = { html: '', ...logic.watch, ...fill(t.watch) };
+    }
+    if (logic.automationStages) {
+      step.automationStages = logic.automationStages.map((stage) => ({
+        title: stage.stage,
+        html: '',
+        ...stage,
+        ...fill(t.automationStages?.[stage.stage]),
+      }));
+    }
+    return step;
+  });
+}
 
 // The three lines of the delivery note the base ships with (INT-001). Written by
 // the plugin twice over: in step 2 to set off the learner's brand-new linking rule,
@@ -312,16 +377,6 @@ const DELIVERY_LINES: Record<string, any>[] = [
   { 'Product reference': '0850210008934', Qty: 36, 'Document reference': DELIVERY_REFERENCE },
 ];
 
-// Course-4 Step 2 — "Import and link the lines". The learner builds their first
-// automation on Line items; the plugin either walks them through it stage by stage
-// or checks the finished rule. Grading reads the automation CONFIG over REST, so
-// it works BEFORE any data has flowed through the rule (see automationGrade.ts).
-const LINK_AUTOMATION_HTML = `
-  Build your first automation. On the Line items table, create an automation that links
-  every new line to its Product and its Document by matching references — no links entered by
-  hand. Choose Guide me to build it one stage at a time (each checked before the next), or
-  Just check it if you’ve already built it.`;
-
 // Step 3's seeded delivery comes from a DIFFERENT supplier than the seeded note, and
 // the two references in play do not belong to the same party: the delivery reference
 // is the supplier's own numbering (so it looks nothing like the INT-00x of the note
@@ -332,61 +387,16 @@ const LINK_AUTOMATION_HTML = `
 const SEED_DELIVERY_REFERENCE = '2026-08-4417';
 const SEED_PO_REFERENCE = '2588/2026';
 
-const REVIEWER_HTML = `
-  Give your rule something to find. A scheduled rule only shows what it is worth on a delivery
-  that actually needs attention — so rather than have you stage one, the plugin does it: it creates a
-  new delivery and one line received short of what was ordered. Your step-2 automation attaches
-  the line on its own; the plugin waits until it has.</p>
-  <p>Then go to the Automations editor and press Run now on your reviewer rule — no need to
-  wait for the hour you set. Come back and verify: what is checked is not that a reviewer is there, but
-  that your automation, and not you, is the one that put it there.`;
-
-const LINK_AUTOMATION_STAGES: NonNullable<CourseStep['automationStages']> = [
-  {
-    title: 'Automation created',
-    stage: 'created',
-    instruction: 'Add a new rule in the Automations editor and give it a name.',
-    hint: 'The name field of the rule has to be focused out for it to exist',
-    html: `Create the automation. Open the Automations editor and add a new rule and 
-      give it a name, then click Check.`,
-  },
-  {
-    title: 'Trigger + guard',
-    stage: 'trigger',
-    instruction:
-      'Trigger on “When a row is added”, with Product reference and Document reference both not empty.',
-    hint: 'Set the conditions in the Trigger settings panel',
-    html: `Set the trigger — and guard it. Choose “When a row is added”, then add two
-      conditions so it only runs on complete lines: Product reference is not empty
-      and Document reference is not empty.`,
-  },
-  {
-    title: 'Link the product',
-    stage: 'action:0',
-    instruction: 'Add an “Add links” action matching Product reference to a product’s Reference.',
-    hint: 'Choose the Add links action, then the Product column it should fill',
-    html: `Link the product. Add an Add links action that fills the
-      Product column: the line’s Product reference should equal a product’s
-      Reference.`,
-  },
-  {
-    title: 'Link the document',
-    stage: 'action:1',
-    instruction:
-      'Add a second “Add links” action matching Document reference to a document’s Delivery reference.',
-    hint: 'The same action again, this time filling Document',
-    html: `Link the document. Add a second Add links action that fills the
-      Document column: the line’s Document reference should equal a document’s
-      Delivery reference. That completes your automation.`,
-  },
+// Course-4 Step 2 — "Import and link the lines". The learner builds their first
+// automation on Line items; the plugin either walks them through it stage by stage
+// or checks the finished rule. Grading reads the automation CONFIG over REST, so
+// it works BEFORE any data has flowed through the rule (see automationGrade.ts).
+const LINK_AUTOMATION_STAGES: NonNullable<StepLogic['automationStages']> = [
+  { stage: 'created' },
+  { stage: 'trigger' },
+  { stage: 'action:0' },
+  { stage: 'action:1' },
 ];
-
-const WATCH_HTML = `
-  Watch it work. Your rule is built, but nothing has set it off yet — so let's give it
-  something. First open the Line items table so you can see it happen, then let the plugin
-  bring in the delivery lines, as if your supplier had sent through a tidy list of what was loaded
-  onto the truck. Keep an eye on the Product and Document columns as the lines land:
-  neither is part of what the plugin writes, and both fill themselves in.`;
 
 // Course-4 Step 5 — the learner points a native webhook at a test endpoint and has
 // to go and read what lands there. The plugin makes the change for them so the
@@ -423,30 +433,13 @@ const WEBHOOK_BURST: WebhookBurstSpec = {
 // reference is machine-shaped for the same reason — it was generated by their system
 // the moment the truck was loaded, not written on a pad. Must match the reference
 // printed in the course's step 7, which the learner types into the API reference.
+// Also shown in Step 7's texts, as {apiDeliveryReference}.
 const API_DELIVERY_REFERENCE = 'DN-2026-000871';
 // The warehouse's own order number, so it stays in the warehouse's series — INT-001
 // carries 2462/2026 and Step 3's seed 2588/2026 — and comes after both, this being
 // the last delivery of the course. See the note above SEED_DELIVERY_REFERENCE: the
 // delivery reference belongs to the supplier, the PO reference to you.
 const API_PO_REFERENCE = '2634/2026';
-
-const API_CREATE_HTML = `
-  Play the supplier's system — the first half. One of your suppliers now generates its
-  delivery note when the truck is loaded and sends it straight to your base. That conversation has
-  two halves: the header of the note, then its lines. The plugin lays down the header, so that the
-  half you do by hand stays small enough to read.</p>
-  <p>A new document appears in Documents with the reference ${API_DELIVERY_REFERENCE}
-  and no file attached — there is nothing to photograph any more.</p>
-  <p>Then it is your turn, back on the website: push at least one line into Line items from
-  the API reference. Come back here at Step 7b when it is sent.`;
-
-const API_VERIFY_HTML = `
-  The second half is yours. From the API reference, push at least one line into
-  Line items: the reference ${API_DELIVERY_REFERENCE} in Document reference, a
-  product from your catalog in Product reference, and a Qty.</p>
-  <p>What is checked is not only that your line arrived, but that it attached itself — to its
-  product and to its document — through the automation you built back in step 2, and that it really
-  came in from outside: a row typed into the grid by hand does not count here.`;
 
 const NOTE_2_REFERENCE = 'GR 2026/44718';
 const NOTE_2_SPEC: RewindSpec = {
@@ -468,26 +461,6 @@ const NOTE_2_LINES: Record<string, any>[] = [
   { 'Product reference': '8858702402323', Qty: 120, 'Document reference': NOTE_2_REFERENCE },
   { 'Product reference': '5057967574810', Qty: 30, 'Document reference': NOTE_2_REFERENCE },
 ];
-
-const WEBHOOK_HTML = `
-  Give your webhook something to say. With your webhook pointed at the test endpoint, the plugin
-  will make a change you know the shape of: it adds a row to Products, edits it a few seconds
-  later, then deletes it — leaving your catalog exactly as it was. Keep the test page beside your base: the
-  three changes are spaced so you can watch each one land on both sides. If nothing reaches the endpoint, try
-  moving both pages into the same browser window.</p>
-  <p>Three operations, three requests: what was written, what changed (with the value it held before),
-  and what went. Nothing is checked here — reading the other side is the whole exercise.`;
-
-// The far end of authored step 5: the second note has arrived and its lines have to
-// reach Line items before the dock can be told anything.
-const WRITE_LINES_HTML = `
-  Let the plugin do the typing. The second delivery note is in your base, and its lines are not.
-  Copying three barcodes off a photograph teaches nothing, so the plugin writes them for you — the same
-  lines a clean reading of that note would have produced.</p>
-  <p>They land in Line items carrying their references, so the rule you built in step 2 attaches
-  each one to its product and its document as it arrives. Nothing is checked here.</p>
-  <p>Then finish the way the office finishes: read the list against the note, and press
-  Notify the dock on the document.`;
 
 // Course-4 Step 4 — the AI chain is built, and there is nothing to feed it: the
 // delivery note it would read is already in the base, lines and all. The plugin
@@ -526,23 +499,10 @@ const REWIND_SPEC: RewindSpec = {
 export const EXAMPLE_WRITE_LABEL = 'Write the lines';
 export const EXAMPLE_FIX_LABEL = 'Fix the lines';
 
-const REWIND_HTML = `
-  Take the delivery back out. You have the chain — what you do not have is anything to feed
-  it: that delivery is already in your base, lines and all. Let the plugin remove them, and the
-  document with them, so the same note can arrive the way it really would. Your stock goes back to
-  where it was too.</p>
-  <p>Then receive it for real: in the Delivery check app, open New delivery note, attach
-  the photo of the delivery note and submit. Watch the reading, the extraction and the script do the
-  rest — then come back and verify.</p>
-  <p>If the extraction goes off the rails, the plugin writes the delivery's lines for you — whole if it
-  produced none, corrected if it got them wrong. What is checked is that the lines are back, never that
-  the AI got them right on its own.`;
-
 // The demo course roster. Each entry becomes a left-panel preset (id = preset _id)
-// AND a fallback manifest. Content is bundled here (no Hugo host yet). Only
-// Course 4 is "active" (real plugin exercises — the collaboration content was moved
-// here while Course 4 is built); Courses 1–3 point learners to the website, and
-// Courses 5–7 are placeholders. Descriptions come from the marketing hotspots
+// AND a fallback manifest. The name and the intro of each course are in its text
+// files (`title`, `intro`). Courses 1–2 point learners to the website, and Courses
+// 5–7 are placeholders. Descriptions come from the marketing hotspots
 // (webservice-seatable-com .../data/en/hotspots-online-courses.yaml).
 export type CourseAccess = 'active' | 'external' | 'soon';
 
@@ -554,67 +514,21 @@ export interface CourseMeta {
   helpUrl?: string; // external courses only
 }
 
-export const COURSES: CourseMeta[] = [
-  {
-    id: 'welcome',
-    name: 'Welcome — using the plugin',
-    access: 'active',
-    intro:
-      'A quick tour of this course companion — how a course works, the buttons, and the movable toolbar.',
-  },
-  {
-    id: 'course-1',
-    name: 'Course 1 — Getting Started',
-    access: 'external',
-    helpUrl: 'https://seatable.com/help/online-course-1/',
-    intro:
-      'Build your first relational database and start collecting data.<br><br>Covers bases, views, columns, web forms, and links — everything you need to model and capture information in SeaTable.',
-  },
-  {
-    id: 'course-2',
-    name: 'Course 2 — Inputs and Outputs',
-    access: 'external',
-    helpUrl: 'https://seatable.com/help/online-course-2/',
-    intro:
-      'Bring data in and send results out.<br><br>Learn imports and exports, generating PDF documents, statistics, action buttons, and sending e-mails straight from your base.',
-  },
-  {
-    id: 'course-3',
-    name: 'Course 3 — Collaboration',
-    access: 'active',
-    helpUrl: 'https://seatable.com/help/online-course-3/',
-    intro:
-      'Work together on your data — share, co-edit, and keep everyone in sync.<br><br>Covers sharing and permissions, groups, comments and @mentions, the activity log, common datasets, and the whiteboard.',
-  },
-  {
-    id: 'course-4',
-    name: 'Course 4 — Automation & Integration',
-    access: 'active',
-    intro:
-      'Automate your workflows and connect external tools.<br><br>Covers no-code automations, Python scripts, the API, webhooks, workflow orchestration with n8n, and AI-powered document extraction — around a warehouse receiving scenario.',
-  },
-  {
-    id: 'course-5',
-    name: 'Course 5 — Apps & Reporting',
-    access: 'soon',
-    intro:
-      'Turn your bases into apps and polished reports for end users.<br><br>Will cover the Universal App (page types, per-page permissions, custom pages), dashboards, and the report design plugin.',
-  },
-  {
-    id: 'course-6',
-    name: 'Course 6 — Data Mastery',
-    access: 'soon',
-    intro:
-      'Model, compute, and scale your data with formulas and relationships.<br><br>Will cover formulas, data processing, big data, and table relationships.',
-  },
-  {
-    id: 'course-7',
-    name: 'Course 7 — Maintenance & Hygiene',
-    access: 'soon',
-    intro:
-      'Keep your bases clean, organized, and auditable over time.<br><br>Will cover deduplication, file management, and audit logs.',
-  },
+const COURSE_ROSTER: Omit<CourseMeta, 'name' | 'intro'>[] = [
+  { id: 'welcome', access: 'active' },
+  { id: 'course-1', access: 'external', helpUrl: 'https://seatable.com/help/online-course-1/' },
+  { id: 'course-2', access: 'external', helpUrl: 'https://seatable.com/help/online-course-2/' },
+  { id: 'course-3', access: 'active', helpUrl: 'https://seatable.com/help/online-course-3/' },
+  { id: 'course-4', access: 'active' },
+  { id: 'course-5', access: 'soon' },
+  { id: 'course-6', access: 'soon' },
+  { id: 'course-7', access: 'soon' },
 ];
+
+export const COURSES: CourseMeta[] = COURSE_ROSTER.map((c) => {
+  const { title, intro } = getCourseTexts(c.id);
+  return { ...c, name: title, intro };
+});
 
 const NOTE_STYLE =
   'margin-top:22px;padding:12px 14px;border-radius:8px;font-size:14px;line-height:1.5;';
@@ -637,113 +551,28 @@ function introHtml(c: CourseMeta): string {
 // no grading — and it references the real buttons (inline dtable-font icons render
 // because the font is loaded globally), so the learner recognises them on screen.
 function welcomeContentSteps(): CourseStep[] {
-  return [
-    {
-      id: 'welcome',
-      type: 'course',
-      title: 'Step 1 · Welcome',
-      html: `
-        <h1>Welcome 👋</h1>
-        <p>This little panel is your course companion. It walks you through
-        hands-on exercises and checks your work right here in your own base.</p>
-        <p>Take a minute to get familiar with it — then you'll be ready for any course.
-        Use Next at the top to move through this tour.</p>`,
-    },
-    {
-      id: 'how-a-course-works',
-      type: 'course',
-      title: 'Step 2 · How a course works',
-      html: `
-        <h1>How a course works</h1>
-        <p>You follow each course mainly on the website. At certain points it asks you to
-        open this plugin and pick a step — that's where you do something in your base and
-        the plugin checks it for you.</p>
-        <p>Use the list on the left to jump between the plugin's steps. Steps are numbered
-        to match the website (Step&nbsp;2, Step&nbsp;6…), so a gap in the numbers just means those
-        steps happen on the site.</p>`,
-    },
+  return withTexts('welcome', [
+    { id: 'welcome', type: 'course' },
+    { id: 'how-a-course-works', type: 'course' },
     {
       // An exercise page, so the learner meets the banner layout and its resize
       // handle while being told about it, rather than by surprise in a course.
       id: 'room-for-your-base',
       type: 'exercise',
-      title: 'Step 3 · Room for your base',
-      instruction:
-        'Drag the grip at the top center of this panel to make it taller or shorter, then Verify.',
-      html: `
-        Some pages, like this one, are exercises: the panel shrinks to a strip at the bottom so
-        your base stays in view while you work in it. Exercises carry a
-        <i class="dtable-font dtable-icon-rename"></i> in the list on the left; the other pages
-        open at full height. Drag the grip at the top center of this panel to make it taller or
-        shorter, then press <i class="dtable-font dtable-icon-check-mark"></i> Verify at the top.
-        The height you choose is kept for the exercises that follow.`,
       grade: { kind: 'plugin-ui', check: 'banner-resized' },
-      successMessage: 'Done — the exercises to come will open at that height.',
     },
-    {
-      id: 'the-buttons',
-      type: 'course',
-      title: 'Step 4 · The buttons',
-      // A hint of its own, so the Hint button the page describes is there to try.
-      hint: 'This is a hint: it stays hidden until you ask for it. Press Hide hint to put it away.',
-      html: `
-        <h1>The buttons</h1>
-        <p>The top bar carries everything you need for the current step:</p>
-        <ul style="line-height:1.7;">
-          <li><i class="dtable-font dtable-icon-left"></i> <b>Back</b> — return to the previous step.</li>
-          <li><i class="dtable-font dtable-icon-help-center"></i> <b>Hint</b> — reveal a hint when you're stuck.</li>
-          <li><i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> (or <i class="dtable-font dtable-icon-right"></i> <b>Next</b>) — check your work, then move on once it passes.</li>
-        </ul>
-        <p>On the far right are the window controls: <i class="dtable-font dtable-icon-full-screen"></i>
-        shrink to a toolbar and <i class="dtable-font dtable-icon-x"></i> close.</p>`,
-    },
-    {
-      id: 'the-movable-toolbar',
-      type: 'course',
-      title: 'Step 5 · The movable toolbar',
-      html: `
-        <h1>The movable toolbar</h1>
-        <p>Working in your base and the panel is in the way? Click shrink
-        (<i class="dtable-font dtable-icon-full-screen"></i>, top-right) to collapse it into a small
-        toolbar you can drag anywhere.</p>
-        <p>While it's a toolbar the whole base stays clickable — nothing is blocked — and you keep the
-        essentials:</p>
-        <ul style="line-height:1.7;">
-          <li><i class="dtable-font dtable-icon-drag"></i> <b>Drag</b> it wherever it's out of your way.</li>
-          <li><i class="dtable-font dtable-icon-info"></i> <b>Info</b> — show the instruction (and a hint) any time.</li>
-          <li><i class="dtable-font dtable-icon-check-mark"></i> <b>Verify</b> — check your work without expanding.</li>
-          <li><i class="dtable-font dtable-icon-full-screen"></i> <b>Expand</b> — bring the full panel back.</li>
-        </ul>
-        <p>On the next step you'll try it yourself.</p>`,
-    },
+    // The page has a hint of its own, so the Hint button it describes is there to try.
+    { id: 'the-buttons', type: 'course' },
+    { id: 'the-movable-toolbar', type: 'course' },
     {
       id: 'try-the-toolbar',
       type: 'exercise',
-      title: 'Step 6 · Try the toolbar',
-      instruction: 'Shrink to the toolbar and drag it into the lower-right corner, then Verify.',
-      html: `
-        Your turn. Click shrink (<i class="dtable-font dtable-icon-full-screen"></i>,
-        top-right) to collapse this panel into the toolbar, drag it into the lower-right quarter
-        of your screen, then press <i class="dtable-font dtable-icon-check-mark"></i> Verify on
-        the toolbar.`,
-      hint: 'Shrink with the <i class="dtable-font dtable-icon-full-screen"></i> icon at the top-right; drag using the <i class="dtable-font dtable-icon-drag"></i> handle on the toolbar; then click the <i class="dtable-font dtable-icon-check-mark"></i> on the toolbar. “Lower-right” means the bottom-right quarter of your whole screen.',
       grade: { kind: 'plugin-ui', check: 'toolbar-lower-right' },
-      successMessage:
-        "Perfect — you've got the toolbar down 🎉 Expand the plugin, then press Next to finish the tour.",
     },
-    {
-      // A full-height page to end on: the course list on the left is only readable
-      // at full height, and it is what the learner needs next.
-      id: 'youre-ready',
-      type: 'course',
-      title: 'Step 7 · You\u2019re ready',
-      html: `
-        <h1>You\u2019re ready</h1>
-        <p>That\u2019s the tour. Pick a course from the list on the left to begin: each one
-        opens on its introduction.</p>
-        <p>This tour stays in the list, so you can come back to it any time.</p>`,
-    },
-  ];
+    // A full-height page to end on: the course list on the left is only readable
+    // at full height, and it is what the learner needs next.
+    { id: 'youre-ready', type: 'course' },
+  ]);
 }
 
 // Course 4 (active): the plugin CHECKPOINTS only — the course narrative unfolds on
@@ -752,346 +581,253 @@ function welcomeContentSteps(): CourseStep[] {
 // back to the website via `continuesOn`. One checkpoint per authored step that has
 // something for the plugin to do — steps 1, 6 and 8 deliberately have none.
 function course4ContentSteps(): CourseStep[] {
-  return [
-    {
-      id: 'build-the-linking-automation',
-      type: 'exercise',
-      title: 'Step 2 · Build the linking automation',
-      continuesOn: 'website',
-      html: LINK_AUTOMATION_HTML,
-      instruction:
-        'Build an automation on Line items that links each new line to its product and document.',
-      demo: 'automation-guided',
-      automationStages: LINK_AUTOMATION_STAGES,
-      hint: 'On Line items: trigger “a new row is added”, two conditions (Product reference & Document reference not empty), then two Add links actions — one to Products (Reference), one to Documents (Delivery reference).',
-      // Structural (config) grade — read over REST, order-independent on the two
-      // link actions so a "just check it" learner passes whatever order they built.
-      grade: {
-        kind: 'automation-rule',
-        trigger_table: 'Line items',
-        trigger_event: 'rows_added',
-        conditions: [
-          { column: 'Product reference', predicate: 'is_not_empty' },
-          { column: 'Document reference', predicate: 'is_not_empty' },
-        ],
-        conjunction: 'And',
-        link_actions: [
-          {
-            source_column: 'Product reference',
-            target_table: 'Products',
-            target_column: 'Reference',
-          },
-          {
-            source_column: 'Document reference',
-            target_table: 'Documents',
-            target_column: 'Delivery reference',
-          },
-        ],
-      },
-      successMessage:
-        'Your linking automation is complete — every new line will now find its product and its document on its own.',
-      // Config-graded, so nothing has run through the rule yet: prove it on real rows
-      // before handing back to the website.
-      watch: {
-        table_name: 'Line items',
-        rows: DELIVERY_LINES,
-        link_columns: ['Product', 'Document'],
-        html: WATCH_HTML,
-        instruction:
-          'Open the Line items table, then add the three delivery lines and watch the links fill in.',
-        successMessage:
-          'Both links filled themselves in, on lines you never touched. You didn’t automate this delivery — you built a rule that holds for every line that will ever enter this table, whoever puts it there.',
-      },
-    },
-    {
-      id: 'a-reviewer-for-a-short-delivery',
-      type: 'exercise',
-      watchTable: 'Documents',
-      title: 'Step 3 · A reviewer for a short delivery',
-      continuesOn: 'website',
-      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
-      html: REVIEWER_HTML,
-      instruction:
-        'Let the plugin create a short delivery, then run your rule from the automation editor and verify.',
-      hint: 'Use Run now in the automation editor — no need to wait for the scheduled hour.',
-      demo: 'seed-discrepancy',
-      reset: {
-        document: {
-          table_name: 'Documents',
-          reference_column: 'Delivery reference',
-          reference: SEED_DELIVERY_REFERENCE,
-        },
-        lines: {
-          table_name: 'Line items',
-          reference_column: 'Document reference',
-          link_column: 'Document',
-        },
-      },
-      seed: {
-        document: {
-          table_name: 'Documents',
-          row: {
-            'Delivery reference': SEED_DELIVERY_REFERENCE,
-            'PO reference': SEED_PO_REFERENCE,
-            'Movement type': 'Delivery',
-          },
-        },
-        lines: {
-          table_name: 'Line items',
-          rows: [
+  return withTexts(
+    'course-4',
+    [
+      {
+        id: 'build-the-linking-automation',
+        type: 'exercise',
+        continuesOn: 'website',
+        demo: 'automation-guided',
+        automationStages: LINK_AUTOMATION_STAGES,
+        // Structural (config) grade — read over REST, order-independent on the two
+        // link actions so a "just check it" learner passes whatever order they built.
+        grade: {
+          kind: 'automation-rule',
+          trigger_table: 'Line items',
+          trigger_event: 'rows_added',
+          conditions: [
+            { column: 'Product reference', predicate: 'is_not_empty' },
+            { column: 'Document reference', predicate: 'is_not_empty' },
+          ],
+          conjunction: 'And',
+          link_actions: [
             {
-              // A product that is NOT on the seeded delivery note: reusing one would
-              // put the same product on two open deliveries at once, which muddles
-              // the stock story the previous section just told.
-              'Product reference': '9310342001124',
-              Qty: 48,
-              'Received qty': 36,
-              'Document reference': SEED_DELIVERY_REFERENCE,
-              Status: 'Too few',
-              // Already validated: the receiving side of this line is settled, only
-              // the dispute is left. Without this it would sit in the operator's
-              // "to check" queue, and validating it would credit the stock with
-              // goods that were never delivered.
-              Validated: true,
+              source_column: 'Product reference',
+              target_table: 'Products',
+              target_column: 'Reference',
+            },
+            {
+              source_column: 'Document reference',
+              target_table: 'Documents',
+              target_column: 'Delivery reference',
             },
           ],
+        },
+        // Config-graded, so nothing has run through the rule yet: prove it on real rows
+        // before handing back to the website.
+        watch: {
+          table_name: 'Line items',
+          rows: DELIVERY_LINES,
           link_columns: ['Product', 'Document'],
         },
       },
-      // Graded from the activity log of the document the plugin just created: what
-      // has to be true is not that a reviewer is there, but that an AUTOMATION put
-      // it there. The row being brand new is what makes that reading trustworthy.
-      grade: {
-        kind: 'automation-set',
-        table_name: 'Documents',
-        column: 'Reviewer',
-      },
-    },
-    {
-      id: 'rewind-and-do-it-for-real',
-      type: 'exercise',
-      watchTable: 'Line items',
-      title: 'Step 4 · Rewind, and do it for real',
-      continuesOn: 'website',
-      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
-      html: REWIND_HTML,
-      instruction:
-        'Let the plugin take the seeded delivery back out, then receive it again from the app and let the AI read the note.',
-      hint: 'The form is the second page of the Delivery check app — attach the photo and submit; everything else is read from the picture.',
-      demo: 'rewind',
-      rewind: REWIND_SPEC,
-      // The safety net, written in REPLACE mode on a rewind step: what a clean
-      // extraction would have produced, whatever the run actually produced.
-      example: { table_name: 'Line items', rows: DELIVERY_LINES },
-      // Counts the lines, and nothing else: the AI wrote them, and grading their
-      // content would make the model's success a condition of progress.
-      grade: {
-        kind: 'rows-exist',
-        table_name: 'Line items',
-        where: { column: 'Document reference', equals: DELIVERY_REFERENCE },
-        min_count: 3,
-        noun: 'lines for this delivery',
-      },
-      successMessage:
-        'The delivery is back — read off a photograph this time, with its lines linked by the rule you built in step 2.',
-    },
-    {
-      id: 'see-what-seatable-sends',
-      type: 'exercise',
-      watchTable: 'Products',
-      // The catalog runs to hundreds of rows and the burst appends one: in the
-      // default view it lands off-screen, and the edit and the delete then happen on
-      // a row the learner never saw. A narrow view keeps all three in sight wherever
-      // they had scrolled. Inert until the base actually carries the view.
-      watchView: 'Step 5a - Webhook',
-      title: 'Step 5a · See what SeaTable sends',
-      continuesOn: 'website',
-      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
-      html: WEBHOOK_HTML,
-      instruction:
-        'Point your webhook at the test endpoint first, then let the plugin make a change you know the shape of.',
-      hint: 'Nothing is graded here — the whole exercise is to go and read what arrived at the other end.',
-      demo: 'webhook-burst',
-      burst: WEBHOOK_BURST,
-      demoDoneMessage: '✅ The three changes have been made — go and read them at the other end.',
-    },
-    {
-      // The other end of the same authored step, and its own menu entry: the course
-      // sends the learner back here much later, once the second note has arrived.
-      // One entry per "open the plugin" in the prose — a dropdown would have hidden
-      // a chronological beat behind a button meant for choices.
-      id: 'write-the-deliverys-lines',
-      type: 'exercise',
-      watchTable: 'Line items',
-      title: 'Step 5b · Write the delivery’s lines',
-      continuesOn: 'website',
-      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
-      html: WRITE_LINES_HTML,
-      instruction:
-        'Let the plugin write the second delivery’s lines, rather than copy three barcodes off a photograph.',
-      hint: 'The lines land in Line items and your step-2 rule attaches them; then press Notify the dock on the document.',
-      demo: 'write-lines',
-      demoLabel: 'Write the lines',
-      demoDoneMessage: '✅ The delivery’s lines are in Line items, linked by your own rule.',
-      rewind: NOTE_2_SPEC,
-      example: { table_name: 'Line items', rows: NOTE_2_LINES },
-    },
-    {
-      id: 'the-electronic-delivery-note',
-      type: 'exercise',
-      watchTable: 'Documents',
-      title: 'Step 7a · The electronic delivery note',
-      continuesOn: 'website',
-      handoffNote: 'Now go and push one of its lines from the API reference ↩',
-      html: API_CREATE_HTML,
-      instruction:
-        'Let the plugin drop in the electronic delivery note, then go and push one of its lines from the API reference.',
-      hint: 'Nothing is graded here — this only puts the note in your base so your pushed lines have something to link to.',
-      demo: 'seed-discrepancy',
-      demoLabel: 'Create new delivery',
-      demoDoneMessage: '✅ The delivery note is in your base, with no lines and no file.',
-      // No `stock` to undo: nothing pushed through the API is ever validated here.
-      reset: {
-        document: {
-          table_name: 'Documents',
-          reference_column: 'Delivery reference',
-          reference: API_DELIVERY_REFERENCE,
+      {
+        id: 'a-reviewer-for-a-short-delivery',
+        type: 'exercise',
+        watchTable: 'Documents',
+        continuesOn: 'website',
+        demo: 'seed-discrepancy',
+        reset: {
+          document: {
+            table_name: 'Documents',
+            reference_column: 'Delivery reference',
+            reference: SEED_DELIVERY_REFERENCE,
+          },
+          lines: {
+            table_name: 'Line items',
+            reference_column: 'Document reference',
+            link_column: 'Document',
+          },
         },
-        lines: {
+        seed: {
+          document: {
+            table_name: 'Documents',
+            row: {
+              'Delivery reference': SEED_DELIVERY_REFERENCE,
+              'PO reference': SEED_PO_REFERENCE,
+              'Movement type': 'Delivery',
+            },
+          },
+          lines: {
+            table_name: 'Line items',
+            rows: [
+              {
+                // A product that is NOT on the seeded delivery note: reusing one would
+                // put the same product on two open deliveries at once, which muddles
+                // the stock story the previous section just told.
+                'Product reference': '9310342001124',
+                Qty: 48,
+                'Received qty': 36,
+                'Document reference': SEED_DELIVERY_REFERENCE,
+                Status: 'Too few',
+                // Already validated: the receiving side of this line is settled, only
+                // the dispute is left. Without this it would sit in the operator's
+                // "to check" queue, and validating it would credit the stock with
+                // goods that were never delivered.
+                Validated: true,
+              },
+            ],
+            link_columns: ['Product', 'Document'],
+          },
+        },
+        // Graded from the activity log of the document the plugin just created: what
+        // has to be true is not that a reviewer is there, but that an AUTOMATION put
+        // it there. The row being brand new is what makes that reading trustworthy.
+        grade: {
+          kind: 'automation-set',
+          table_name: 'Documents',
+          column: 'Reviewer',
+        },
+      },
+      {
+        id: 'rewind-and-do-it-for-real',
+        type: 'exercise',
+        watchTable: 'Line items',
+        continuesOn: 'website',
+        demo: 'rewind',
+        rewind: REWIND_SPEC,
+        // The safety net, written in REPLACE mode on a rewind step: what a clean
+        // extraction would have produced, whatever the run actually produced.
+        example: { table_name: 'Line items', rows: DELIVERY_LINES },
+        // Counts the lines, and nothing else: the AI wrote them, and grading their
+        // content would make the model's success a condition of progress.
+        grade: {
+          kind: 'rows-exist',
           table_name: 'Line items',
-          reference_column: 'Document reference',
-          link_column: 'Document',
+          where: { column: 'Document reference', equals: DELIVERY_REFERENCE },
+          min_count: 3,
         },
       },
-      // Document only: the lines are what the learner pushes through the API, and
-      // the header has to be there first or they would land unlinked. No `grade`
-      // either — the check belongs to 7b, once the line has actually been pushed.
-      seed: {
-        document: {
-          table_name: 'Documents',
-          row: {
-            'Delivery reference': API_DELIVERY_REFERENCE,
-            'PO reference': API_PO_REFERENCE,
-            'Movement type': 'Delivery',
+      {
+        id: 'see-what-seatable-sends',
+        type: 'exercise',
+        watchTable: 'Products',
+        // The catalog runs to hundreds of rows and the burst appends one: in the
+        // default view it lands off-screen, and the edit and the delete then happen on
+        // a row the learner never saw. A narrow view keeps all three in sight wherever
+        // they had scrolled. Inert until the base actually carries the view.
+        watchView: 'Step 5a - Webhook',
+        continuesOn: 'website',
+        demo: 'webhook-burst',
+        burst: WEBHOOK_BURST,
+      },
+      {
+        // The other end of the same authored step, and its own menu entry: the course
+        // sends the learner back here much later, once the second note has arrived.
+        // One entry per "open the plugin" in the prose — a dropdown would have hidden
+        // a chronological beat behind a button meant for choices.
+        id: 'write-the-deliverys-lines',
+        type: 'exercise',
+        watchTable: 'Line items',
+        continuesOn: 'website',
+        demo: 'write-lines',
+        rewind: NOTE_2_SPEC,
+        example: { table_name: 'Line items', rows: NOTE_2_LINES },
+      },
+      {
+        id: 'the-electronic-delivery-note',
+        type: 'exercise',
+        watchTable: 'Documents',
+        continuesOn: 'website',
+        demo: 'seed-discrepancy',
+        // No `stock` to undo: nothing pushed through the API is ever validated here.
+        reset: {
+          document: {
+            table_name: 'Documents',
+            reference_column: 'Delivery reference',
+            reference: API_DELIVERY_REFERENCE,
+          },
+          lines: {
+            table_name: 'Line items',
+            reference_column: 'Document reference',
+            link_column: 'Document',
+          },
+        },
+        // Document only: the lines are what the learner pushes through the API, and
+        // the header has to be there first or they would land unlinked. No `grade`
+        // either — the check belongs to 7b, once the line has actually been pushed.
+        seed: {
+          document: {
+            table_name: 'Documents',
+            row: {
+              'Delivery reference': API_DELIVERY_REFERENCE,
+              'PO reference': API_PO_REFERENCE,
+              'Movement type': 'Delivery',
+            },
           },
         },
       },
-    },
-    {
-      id: 'check-the-pushed-line',
-      type: 'exercise',
-      title: 'Step 7b · Check the pushed line',
-      continuesOn: 'website',
-      handoffNote: 'You’re done here — head back to the website to continue the course ↩',
-      html: API_VERIFY_HTML,
-      instruction:
-        'Push at least one line into Line items from the API reference, then verify it arrived, linked itself and came in through the API.',
-      hint: `In the API reference, table_name is "Line items" and the row needs Document reference "${API_DELIVERY_REFERENCE}", a Product reference from your catalog, and a Qty.`,
-      // Counts a pushed line, but only one that has LINKED itself: the payoff of
-      // this step is that a row arriving from outside is treated exactly like one
-      // typed by hand, and that is the rule from step 2 doing the treating.
-      grade: {
-        kind: 'rows-exist',
-        table_name: 'Line items',
-        where: { column: 'Document reference', equals: API_DELIVERY_REFERENCE },
-        min_count: 1,
-        linked_columns: ['Product', 'Document'],
-        // Without this the step passes for a line typed into the grid by hand, which
-        // is the one thing it is not about.
-        written_by_app: true,
-        noun: 'pushed line',
+      {
+        id: 'check-the-pushed-line',
+        type: 'exercise',
+        continuesOn: 'website',
+        // Counts a pushed line, but only one that has LINKED itself: the payoff of
+        // this step is that a row arriving from outside is treated exactly like one
+        // typed by hand, and that is the rule from step 2 doing the treating.
+        grade: {
+          kind: 'rows-exist',
+          table_name: 'Line items',
+          where: { column: 'Document reference', equals: API_DELIVERY_REFERENCE },
+          min_count: 1,
+          linked_columns: ['Product', 'Document'],
+          // Without this the step passes for a line typed into the grid by hand, which
+          // is the one thing it is not about.
+          written_by_app: true,
+        },
       },
-      successMessage:
-        'Your line came in through the API and attached itself on the way — no scanner, no camera, no keyboard, and nothing in your base can tell the difference.',
-    },
-  ];
+    ],
+    { apiDeliveryReference: API_DELIVERY_REFERENCE }
+  );
 }
 
 /**
  * ⚠️ Where the token is KEPT is stated by the setup widget (ColleagueSetup.tsx),
- * not by this prose — deliberately. Course content is on its way out of the
- * plugin and into Hugo, and a sentence describing the plugin's storage would then
- * sit in a file that no longer ships with the code deciding it. The widget cannot
- * drift from it; a translated help page can.
+ * not by the step's text — deliberately. That text is translated, in files that do
+ * not ship next to the code deciding where the token goes; the widget cannot drift
+ * from it, a translation can.
  *
  * Course 3 — the plugin's pages, one or two per course step: 2a/2b (Malika joins,
  * her home page), 3a/3b (her window in the base, her answer), 4 (her status
  * change). Her edits go through her own store — see colleagueStoreWrite.ts for
  * why no REST route could give the log the shape Step 4 teaches.
+ *
+ * What she writes INTO the base (cells, and her reply in the thread) is logic, not
+ * text: it is data in an English base, like the rest of the sample data.
  */
 function course3ContentSteps(): CourseStep[] {
-  return [
+  return withTexts('course-3', [
     {
       id: 'malika-joins-you',
       // A full page: nothing in the base to watch while pasting a token.
       type: 'course',
-      title: 'Step 2a · Malika joins you',
-      instruction:
-        'Paste your colleague\u2019s account token below, and check that the plugin greets the right person.',
       demo: 'colleague-setup',
-      demoDoneMessage: '\u2705 Your colleague is configured \u2014 the companion can act for her.',
       // 2a flows straight into 2b: nothing on the website sits between the two, and
       // 2b's "before" (her home page without the base) is the next thing to see.
       // Across numbered steps the learner goes back to the website instead.
       continuesOn: 'plugin',
-      html: `
-        <h1>Your colleague\u2019s token</h1>
-        <p>One piece of setup, once. It is what lets this companion act for Malika \u2014 so that
-        you never have to sign in as her.</p>
-        <p>In her account, open Personal settings and copy the account token. Paste it here.</p>
-      `,
     },
     {
       id: 'malikas-home-page',
       type: 'course',
-      demoDoneMessage: '\u2705 This base is shared with Malika, with Read-Write permission.',
       // Read on the website next: the course text goes on before the next page.
       continuesOn: 'website',
-      title: 'Step 2b · Malika\u2019s home page',
-      instruction:
-        'Share this base with Malika, then press Refresh here and open her bell \u2014 the share lands on her home page.',
       demo: 'colleague-window',
       colleagueWindow: { surface: 'home' },
-      html: `
-        <h1>Malika\u2019s home page</h1>
-        <p>What Malika sees, without signing in as her: her real bell, and the bases shared
-        with her.</p>
-        <p>Share this base with her, then press Refresh \u2014 as she would reload her page. Her
-        bell shows the share, and Shared with me lists the base. Revoke the share and refresh again
-        to see her access go; then share it again as Read-Write.</p>
-      `,
     },
     {
       id: 'malikas-window-in-this-base',
       type: 'course',
-      demoDoneMessage: '\u2705 Your mention has reached Malika.',
       // 3a hands straight on to 3b in-plugin once the mention has reached her: the
       // website text between them is about this same window, and says to move on.
       continuesOn: 'plugin',
-      title: 'Step 3a · Malika\u2019s window in this base',
-      instruction:
-        'After each comment you write on James Bennett, press Refresh here and look at her bell.',
       demo: 'colleague-window',
       colleagueWindow: { surface: 'base' },
-      html: `
-        <h1>Malika\u2019s window in this base</h1>
-        <p>What Malika sees inside this base. The bell here is the base\u2019s own: the share from Step 2
-        is not in it. On her home page, these notifications are listed under Bases.</p>
-        <p>After each comment you write on James Bennett, press Refresh, as she would reload the base.
-        Your first comment brings her nothing. Once you mention her, she is part of the conversation,
-        and every new comment on the row reaches her \u2014 mentioned or not.</p>
-      `,
     },
     {
       id: 'malika-answers',
       type: 'exercise',
-      title: 'Step 3b · Malika answers',
-      instruction:
-        'Let Malika do what you asked: she updates James Bennett\u2019s industry, then replies to you.',
       demo: 'colleague-write',
-      demoLabel: 'Let Malika answer',
-      demoDoneMessage:
-        '\u2705 Malika has set James Bennett\u2019s industry to Technology and replied in the thread.',
       watchTable: 'Customers',
       continuesOn: 'website',
       colleagueWrite: {
@@ -1104,7 +840,7 @@ function course3ContentSteps(): CourseStep[] {
       colleagueReply: {
         table: 'Customers',
         match: { column: 'Full Name', equals: 'James Bennett' },
-        text: 'Done \u2014 James Bennett\u2019s industry is now Technology.',
+        text: 'Done — James Bennett’s industry is now Technology.',
       },
       colleagueSideWrites: [
         {
@@ -1114,36 +850,20 @@ function course3ContentSteps(): CourseStep[] {
         },
         {
           table: 'Customers',
-          match: { column: 'Full Name', equals: 'Harry S\u00e1nchez' },
+          match: { column: 'Full Name', equals: 'Harry Sánchez' },
           cells: { Phone: '+44 63 770 2688' },
         },
         {
           table: 'Customers',
-          match: { column: 'Full Name', equals: 'In\u00e8s Weber' },
+          match: { column: 'Full Name', equals: 'Inès Weber' },
           cells: { 'Job Title': 'Head of Communications' },
         },
       ],
-      html: `
-        <h1>Malika answers</h1>
-        <p>Malika has read your request. With the button below, she does what you asked: she changes
-        James Bennett\u2019s industry from Manufacturing to Technology, then replies in the comment
-        thread.</p>
-        <p>While she is in the base, she also updates a few other customers of her own \u2014 you will
-        come across those changes in Step 4.</p>
-        <p>Then look at your own bell, in this base. Her reply does not mention you, yet it has reached
-        you: you started this conversation, so you are part of it.</p>
-      `,
     },
     {
       id: 'malika-changes-a-status',
       type: 'exercise',
-      title: 'Step 4 · Malika changes a status',
-      instruction:
-        'Let Malika mark James Bennett as a client \u2014 then read her change in the logs, on the website.',
       demo: 'colleague-write',
-      demoLabel: 'Let Malika change the status',
-      demoDoneMessage:
-        '\u2705 Malika has updated a few customers \u2014 among them, James Bennett\u2019s status, from Prospect to Client.',
       watchTable: 'Customers',
       continuesOn: 'website',
       // Made through her own store, so the log shows exactly what a hand edit in the
@@ -1172,15 +892,8 @@ function course3ContentSteps(): CourseStep[] {
           cells: { 'Job Title': 'Facilities Manager' },
         },
       ],
-      html: `
-        <h1>Malika changes a status</h1>
-        <p>Malika believes James Bennett has just signed. With the button below, she gets to work in
-        the grid: among a few other updates to your customers, she changes his status from Prospect
-        to Client.</p>
-        <p>Then go back to the website to find her change in the logs.</p>
-      `,
     },
-  ];
+  ]);
 }
 
 // Build every demo course manifest: an Introduction page, plus the active/dummy

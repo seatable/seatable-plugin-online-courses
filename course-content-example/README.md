@@ -10,6 +10,23 @@ plugin expects to find there. Types and field-by-field documentation are in
 > `fetchStepHtml()` exist but nothing calls the remote path (the `USE_REMOTE_CONTENT`
 > flag is declared, not read). Wiring it is the point of the academy POC.
 
+## Bundled content: logic and words (current)
+
+Every course ships inside the plugin, split in two:
+
+- **logic** — `src/utils/custom-utils/courseContent.ts`: the steps and their order, the
+  grade rules, what the plugin writes into a base. Written once, for every language.
+- **words** — `src/content/<courseId>/manifest.<lang>.json`: titles, bodies, captions,
+  hints and messages, keyed by step id. Every file has the shape of `manifest.en.json`
+  (see `courseTexts.ts`); a text missing from a language falls back to English. A
+  `{placeholder}` is filled from the logic (e.g. `{apiDeliveryReference}` in Course 4).
+
+The plugin picks the language SeaTable is displayed in. `npm run check-texts` compares
+each translation with English: unknown keys and changed placeholders are errors, missing
+texts are only counted (they show in English).
+
+The host layout below is the earlier, remote design, kept for if the team comes back to it.
+
 ## Layout on the host
 
 ```

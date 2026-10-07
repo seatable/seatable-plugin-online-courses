@@ -24,7 +24,8 @@
     "pull-translate": "tx pull -a -f && npm run translate",
     "build-plugin": "export GENERATE_SOURCEMAP=false && npm run clean && npm run format && npm run build && node scripts/build-plugin.js",
     "format": "prettier --write .",
-    "type-check": "tsc"
+    "type-check": "tsc",
+    "check-texts": "node scripts/check-course-texts.js"
   },
   "browserslist": {
     "production": [
