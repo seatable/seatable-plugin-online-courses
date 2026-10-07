@@ -1,1 +1,257 @@
-{}
+{
+  "action": {
+    "add_row_failed": "Não foi possível adicionar a linha a {table}.",
+    "adding_row": "A adicionar uma linha…",
+    "adding_short_line": "A adicionar uma linha entregue a menos…",
+    "clearing_extraction": "A remover o que a extração produziu…",
+    "create_row_failed": "não foi possível criar a linha em {table}",
+    "creating_delivery": "A criar uma entrega…",
+    "deleting_it": "A eliminar a linha…",
+    "editing_it": "A editar a linha…",
+    "labelling_document": "A registar a referência no documento…",
+    "looking_delivery": "A procurar a entrega…",
+    "removing_document": "A remover o documento…",
+    "removing_lines": "A remover as linhas da entrega…",
+    "stock_back": "A repor o stock…",
+    "table_not_found": "Tabela «{table}» não encontrada nesta base.",
+    "waiting_attach": "À espera de que a sua automação a ligue…",
+    "writing_correct_lines": "A escrever as linhas corretas…"
+  },
+  "automation": {
+    "a_link_missing": "falta uma ação de ligação",
+    "add_conditions": "adicione as duas condições: Product reference e Document reference não estão vazios",
+    "add_link_action": "adicione a ação «Add links» que liga {source} a {target}",
+    "conditions_required": "são necessárias as duas condições «não vazio» (Product reference e Document reference)",
+    "link_action_missing": "falta a ação de ligação",
+    "link_missing_for": "falta a ação «Add links» para {source} → {target}",
+    "no_new_rule": "ainda não há nenhuma regra de automação NOVA: adicione uma, dê-lhe um nome e guarde-a",
+    "no_rule": "ainda não há nenhuma regra de automação: adicione uma, dê-lhe um nome e guarde-a",
+    "read_failed": "não foi possível ler as automações",
+    "rule_gone": "a regra que criou desapareceu: crie-a de novo",
+    "wrong_table": "ainda não há nenhuma automação em «{table}»",
+    "wrong_table_pinned": "a sua regra ainda não é acionada em «{table}»",
+    "wrong_trigger": "o acionador não é «When a row is added»"
+  },
+  "colleague": {
+    "already_set": "{row} já é {values}: nada a alterar. Reponha primeiro o valor anterior e volte a executar.",
+    "base_bell_failed": "As notificações dela na base responderam {status}",
+    "base_token_failed": "Não foi possível obter um token de base para ela ({status}).",
+    "cannot_open": "Ela não consegue abrir esta base: verifique o token e se a base continua partilhada com ela.",
+    "checking_landed": "A verificar se a alteração dela chegou à base…",
+    "column_not_found": "Coluna «{column}» não encontrada em «{table}».",
+    "connect_failed": "Não foi possível ligar à base em nome dela: a alteração não foi feita. Tente de novo dentro de momentos.",
+    "making_change": "Ela está a fazer a alteração…",
+    "no_reason": "sem motivo indicado",
+    "no_row_where": "Nenhuma linha em que {column} seja {value}.",
+    "no_table_named": "Não existe nenhuma tabela chamada {table} nesta base.",
+    "no_token": "Ainda não há token da sua colega.",
+    "no_token_step2": "Ainda não há token da sua colega: o curso pede-o no passo 2.",
+    "not_flushed": "A alteração foi feita localmente, mas nunca chegou ao servidor. Verifique se o token dela é válido e se a ligação foi estabelecida.",
+    "not_landed": "A alteração dela foi enviada, mas não aparece na base. Nada mais foi feito: tente de novo.",
+    "opening_base": "A abrir a base em nome dela…",
+    "refused": "O SeaTable recusou a alteração dela: {reason}.",
+    "reply_refused": "A resposta dela foi recusada ({status}).",
+    "row_not_found": "Nenhuma linha em que {column} seja «{value}».",
+    "signing_in": "A iniciar sessão como a sua colega…",
+    "table_not_found": "Tabela «{table}» não encontrada na base que ela vê."
+  },
+  "colleague_setup": {
+    "checking": "A verificar…",
+    "is_this_her": "É mesmo a sua colega, e não a sua própria conta? Se se reconhecer aqui, o plugin agiria em seu nome durante o resto do curso.",
+    "no_name": "(sem nome)",
+    "placeholder": "Cole o token de conta da sua colega",
+    "rejected": "O SeaTable não aceitou esse token. Verifique se o copiou inteiro, a partir da página Personal settings da sua colega, e se corresponde a este servidor.",
+    "storage_note": "O token é guardado com o plugin, dentro desta base: continuará aqui da próxima vez, em qualquer computador. Qualquer pessoa com quem partilhe a base pode lê-lo, por isso esta segunda conta deve ser criada para o curso e não ser usada em mais lado nenhum.",
+    "stored_rejected": "O token guardado já não é aceite. Cole-o de novo.",
+    "use_another": "Usar outro token"
+  },
+  "colleague_window": {
+    "a_base": "(sem nome)",
+    "a_record": "(sem nome)",
+    "a_team": "um grupo",
+    "access_through_group": "A Malika já consegue abrir {base} através de um grupo. Retire-a desse grupo para seguir este passo: caso contrário, partilhar e retirar a partilha não muda nada para ela.",
+    "bell_failed": "Não foi possível ler as notificações dela.",
+    "bell_label": "Notificações da Malika",
+    "bell_label_unread": "Notificações da Malika, {count} por ler",
+    "caption_base": "O que a Malika vê na sua própria janela, nesta base",
+    "caption_home": "O que a Malika vê na sua própria página inicial",
+    "entry": {
+      "added_to_group": "{who} adicionou-a a {group}",
+      "comment": "Adicionado um novo comentário ao registo {row}.",
+      "shared_base": "{who} compartilhou uma base chamada {base} para você."
+    },
+    "no_access": "{base} não está partilhada com ela: ela não a consegue abrir, e o plugin não pode agir por ela nessa base enquanto não a partilhar de novo com ela.",
+    "permission_r": "Somente leitura",
+    "permission_rw": "Ler escrever",
+    "permission_unknown": "permissão desconhecida",
+    "refresh": "Atualizar",
+    "shared_failed": "Não foi possível ler as bases partilhadas com ela.",
+    "shared_with_permission": "{base} partilhada com a permissão {permission}",
+    "someone": "Alguém",
+    "token_missing": "O token dela falta ou já não é aceite: volte ao passo de configuração."
+  },
+  "controls": {
+    "back": "Voltar",
+    "checking": "A verificar…",
+    "close": "Fechar",
+    "drag": "Arraste para a deslocar",
+    "hide_hint": "Ocultar dica",
+    "hide_hint_toggle": "▾ Ocultar dica",
+    "hint": "Dica",
+    "reopen": "Reabrir o curso",
+    "show_hint_toggle": "▸ Mostrar dica",
+    "show_instruction": "Mostrar a instrução",
+    "shrink_toolbar": "Reduzir a uma barra de ferramentas móvel"
+  },
+  "course": {
+    "automation": {
+      "build": "Construir a automação",
+      "check_mine": "Verificar a minha automação",
+      "guide_me": "Guiar-me passo a passo",
+      "just_check": "Já a construí: verifique-a",
+      "next_stage": "Fase seguinte",
+      "stage_complete": "Fase concluída: passemos à seguinte."
+    },
+    "burst": {
+      "done": "✅ Feito: {count} alterações, ou seja, {count} pedidos para ler do outro lado.",
+      "failed": "Não foi possível fazer a alteração.",
+      "run": "Fazer uma alteração"
+    },
+    "check": "Verificar",
+    "colleague": {
+      "configured": "A sua colega está configurada.",
+      "edit": "Deixar a colega editar",
+      "failed": "Não foi possível fazer a alteração em nome da colega.",
+      "replying": "A Malika está a responder…",
+      "side_writes": "A Malika atualiza mais alguns clientes…",
+      "written": "✅ Escrito na linha {row}. Abra agora o registo da base e leia a entrada: indica a linha, está assinada por ela e o menu propõe Restore?"
+    },
+    "feedback": {
+      "fail": "❌ Ainda não: {reason}.",
+      "missing": "⚠️ Não foi possível encontrar {what} na base. Verifique se a base corresponde ao exercício.",
+      "pass_default": "Muito bem, conseguiu!"
+    },
+    "handoff_default": "O passo seguinte continua no site ↩",
+    "intro": {
+      "external": "📌 Este curso ainda não é suportado pelo plugin, mas pode segui-lo em {link}.",
+      "soon": "🚧 Em breve."
+    },
+    "introduction": "Introdução",
+    "lines": {
+      "attached": "✅ {written}, e {reference} registado no seu documento para que a sua regra as possa ligar.",
+      "failed": "Não foi possível escrever as linhas.",
+      "fix": "Corrigir as linhas",
+      "no_document": "⚠️ {written}, mas nenhum documento tem {reference}, por isso a sua regra não tem a que as ligar. Crie primeiro a guia de remessa e volte a escrever as linhas.",
+      "write": "Escrever as linhas",
+      "written_one": "{count} linha escrita",
+      "written_other": "{count} linhas escritas",
+      "written_replacing_one": "{count} linha escrita, em vez das {removed} produzidas pela extração",
+      "written_replacing_other": "{count} linhas escritas, em vez das {removed} produzidas pela extração"
+    },
+    "list_and": " e ",
+    "loading": "A carregar…",
+    "next": "Seguinte",
+    "open_table_first": "Abra primeiro «{table}»",
+    "open_view_first": "Abra primeiro a vista «{view}»",
+    "page_load_failed": "⚠️ Não foi possível carregar esta página.",
+    "preparing": "A preparar…",
+    "rewind": {
+      "again": "Rebobinar de novo",
+      "done_one": "✅ {count} linha e o documento removidos. Agora receba a entrega de novo a partir da aplicação.",
+      "done_other": "✅ {count} linhas e o documento removidos. Agora receba a entrega de novo a partir da aplicação.",
+      "done_stock_one": "✅ {count} linha e o documento removidos, stock reposto. Agora receba a entrega de novo a partir da aplicação.",
+      "done_stock_other": "✅ {count} linhas e o documento removidos, stock reposto. Agora receba a entrega de novo a partir da aplicação.",
+      "failed": "Não foi possível rebobinar a entrega.",
+      "nothing": "✅ Nada mais a remover: essa entrega já não está na sua base. Receba-a de novo a partir da aplicação.",
+      "run": "Rebobinar a entrega"
+    },
+    "rewinding": "A rebobinar…",
+    "seed": {
+      "failed": "Não foi possível preparar a entrega.",
+      "not_linked": "⚠️ A entrega está lá, mas a linha ainda não está ligada: verifique a automação que construiu no passo 2 e execute a sua regra.",
+      "note_ready": "✅ A guia de remessa está na sua base, sem linhas e sem ficheiro. Envie uma a partir do explorador da API e depois verifique.",
+      "prepare": "Preparar a entrega",
+      "short_ready": "✅ Há uma entrega incompleta à sua espera. Execute a sua regra e depois verifique."
+    },
+    "start_over": "Recomeçar",
+    "verify": "Verificar",
+    "watch": {
+      "add_lines": "Adicionar as linhas da entrega",
+      "added": "{count} linhas adicionadas. À espera da sua automação…",
+      "failed": "Não foi possível adicionar as linhas da entrega.",
+      "linked": "✅ {columns} preenchidos nas {count} linhas.",
+      "look_again": "Ver de novo",
+      "not_found": "As novas linhas não foram encontradas depois de escritas.",
+      "stalled": "⏳ {linked}/{total} linhas ligadas: {missing} ainda vazio(s). Uma automação pode demorar um pouco; espere alguns segundos e veja de novo. Se continuar vazio, verifique as condições da sua regra e as ações Add links.",
+      "waiting": "À espera da sua automação… {linked}/{total} linhas ligadas.",
+      "writing": "A escrever as linhas da entrega…",
+      "wrong_table": "Está em «{current}». Abra a tabela «{table}» para ver as linhas chegarem e depois adicione-as."
+    },
+    "working": "Em curso…",
+    "writing": "A escrever…",
+    "wrong_table": "Está em «{current}». Abra primeiro «{table}»; caso contrário, não verá o que acontece.",
+    "wrong_view": "Abra primeiro a vista «{view}» de «{table}»: nesta, a alteração acontece fora do ecrã e não a veria."
+  },
+  "courses": {
+    "checkpoints_caption": "Pontos de verificação do plugin: siga o resto do curso no site",
+    "collapse": "Recolher o curso",
+    "done": "concluído",
+    "exercise": "exercício",
+    "exercise_title": "Exercício: o painel reduz-se para que possa trabalhar na sua base",
+    "expand": "Expandir o curso",
+    "shrink_icon": "Reduzir a um ícone móvel"
+  },
+  "grade": {
+    "checkbox_mismatch": "{table} · {column} está {actual}; era esperado: {expected}",
+    "checked": "marcado",
+    "empty": "(vazio)",
+    "no_matching_row": "nenhuma linha correspondente",
+    "rows": {
+      "none": "nenhuma {noun} em {table}: eram esperadas {min}",
+      "not_linked": "{count} {noun} em {table}, mas {columns} ainda sem ligação",
+      "only": "apenas {count} {noun} em {table}: eram esperadas {min}"
+    },
+    "rows_noun": "linha(s) com {column} «{value}»",
+    "unchecked": "desmarcado",
+    "value_mismatch": "{table} · {column} é «{actual}»; era esperado «{expected}»",
+    "what": {
+      "column": "a coluna «{column}» em «{table}»",
+      "row": "a linha «{row}» em «{table}»",
+      "table": "a tabela «{table}»"
+    }
+  },
+  "oplog": {
+    "no_row_matching": "nenhuma linha de {table} tem {column} = {value}",
+    "no_rows": "a tabela {table} não tem linhas",
+    "not_from_api": "a {noun} está lá, mas não chegou através da API",
+    "not_set_by_automation": "nenhuma automação preencheu ainda {column} numa linha correspondente de {table}",
+    "prepared_row_gone": "a linha de {table} preparada para este exercício desapareceu",
+    "read_failed": "não foi possível ler o registo de atividade",
+    "row_noun": "linha"
+  },
+  "seatable_ui": {
+    "add_base_or_folder": "Adicione uma base ou pasta",
+    "apps": "Aplicativas",
+    "bases": "Bases",
+    "general": "Em geral({count})",
+    "my_bases": "Minhas bases",
+    "no_notifications": "Nenhuma notificação",
+    "notification": "Notificação",
+    "shared_with_me": "Compartilhou comigo"
+  },
+  "time": {
+    "days_one": "há {count} dia",
+    "days_other": "há {count} dias",
+    "hours_one": "há {count} hora",
+    "hours_other": "há {count} horas",
+    "just_now": "agora mesmo",
+    "minutes_one": "há {count} minuto",
+    "minutes_other": "há {count} minutos"
+  },
+  "ui_check": {
+    "lower_right": "arraste a barra de ferramentas para o quarto inferior direito do ecrã",
+    "read_failed": "não foi possível ler a janela do plugin",
+    "resize": "arraste primeiro a pega no topo, ao centro do painel, para cima ou para baixo",
+    "shrink": "reduza primeiro o plugin a barra de ferramentas (o ícone de reduzir, no canto superior direito)"
+  }
+}

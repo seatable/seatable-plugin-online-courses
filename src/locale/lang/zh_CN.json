@@ -1,1 +1,258 @@
-{}
+{
+  "action": {
+    "add_row_failed": "无法向 {table} 添加行。",
+    "adding_row": "正在添加一行…",
+    "adding_short_line": "正在添加一条少交货的行…",
+    "clearing_extraction": "正在清除提取结果…",
+    "create_row_failed": "无法在 {table} 中创建行",
+    "creating_delivery": "正在创建一次交货…",
+    "deleting_it": "正在删除该行…",
+    "editing_it": "正在修改该行…",
+    "labelling_document": "正在把编号写入单据…",
+    "looking_delivery": "正在查找这次交货…",
+    "removing_document": "正在删除单据…",
+    "removing_lines": "正在删除交货明细行…",
+    "stock_back": "正在恢复库存…",
+    "table_not_found": "在此表格中找不到子表“{table}”。",
+    "waiting_attach": "正在等待你的自动化规则把它链接上…",
+    "writing_correct_lines": "正在写入正确的行…"
+  },
+  "automation": {
+    "a_link_missing": "缺少一个链接动作",
+    "add_conditions": "请添加两个条件：Product reference 和 Document reference 不为空",
+    "add_link_action": "请添加把 {source} 链接到 {target} 的“Add links”动作",
+    "conditions_required": "需要两个“不为空”条件（Product reference 和 Document reference）",
+    "link_action_missing": "缺少链接动作",
+    "link_missing_for": "缺少 {source} → {target} 的“Add links”动作",
+    "no_new_rule": "还没有新的自动化规则——请添加一条、命名并保存",
+    "no_rule": "还没有自动化规则——请添加一条、命名并保存",
+    "read_failed": "无法读取自动化规则",
+    "rule_gone": "你创建的规则不见了——请重新创建",
+    "wrong_table": "“{table}”上还没有自动化规则",
+    "wrong_table_pinned": "你的规则还没有在“{table}”上触发",
+    "wrong_trigger": "触发条件不是“When a row is added”"
+  },
+  "colleague": {
+    "already_set": "{row} 已经是 {values}——无需修改。请先恢复原来的值，再重新运行。",
+    "base_bell_failed": "她在表格内的通知返回了 {status}",
+    "base_token_failed": "无法为她获取表格令牌（{status}）。",
+    "cannot_open": "她无法打开此表格——请检查令牌，以及表格是否仍共享给她。",
+    "checking_landed": "正在确认她的修改已到达表格…",
+    "column_not_found": "在“{table}”中找不到列“{column}”。",
+    "connect_failed": "无法以她的身份连接表格——她的修改未完成。请稍后再试。",
+    "making_change": "她正在进行修改…",
+    "no_reason": "未说明原因",
+    "no_row_where": "没有 {column} 为 {value} 的行。",
+    "no_table_named": "此表格中没有名为 {table} 的子表。",
+    "no_token": "还没有同事的令牌。",
+    "no_token_step2": "还没有同事的令牌——课程会在第 2 步要求你提供。",
+    "not_flushed": "修改已在本地完成，但从未到达服务器。请检查她的令牌是否有效、连接是否已建立。",
+    "not_landed": "她的修改已发送，但没有出现在表格中。没有做其他任何操作——请重试。",
+    "opening_base": "正在以她的身份打开表格…",
+    "refused": "SeaTable 拒绝了她的修改：{reason}。",
+    "reply_refused": "她的回复被拒绝（{status}）。",
+    "row_not_found": "没有 {column} 为“{value}”的行。",
+    "signing_in": "正在以你同事的身份登录…",
+    "table_not_found": "在她看到的表格中找不到子表“{table}”。"
+  },
+  "colleague_setup": {
+    "checking": "正在检查…",
+    "is_this_her": "这确实是你的同事，而不是你自己吗？如果你在这里看到的是自己，插件在本课程余下部分将以你本人的名义操作。",
+    "no_name": "（无名称）",
+    "placeholder": "粘贴你同事的账户令牌",
+    "rejected": "SeaTable 没有接受这个令牌。请确认你从同事的 Personal settings 页面完整复制了它，并且它属于此服务器。",
+    "storage_note": "令牌随插件保存在此表格中——下次在任何电脑上都还在。任何与你共享此表格的人都能在这里读到它，所以这个第二个账户应专为本课程创建，不要在别处使用。",
+    "stored_rejected": "已保存的令牌不再被接受。请重新粘贴。",
+    "use_another": "使用其他令牌"
+  },
+  "colleague_window": {
+    "a_base": "（无名称）",
+    "a_record": "（无名称）",
+    "a_team": "一个群组",
+    "access_through_group": "Malika 已经可以通过某个群组打开 {base}。请把她从该群组移出再进行这一步：否则共享和取消共享对她都没有影响。",
+    "bell_failed": "无法读取她的通知。",
+    "bell_label": "Malika 的通知",
+    "bell_label_unread": "Malika 的通知，{count} 条未读",
+    "caption_base": "Malika 在此表格中自己的窗口里看到的内容",
+    "caption_home": "Malika 在她自己的首页上看到的内容",
+    "entry": {
+      "added_to_group": "{who} 把你添加到了 {group}",
+      "comment": "为记录 {row} 添加了一条新评论。",
+      "shared_base": "{who} 给你共享了 {base} 表。"
+    },
+    "no_access": "{base} 没有共享给她，所以她无法打开——在你重新共享给她之前，插件也无法在其中代她操作。",
+    "permission_r": "只读",
+    "permission_rw": "读写",
+    "permission_unknown": "未知权限",
+    "refresh": "刷新",
+    "shared_failed": "无法读取共享给她的表格。",
+    "shared_with_permission": "{base} 以 {permission} 权限共享",
+    "someone": "某人",
+    "token_missing": "她的令牌缺失或不再被接受——请返回设置步骤。"
+  },
+  "controls": {
+    "back": "上一步",
+    "checking": "正在检查…",
+    "close": "关闭",
+    "drag": "拖动以移动",
+    "hide_hint": "隐藏提示",
+    "hide_hint_toggle": "▾ 隐藏提示",
+    "hint": "提示",
+    "reopen": "重新打开课程",
+    "show_hint_toggle": "▸ 显示提示",
+    "show_instruction": "显示说明",
+    "shrink_toolbar": "缩小为可移动的工具栏"
+  },
+  "course": {
+    "automation": {
+      "build": "创建自动化规则",
+      "check_mine": "检查我的自动化规则",
+      "guide_me": "一步一步引导我",
+      "just_check": "我已经建好了——直接检查",
+      "next_stage": "下一阶段",
+      "stage_complete": "本阶段完成——进入下一阶段。"
+    },
+    "burst": {
+      "done": "✅ 完成——{count} 次修改，所以另一端有 {count} 个请求可以查看。",
+      "failed": "无法进行修改。",
+      "run": "进行一次修改"
+    },
+    "check": "检查",
+    "colleague": {
+      "configured": "你的同事已设置好。",
+      "edit": "让同事修改",
+      "failed": "无法以同事的身份进行修改。",
+      "replying": "Malika 正在回复…",
+      "side_writes": "Malika 正在更新其他几位客户…",
+      "written": "✅ 已写入第 {row} 行。现在打开表格日志并查看这条记录：它是否写明了行、是否由她署名、菜单里是否有 Restore？"
+    },
+    "feedback": {
+      "fail": "❌ 还没有——{reason}。",
+      "missing": "⚠️ 在表格中找不到{what}。请确认表格与练习一致。",
+      "pass_default": "做得好，完成了！"
+    },
+    "handoff_default": "下一步请回到网站继续 ↩",
+    "intro": {
+      "external": "📌 插件暂不支持本课程，但你可以在 {link} 学习。",
+      "soon": "🚧 即将推出。"
+    },
+    "introduction": "简介",
+    "lines": {
+      "attached": "✅ {written}，并已把 {reference} 写入你的单据，以便你的规则把它们链接上。",
+      "failed": "无法写入这些行。",
+      "fix": "修正这些行",
+      "no_document": "⚠️ {written}——但没有任何单据带有 {reference}，你的规则无法把它们链接到任何东西。请先创建送货单，再重新写入这些行。",
+      "write": "写入这些行",
+      "written_one": "已写入 {count} 行",
+      "written_other": "已写入 {count} 行",
+      "written_replacing_one": "已写入 {count} 行，替换了提取生成的 {removed} 行",
+      "written_replacing_other": "已写入 {count} 行，替换了提取生成的 {removed} 行"
+    },
+    "list_and": "和",
+    "loading": "加载中…",
+    "next": "下一步",
+    "open_table_first": "请先打开“{table}”",
+    "open_view_first": "请先打开视图“{view}”",
+    "page_load_failed": "⚠️ 无法加载此页面。",
+    "preparing": "正在准备…",
+    "rewind": {
+      "again": "再次回退",
+      "done_one": "✅ 已删除 {count} 行和单据。现在请通过应用重新接收这次交货。",
+      "done_other": "✅ 已删除 {count} 行和单据。现在请通过应用重新接收这次交货。",
+      "done_stock_one": "✅ 已删除 {count} 行和单据，库存已恢复。现在请通过应用重新接收这次交货。",
+      "done_stock_other": "✅ 已删除 {count} 行和单据，库存已恢复。现在请通过应用重新接收这次交货。",
+      "failed": "无法回退这次交货。",
+      "nothing": "✅ 没有需要删除的了——这次交货已经不在你的表格中。请通过应用重新接收。",
+      "run": "回退这次交货"
+    },
+    "rewinding": "正在回退…",
+    "seed": {
+      "failed": "无法准备这次交货。",
+      "not_linked": "⚠️ 交货已在，但其明细行还没有被链接——请检查你在第 2 步创建的自动化规则，然后运行你的规则。",
+      "note_ready": "✅ 送货单已在你的表格中，没有明细行，也没有文件。请从 API 浏览器推送一行，然后检查。",
+      "prepare": "准备这次交货",
+      "short_ready": "✅ 一次少交货的交货在等着你。运行你的规则，然后检查。"
+    },
+    "start_over": "重新开始",
+    "verify": "检查",
+    "watch": {
+      "add_lines": "添加交货明细行",
+      "added": "已添加 {count} 行。正在等待你的自动化规则…",
+      "failed": "无法添加交货明细行。",
+      "linked": "✅ 全部 {count} 行的 {columns} 都已填好。",
+      "look_again": "再看一次",
+      "not_found": "写入后找不到新的行。",
+      "stalled": "⏳ 已链接 {linked}/{total} 行——{missing} 仍为空。自动化规则可能需要一点时间；请稍等几秒再看。如果仍为空，请检查规则的条件和它的 Add links 动作。",
+      "waiting": "正在等待你的自动化规则… 已链接 {linked}/{total} 行。",
+      "writing": "正在写入交货明细行…",
+      "wrong_table": "你当前在“{current}”。请打开子表“{table}”，看着这些行出现——然后再添加。"
+    },
+    "working": "处理中…",
+    "writing": "正在写入…",
+    "wrong_table": "你当前在“{current}”。请先打开“{table}”，否则你会错过发生的变化。",
+    "wrong_view": "请先打开“{table}”的视图“{view}”——在当前视图中，变化发生在屏幕之外，你会看不到。"
+  },
+  "courses": {
+    "checkpoints_caption": "插件检查点——课程其余部分请在网站上学习",
+    "collapse": "收起课程",
+    "done": "已完成",
+    "exercise": "练习",
+    "exercise_title": "练习——面板会缩小，方便你在表格中操作",
+    "expand": "展开课程",
+    "shrink_icon": "缩小为可移动的图标"
+  },
+  "grade": {
+    "checkbox_mismatch": "{table} · {column} 为{actual}，应为{expected}",
+    "checked": "已勾选",
+    "empty": "（空）",
+    "no_matching_row": "没有匹配的行",
+    "rows": {
+      "none": "{table} 中没有{noun}——应有 {min} 条",
+      "not_linked": "{table} 中有 {count} 条{noun}，但 {columns} 尚未链接",
+      "only": "{table} 中只有 {count} 条{noun}——应有 {min} 条"
+    },
+    "rows_noun": "{column} 为“{value}”的行",
+    "unchecked": "未勾选",
+    "value_mismatch": "{table} · {column} 为“{actual}”，应为“{expected}”",
+    "what": {
+      "column": "“{table}”中的列“{column}”",
+      "row": "“{table}”中的行“{row}”",
+      "table": "子表“{table}”"
+    }
+  },
+  "oplog": {
+    "no_row_matching": "{table} 中没有 {column} = {value} 的行",
+    "no_rows": "子表 {table} 中没有行",
+    "not_from_api": "{noun}已经在了，但不是通过 API 进来的",
+    "not_set_by_automation": "还没有自动化规则在 {table} 的匹配行中设置 {column}",
+    "prepared_row_gone": "为本练习准备的 {table} 行不见了",
+    "read_failed": "无法读取活动日志",
+    "row_noun": "行"
+  },
+  "seatable_ui": {
+    "add_base_or_folder": "添加表格或文件夹",
+    "add_folder": "增加文件夹",
+    "apps": "应用",
+    "bases": "表格",
+    "general": "通用({count})",
+    "my_bases": "我的表格",
+    "no_notifications": "没有通知",
+    "notification": "通知",
+    "shared_with_me": "共享给我的"
+  },
+  "time": {
+    "days_one": "{count} 天前",
+    "days_other": "{count} 天前",
+    "hours_one": "{count} 小时前",
+    "hours_other": "{count} 小时前",
+    "just_now": "刚刚",
+    "minutes_one": "{count} 分钟前",
+    "minutes_other": "{count} 分钟前"
+  },
+  "ui_check": {
+    "lower_right": "把工具栏拖到屏幕右下四分之一处",
+    "read_failed": "无法读取插件窗口",
+    "resize": "请先上下拖动面板顶部中间的把手",
+    "shrink": "请先把插件缩小为工具栏（右上角的缩小图标）"
+  }
+}

@@ -1,1 +1,258 @@
-{}
+{
+  "action": {
+    "add_row_failed": "Die Zeile konnte nicht zu {table} hinzugefügt werden.",
+    "adding_row": "Zeile wird hinzugefügt…",
+    "adding_short_line": "Eine unvollständig gelieferte Zeile wird hinzugefügt…",
+    "clearing_extraction": "Das Ergebnis der Extraktion wird entfernt…",
+    "create_row_failed": "die Zeile in {table} konnte nicht angelegt werden",
+    "creating_delivery": "Lieferung wird angelegt…",
+    "deleting_it": "Zeile wird gelöscht…",
+    "editing_it": "Zeile wird bearbeitet…",
+    "labelling_document": "Referenz des Dokuments wird eingetragen…",
+    "looking_delivery": "Lieferung wird gesucht…",
+    "removing_document": "Dokument wird entfernt…",
+    "removing_lines": "Lieferzeilen werden entfernt…",
+    "stock_back": "Bestand wird zurückgesetzt…",
+    "table_not_found": "Tabelle „{table}“ in dieser Base nicht gefunden.",
+    "waiting_attach": "Warten, bis Ihre Automation sie verknüpft…",
+    "writing_correct_lines": "Die richtigen Zeilen werden geschrieben…"
+  },
+  "automation": {
+    "a_link_missing": "eine Verknüpfungsaktion fehlt",
+    "add_conditions": "fügen Sie beide Bedingungen hinzu: Product reference und Document reference sind nicht leer",
+    "add_link_action": "fügen Sie die Aktion „Add links“ hinzu, die {source} mit {target} verknüpft",
+    "conditions_required": "beide Nicht-leer-Bedingungen (Product reference und Document reference) sind erforderlich",
+    "link_action_missing": "die Verknüpfungsaktion fehlt",
+    "link_missing_for": "die Aktion „Add links“ für {source} → {target} fehlt",
+    "no_new_rule": "noch keine NEUE Automationsregel – legen Sie eine an, benennen Sie sie und speichern Sie sie",
+    "no_rule": "noch keine Automationsregel – legen Sie eine an, benennen Sie sie und speichern Sie sie",
+    "read_failed": "die Automationen konnten nicht gelesen werden",
+    "rule_gone": "die von Ihnen angelegte Regel ist verschwunden – legen Sie sie erneut an",
+    "wrong_table": "noch keine Automation auf „{table}“",
+    "wrong_table_pinned": "Ihre Regel löst noch nicht auf „{table}“ aus",
+    "wrong_trigger": "der Auslöser ist nicht „When a row is added“"
+  },
+  "colleague": {
+    "already_set": "{row} ist bereits {values} – nichts zu ändern. Setzen Sie zuerst den alten Wert zurück und starten Sie dann erneut.",
+    "base_bell_failed": "Ihre Benachrichtigungen in der Base antworteten mit {status}",
+    "base_token_failed": "Für sie konnte kein Base-Token abgerufen werden ({status}).",
+    "cannot_open": "Sie kann diese Base nicht öffnen – prüfen Sie das Token und ob die Base noch für sie freigegeben ist.",
+    "checking_landed": "Es wird geprüft, ob ihre Änderung in der Base angekommen ist…",
+    "column_not_found": "Spalte „{column}“ in „{table}“ nicht gefunden.",
+    "connect_failed": "Verbindung zur Base in ihrem Namen fehlgeschlagen – ihre Änderung wurde nicht vorgenommen. Versuchen Sie es gleich noch einmal.",
+    "making_change": "Sie nimmt ihre Änderung vor…",
+    "no_reason": "kein Grund angegeben",
+    "no_row_where": "Keine Zeile, in der {column} {value} ist.",
+    "no_table_named": "Keine Tabelle namens {table} in dieser Base.",
+    "no_token": "Noch kein Token Ihrer Kollegin.",
+    "no_token_step2": "Noch kein Token Ihrer Kollegin – der Kurs fragt in Schritt 2 danach.",
+    "not_flushed": "Die Änderung wurde lokal vorgenommen, hat den Server aber nie erreicht. Prüfen Sie, ob ihr Token gültig ist und die Verbindung hergestellt wurde.",
+    "not_landed": "Ihre Änderung wurde gesendet, erscheint aber nicht in der Base. Sonst wurde nichts verändert – versuchen Sie es erneut.",
+    "opening_base": "Die Base wird in ihrem Namen geöffnet…",
+    "refused": "SeaTable hat ihre Änderung abgelehnt: {reason}.",
+    "reply_refused": "Ihre Antwort wurde abgelehnt ({status}).",
+    "row_not_found": "Keine Zeile, in der {column} „{value}“ ist.",
+    "signing_in": "Anmeldung als Ihre Kollegin…",
+    "table_not_found": "Tabelle „{table}“ in der Base, die sie sieht, nicht gefunden."
+  },
+  "colleague_setup": {
+    "checking": "Wird geprüft…",
+    "is_this_her": "Ist das Ihre Kollegin und nicht Sie selbst? Wenn Sie sich hier wiedererkennen, würde das Plugin für den Rest des Kurses in Ihrem eigenen Namen handeln.",
+    "no_name": "(ohne Namen)",
+    "placeholder": "Account-Token Ihrer Kollegin einfügen",
+    "rejected": "SeaTable hat dieses Token nicht akzeptiert. Prüfen Sie, ob Sie es vollständig von der Seite Personal settings Ihrer Kollegin kopiert haben und ob es zu diesem Server gehört.",
+    "storage_note": "Das Token wird mit dem Plugin in dieser Base gespeichert – es ist also beim nächsten Mal noch da, auf jedem Rechner. Jede Person, für die Sie die Base freigeben, kann es dort lesen. Deshalb sollte dieser zweite Account nur für den Kurs angelegt und nirgendwo sonst verwendet werden.",
+    "stored_rejected": "Das gespeicherte Token wird nicht mehr akzeptiert. Fügen Sie es erneut ein.",
+    "use_another": "Anderes Token verwenden"
+  },
+  "colleague_window": {
+    "a_base": "(ohne Namen)",
+    "a_record": "(ohne Namen)",
+    "a_team": "einer Gruppe",
+    "access_through_group": "Malika kann {base} bereits über eine Gruppe öffnen. Entfernen Sie sie aus dieser Gruppe, um diesem Schritt zu folgen – sonst ändern Freigeben und Entziehen für sie nichts.",
+    "bell_failed": "Ihre Benachrichtigungen konnten nicht gelesen werden.",
+    "bell_label": "Malikas Benachrichtigungen",
+    "bell_label_unread": "Malikas Benachrichtigungen, {count} ungelesen",
+    "caption_base": "Was Malika in ihrem eigenen Fenster in dieser Base sieht",
+    "caption_home": "Was Malika auf ihrer eigenen Startseite sieht",
+    "entry": {
+      "added_to_group": "{who} hat Sie zu {group} hinzugefügt",
+      "comment": "Ein neuer Kommentar wurde in Zeile {row} hinzugefügt.",
+      "shared_base": "Der Benutzer {who} hat die Base {base} mit Ihnen geteilt."
+    },
+    "no_access": "{base} ist nicht für sie freigegeben: Sie kann die Base nicht öffnen – und das Plugin kann dort nicht für sie handeln, bis Sie die Base wieder für sie freigeben.",
+    "permission_r": "Nur Lesen",
+    "permission_rw": "Lesen und Schreiben",
+    "permission_unknown": "unbekannte Berechtigung",
+    "refresh": "Aktualisieren",
+    "shared_failed": "Die für sie freigegebenen Bases konnten nicht gelesen werden.",
+    "shared_with_permission": "{base} freigegeben mit der Berechtigung {permission}",
+    "someone": "Jemand",
+    "token_missing": "Ihr Token fehlt oder wird nicht mehr akzeptiert – gehen Sie zurück zum Einrichtungsschritt."
+  },
+  "controls": {
+    "back": "Zurück",
+    "checking": "Wird geprüft…",
+    "close": "Schließen",
+    "drag": "Zum Verschieben ziehen",
+    "hide_hint": "Hinweis ausblenden",
+    "hide_hint_toggle": "▾ Hinweis ausblenden",
+    "hint": "Hinweis",
+    "reopen": "Kurs wieder öffnen",
+    "show_hint_toggle": "▸ Hinweis anzeigen",
+    "show_instruction": "Anweisung anzeigen",
+    "shrink_toolbar": "Zu einer verschiebbaren Werkzeugleiste verkleinern"
+  },
+  "course": {
+    "automation": {
+      "build": "Automation erstellen",
+      "check_mine": "Meine Automation prüfen",
+      "guide_me": "Schritt für Schritt anleiten",
+      "just_check": "Schon erstellt – bitte prüfen",
+      "next_stage": "Nächster Teil",
+      "stage_complete": "Teil erledigt – weiter zum nächsten."
+    },
+    "burst": {
+      "done": "✅ Erledigt – {count} Änderungen, also {count} Anfragen, die Sie am anderen Ende lesen können.",
+      "failed": "Die Änderung konnte nicht vorgenommen werden.",
+      "run": "Eine Änderung vornehmen"
+    },
+    "check": "Prüfen",
+    "colleague": {
+      "configured": "Ihre Kollegin ist eingerichtet.",
+      "edit": "Die Kollegin bearbeiten lassen",
+      "failed": "Die Änderung konnte nicht im Namen der Kollegin vorgenommen werden.",
+      "replying": "Malika antwortet…",
+      "side_writes": "Malika aktualisiert ein paar weitere Kunden…",
+      "written": "✅ In Zeile {row} geschrieben. Öffnen Sie jetzt das Base-Log und lesen Sie den Eintrag: Nennt er die Zeile, ist er von ihr signiert, und bietet sein Menü Restore an?"
+    },
+    "feedback": {
+      "fail": "❌ Noch nicht – {reason}.",
+      "missing": "⚠️ {what} wurde in der Base nicht gefunden. Prüfen Sie, ob die Base zur Übung passt.",
+      "pass_default": "Gut gemacht – geschafft."
+    },
+    "handoff_default": "Der nächste Schritt geht auf der Website weiter ↩",
+    "intro": {
+      "external": "📌 Dieser Kurs wird vom Plugin derzeit nicht unterstützt, Sie können ihn aber auf {link} absolvieren.",
+      "soon": "🚧 Demnächst verfügbar."
+    },
+    "introduction": "Einführung",
+    "lines": {
+      "attached": "✅ {written}, und {reference} wurde in Ihr Dokument eingetragen, damit Ihre Regel sie verknüpfen kann.",
+      "failed": "Die Zeilen konnten nicht geschrieben werden.",
+      "fix": "Zeilen korrigieren",
+      "no_document": "⚠️ {written} – aber kein Dokument trägt {reference}, Ihre Regel kann sie also mit nichts verknüpfen. Legen Sie zuerst den Lieferschein an und schreiben Sie die Zeilen dann erneut.",
+      "write": "Zeilen schreiben",
+      "written_one": "{count} Zeile geschrieben",
+      "written_other": "{count} Zeilen geschrieben",
+      "written_replacing_one": "{count} Zeile geschrieben, anstelle der {removed} aus der Extraktion",
+      "written_replacing_other": "{count} Zeilen geschrieben, anstelle der {removed} aus der Extraktion"
+    },
+    "list_and": " und ",
+    "loading": "Wird geladen…",
+    "next": "Weiter",
+    "open_table_first": "Öffnen Sie zuerst „{table}“",
+    "open_view_first": "Öffnen Sie zuerst die Ansicht „{view}“",
+    "page_load_failed": "⚠️ Diese Seite konnte nicht geladen werden.",
+    "preparing": "Wird vorbereitet…",
+    "rewind": {
+      "again": "Erneut zurücksetzen",
+      "done_one": "✅ {count} Zeile und das Dokument entfernt. Erfassen Sie die Lieferung jetzt erneut über die App.",
+      "done_other": "✅ {count} Zeilen und das Dokument entfernt. Erfassen Sie die Lieferung jetzt erneut über die App.",
+      "done_stock_one": "✅ {count} Zeile und das Dokument entfernt, Bestand zurückgesetzt. Erfassen Sie die Lieferung jetzt erneut über die App.",
+      "done_stock_other": "✅ {count} Zeilen und das Dokument entfernt, Bestand zurückgesetzt. Erfassen Sie die Lieferung jetzt erneut über die App.",
+      "failed": "Die Lieferung konnte nicht zurückgesetzt werden.",
+      "nothing": "✅ Nichts mehr zu entfernen – diese Lieferung ist schon nicht mehr in Ihrer Base. Erfassen Sie sie erneut über die App.",
+      "run": "Lieferung zurücksetzen"
+    },
+    "rewinding": "Wird zurückgesetzt…",
+    "seed": {
+      "failed": "Die Lieferung konnte nicht vorbereitet werden.",
+      "not_linked": "⚠️ Die Lieferung ist da, aber ihre Zeile ist noch nicht verknüpft – prüfen Sie die Automation aus Schritt 2 und führen Sie dann Ihre Regel aus.",
+      "note_ready": "✅ Der Lieferschein ist in Ihrer Base, ohne Zeilen und ohne Datei. Senden Sie eine Zeile über den API-Explorer und prüfen Sie dann.",
+      "prepare": "Lieferung vorbereiten",
+      "short_ready": "✅ Eine unvollständige Lieferung wartet. Führen Sie Ihre Regel aus und prüfen Sie dann."
+    },
+    "start_over": "Neu beginnen",
+    "verify": "Prüfen",
+    "watch": {
+      "add_lines": "Lieferzeilen hinzufügen",
+      "added": "{count} Zeilen hinzugefügt. Warten auf Ihre Automation…",
+      "failed": "Die Lieferzeilen konnten nicht hinzugefügt werden.",
+      "linked": "✅ {columns} in allen {count} Zeilen ausgefüllt.",
+      "look_again": "Erneut nachsehen",
+      "not_found": "Die neuen Zeilen wurden nach dem Schreiben nicht gefunden.",
+      "stalled": "⏳ {linked}/{total} Zeilen verknüpft – {missing} noch leer. Automationen brauchen manchmal einen Moment; warten Sie ein paar Sekunden und sehen Sie erneut nach. Bleibt es leer, prüfen Sie die Bedingungen Ihrer Regel und ihre Aktionen Add links.",
+      "waiting": "Warten auf Ihre Automation… {linked}/{total} Zeilen verknüpft.",
+      "writing": "Lieferzeilen werden geschrieben…",
+      "wrong_table": "Sie sind in „{current}“. Öffnen Sie die Tabelle „{table}“, um zu sehen, wie die Zeilen ankommen – und fügen Sie sie dann hinzu."
+    },
+    "working": "Wird ausgeführt…",
+    "writing": "Wird geschrieben…",
+    "wrong_table": "Sie sind in „{current}“. Öffnen Sie zuerst „{table}“, sonst verpassen Sie, was passiert.",
+    "wrong_view": "Öffnen Sie zuerst die Ansicht „{view}“ von „{table}“ – in dieser hier passiert die Änderung außerhalb des sichtbaren Bereichs."
+  },
+  "courses": {
+    "checkpoints_caption": "Prüfpunkte im Plugin – der Rest des Kurses findet auf der Website statt",
+    "collapse": "Kurs einklappen",
+    "done": "erledigt",
+    "exercise": "Übung",
+    "exercise_title": "Übung – das Panel wird verkleinert, damit Sie in Ihrer Base arbeiten können",
+    "expand": "Kurs ausklappen",
+    "shrink_icon": "Zu einem verschiebbaren Symbol verkleinern"
+  },
+  "grade": {
+    "checkbox_mismatch": "{table} · {column} ist {actual}, erwartet: {expected}",
+    "checked": "angehakt",
+    "empty": "(leer)",
+    "no_matching_row": "keine passende Zeile",
+    "rows": {
+      "none": "keine {noun} in {table} – {min} erwartet",
+      "not_linked": "{count} {noun} in {table}, aber {columns} noch nicht verknüpft",
+      "only": "nur {count} {noun} in {table} – {min} erwartet"
+    },
+    "rows_noun": "Zeile(n) mit {column} „{value}“",
+    "unchecked": "nicht angehakt",
+    "value_mismatch": "{table} · {column} ist „{actual}“, erwartet: „{expected}“",
+    "what": {
+      "column": "die Spalte „{column}“ in „{table}“",
+      "row": "die Zeile „{row}“ in „{table}“",
+      "table": "die Tabelle „{table}“"
+    }
+  },
+  "oplog": {
+    "no_row_matching": "keine Zeile in {table} hat {column} = {value}",
+    "no_rows": "die Tabelle {table} enthält keine Zeilen",
+    "not_from_api": "die {noun} ist da, kam aber nicht über die API",
+    "not_set_by_automation": "noch keine Automation hat {column} in einer passenden Zeile von {table} gesetzt",
+    "prepared_row_gone": "die für diese Übung vorbereitete Zeile in {table} ist verschwunden",
+    "read_failed": "das Aktivitätenprotokoll konnte nicht gelesen werden",
+    "row_noun": "Zeile"
+  },
+  "seatable_ui": {
+    "add_base_or_folder": "Eine Base oder Ordner hinzufügen",
+    "add_folder": "Ordner hinzufügen",
+    "apps": "Apps",
+    "bases": "Bases",
+    "general": "Allgemein({count})",
+    "my_bases": "Meine Bases",
+    "no_notifications": "Keine Benachrichtigungen",
+    "notification": "Benachrichtigung",
+    "shared_with_me": "An mich freigegebene Bases"
+  },
+  "time": {
+    "days_one": "vor {count} Tag",
+    "days_other": "vor {count} Tagen",
+    "hours_one": "vor {count} Stunde",
+    "hours_other": "vor {count} Stunden",
+    "just_now": "gerade eben",
+    "minutes_one": "vor {count} Minute",
+    "minutes_other": "vor {count} Minuten"
+  },
+  "ui_check": {
+    "lower_right": "ziehen Sie die Werkzeugleiste in das rechte untere Viertel des Bildschirms",
+    "read_failed": "das Plugin-Fenster konnte nicht gelesen werden",
+    "resize": "ziehen Sie zuerst den Griff oben in der Mitte des Panels nach oben oder unten",
+    "shrink": "verkleinern Sie das Plugin zuerst zur Werkzeugleiste (das Verkleinern-Symbol oben rechts)"
+  }
+}

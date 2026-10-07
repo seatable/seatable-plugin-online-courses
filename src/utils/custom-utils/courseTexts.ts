@@ -17,6 +17,8 @@
  * written once, there, and never copied into the translations.
  */
 
+import { resolveLocale } from '../../locale';
+
 export interface StepTexts {
   title?: string;
   instruction?: string;
@@ -58,10 +60,12 @@ files.keys().forEach((key) => {
   TEXTS[courseId][lang] = files(key);
 });
 
-/** The language SeaTable is displayed in — the same one the plugin's interface uses. */
+/**
+ * The language SeaTable is displayed in, resolved exactly as for the interface — so a
+ * course's text file is named after its locale file: manifest.fr.json, manifest.zh_CN.json.
+ */
 export function contentLang(): string {
-  const lang = (window as any).dtable?.lang;
-  return typeof lang === 'string' && lang ? lang : FALLBACK_LANG;
+  return resolveLocale((window as any).dtable?.lang);
 }
 
 function isPlainObject(value: unknown): value is Record<string, any> {

@@ -131,7 +131,7 @@
       "fail": "❌ Not yet — {reason}.",
       "missing": "⚠️ Couldn't find {what} in the base. Check that the base matches the exercise.",
       "pass": "✅ {message}",
-      "pass_default": "Well done — the shared master is back in sync."
+      "pass_default": "Well done — you did it."
     },
     "handoff_default": "The next step continues on the website ↩",
     "intro": {

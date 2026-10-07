@@ -1,15 +1,12 @@
 import { createRoot } from 'react-dom/client';
 import App from './app';
 import info from './plugin-config/info.json';
-import { AVAILABLE_LOCALES, DEFAULT_LOCALE } from './locale';
+import { AVAILABLE_LOCALES, resolveLocale } from './locale';
 import intl from 'react-intl-universal';
 
 const SeaTablePlugin = {
   execute: () => {
-    let lang =
-      window.dtable && Object.keys(AVAILABLE_LOCALES).includes(window.dtable.lang)
-        ? window.dtable.lang
-        : DEFAULT_LOCALE;
+    const lang = resolveLocale(window.dtable?.lang);
     intl.init({ currentLocale: lang, fallbackLocale: 'en', locales: AVAILABLE_LOCALES });
     const container = document.querySelector('#plugin-wrapper') as HTMLElement;
     if (!container) return;
