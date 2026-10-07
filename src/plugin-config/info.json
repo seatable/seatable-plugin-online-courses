@@ -3,13 +3,13 @@
   "version": "0.9.0",
   "display_type": "overlay",
   "display_name": {
-    "de": "Online courses",
+    "de": "Online-Kurse",
     "en": "Online courses",
-    "fr": "Online courses",
-    "es": "Online courses",
-    "pt": "Online courses",
-    "ru": "Online courses",
-    "zh-cn": "Online courses"
+    "fr": "Cours en ligne",
+    "es": "Cursos en línea",
+    "pt": "Cursos online",
+    "ru": "Онлайн-курсы",
+    "zh-cn": "在线课程"
   },
   "description": {
     "de": "Ihr Begleiter für die SeaTable Online-Kurse: Er führt Sie durch die praktischen Übungen und überprüft Ihre Arbeit direkt in Ihrer Base.",
