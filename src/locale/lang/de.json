@@ -20,17 +20,17 @@
   "automation": {
     "a_link_missing": "eine Verknüpfungsaktion fehlt",
     "add_conditions": "fügen Sie beide Bedingungen hinzu: Product reference und Document reference sind nicht leer",
-    "add_link_action": "fügen Sie die Aktion „Add links“ hinzu, die {source} mit {target} verknüpft",
+    "add_link_action": "fügen Sie die Aktion „Links hinzufügen“ hinzu, die {source} mit {target} verknüpft",
     "conditions_required": "beide Nicht-leer-Bedingungen (Product reference und Document reference) sind erforderlich",
     "link_action_missing": "die Verknüpfungsaktion fehlt",
-    "link_missing_for": "die Aktion „Add links“ für {source} → {target} fehlt",
+    "link_missing_for": "die Aktion „Links hinzufügen“ für {source} → {target} fehlt",
     "no_new_rule": "noch keine NEUE Automationsregel – legen Sie eine an, benennen Sie sie und speichern Sie sie",
     "no_rule": "noch keine Automationsregel – legen Sie eine an, benennen Sie sie und speichern Sie sie",
     "read_failed": "die Automationen konnten nicht gelesen werden",
     "rule_gone": "die von Ihnen angelegte Regel ist verschwunden – legen Sie sie erneut an",
     "wrong_table": "noch keine Automation auf „{table}“",
     "wrong_table_pinned": "Ihre Regel löst noch nicht auf „{table}“ aus",
-    "wrong_trigger": "der Auslöser ist nicht „When a row is added“"
+    "wrong_trigger": "der Auslöser ist nicht „Wenn eine Zeile hinzugefügt wird“"
   },
   "colleague": {
     "already_set": "{row} ist bereits {values} – nichts zu ändern. Setzen Sie zuerst den alten Wert zurück und starten Sie dann erneut.",
@@ -60,7 +60,7 @@
     "is_this_her": "Ist das Ihre Kollegin und nicht Sie selbst? Wenn Sie sich hier wiedererkennen, würde das Plugin für den Rest des Kurses in Ihrem eigenen Namen handeln.",
     "no_name": "(ohne Namen)",
     "placeholder": "Account-Token Ihrer Kollegin einfügen",
-    "rejected": "SeaTable hat dieses Token nicht akzeptiert. Prüfen Sie, ob Sie es vollständig von der Seite Personal settings Ihrer Kollegin kopiert haben und ob es zu diesem Server gehört.",
+    "rejected": "SeaTable hat dieses Token nicht akzeptiert. Prüfen Sie, ob Sie es vollständig von der Seite Persönliche Einstellungen Ihrer Kollegin kopiert haben und ob es zu diesem Server gehört.",
     "storage_note": "Das Token wird mit dem Plugin in dieser Base gespeichert – es ist also beim nächsten Mal noch da, auf jedem Rechner. Jede Person, für die Sie die Base freigeben, kann es dort lesen. Deshalb sollte dieser zweite Account nur für den Kurs angelegt und nirgendwo sonst verwendet werden.",
     "stored_rejected": "Das gespeicherte Token wird nicht mehr akzeptiert. Fügen Sie es erneut ein.",
     "use_another": "Anderes Token verwenden"
@@ -124,7 +124,7 @@
       "failed": "Die Änderung konnte nicht im Namen der Kollegin vorgenommen werden.",
       "replying": "Malika antwortet…",
       "side_writes": "Malika aktualisiert ein paar weitere Kunden…",
-      "written": "✅ In Zeile {row} geschrieben. Öffnen Sie jetzt das Base-Log und lesen Sie den Eintrag: Nennt er die Zeile, ist er von ihr signiert, und bietet sein Menü Restore an?"
+      "written": "✅ In Zeile {row} geschrieben. Öffnen Sie jetzt das Base-Log und lesen Sie den Eintrag: Nennt er die Zeile, ist er von ihr signiert, und bietet sein Menü Wiederherstellen an?"
     },
     "feedback": {
       "fail": "❌ Noch nicht – {reason}.",
@@ -182,7 +182,7 @@
       "linked": "✅ {columns} in allen {count} Zeilen ausgefüllt.",
       "look_again": "Erneut nachsehen",
       "not_found": "Die neuen Zeilen wurden nach dem Schreiben nicht gefunden.",
-      "stalled": "⏳ {linked}/{total} Zeilen verknüpft – {missing} noch leer. Automationen brauchen manchmal einen Moment; warten Sie ein paar Sekunden und sehen Sie erneut nach. Bleibt es leer, prüfen Sie die Bedingungen Ihrer Regel und ihre Aktionen Add links.",
+      "stalled": "⏳ {linked}/{total} Zeilen verknüpft – {missing} noch leer. Automationen brauchen manchmal einen Moment; warten Sie ein paar Sekunden und sehen Sie erneut nach. Bleibt es leer, prüfen Sie die Bedingungen Ihrer Regel und ihre Aktionen „Links hinzufügen“.",
       "waiting": "Warten auf Ihre Automation… {linked}/{total} Zeilen verknüpft.",
       "writing": "Lieferzeilen werden geschrieben…",
       "wrong_table": "Sie sind in „{current}“. Öffnen Sie die Tabelle „{table}“, um zu sehen, wie die Zeilen ankommen – und fügen Sie sie dann hinzu."

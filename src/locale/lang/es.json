@@ -20,10 +20,10 @@
   "automation": {
     "a_link_missing": "falta una acción de vínculo",
     "add_conditions": "añada las dos condiciones: Product reference y Document reference no están vacíos",
-    "add_link_action": "añada la acción «Add links» que vincula {source} con {target}",
+    "add_link_action": "añada la acción «Añadir enlaces» que vincula {source} con {target}",
     "conditions_required": "se necesitan las dos condiciones «no vacío» (Product reference y Document reference)",
     "link_action_missing": "falta la acción de vínculo",
-    "link_missing_for": "falta la acción «Add links» para {source} → {target}",
+    "link_missing_for": "falta la acción «Añadir enlaces» para {source} → {target}",
     "no_new_rule": "todavía no hay ninguna regla de automatización NUEVA: añada una, póngale un nombre y guárdela",
     "no_rule": "todavía no hay ninguna regla de automatización: añada una, póngale un nombre y guárdela",
     "read_failed": "no se pudieron leer las automatizaciones",
@@ -60,7 +60,7 @@
     "is_this_her": "¿Es su compañera, y no usted? Si se reconoce aquí, el plugin actuaría en su propio nombre durante el resto del curso.",
     "no_name": "(sin nombre)",
     "placeholder": "Pegue el token de cuenta de su compañera",
-    "rejected": "SeaTable no aceptó ese token. Compruebe que lo copió entero, desde la página Personal settings de su compañera, y que corresponde a este servidor.",
+    "rejected": "SeaTable no aceptó ese token. Compruebe que lo copió entero, desde la página Opciones personales de su compañera, y que corresponde a este servidor.",
     "storage_note": "El token se guarda con el plugin, dentro de esta base: seguirá aquí la próxima vez, en cualquier equipo. Cualquier persona con quien comparta la base puede leerlo, por eso esta segunda cuenta debe crearse para el curso y no usarse en ningún otro sitio.",
     "stored_rejected": "El token guardado ya no se acepta. Péguelo de nuevo.",
     "use_another": "Usar otro token"
@@ -124,7 +124,7 @@
       "failed": "No se pudo hacer el cambio en nombre de la compañera.",
       "replying": "Malika está respondiendo…",
       "side_writes": "Malika actualiza algunos otros clientes…",
-      "written": "✅ Escrito en la fila {row}. Abra ahora el registro de la base y lea la entrada: ¿nombra la fila, está firmada por ella y su menú ofrece Restore?"
+      "written": "✅ Escrito en la fila {row}. Abra ahora el registro de la base y lea la entrada: ¿nombra la fila, está firmada por ella y su menú ofrece Restaurar?"
     },
     "feedback": {
       "fail": "❌ Todavía no: {reason}.",
@@ -182,7 +182,7 @@
       "linked": "✅ {columns} rellenados en las {count} líneas.",
       "look_again": "Volver a mirar",
       "not_found": "No se encontraron las nuevas líneas después de escribirlas.",
-      "stalled": "⏳ {linked}/{total} líneas vinculadas: {missing} todavía vacío(s). Una automatización puede tardar un poco; espere unos segundos y vuelva a mirar. Si sigue vacío, compruebe las condiciones de su regla y sus acciones Add links.",
+      "stalled": "⏳ {linked}/{total} líneas vinculadas: {missing} todavía vacío(s). Una automatización puede tardar un poco; espere unos segundos y vuelva a mirar. Si sigue vacío, compruebe las condiciones de su regla y sus acciones Añadir enlaces.",
       "waiting": "Esperando a su automatización… {linked}/{total} líneas vinculadas.",
       "writing": "Escribiendo las líneas de la entrega…",
       "wrong_table": "Está en «{current}». Abra la tabla «{table}» para ver llegar las líneas y luego añádalas."

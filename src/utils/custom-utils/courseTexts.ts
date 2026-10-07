@@ -17,6 +17,7 @@
  * written once, there, and never copied into the translations.
  */
 
+import intl from 'react-intl-universal';
 import { resolveLocale } from '../../locale';
 
 export interface StepTexts {
@@ -61,11 +62,14 @@ files.keys().forEach((key) => {
 });
 
 /**
- * The language SeaTable is displayed in, resolved exactly as for the interface — so a
- * course's text file is named after its locale file: manifest.fr.json, manifest.zh_CN.json.
+ * The language the interface is shown in — so the course texts always match the buttons
+ * around them, including on the dev server, where the language comes from its dropdown
+ * and `window.dtable` does not exist. Before the locale is initialised, the language
+ * SeaTable reports, resolved the same way. A course's text file is therefore named after
+ * its locale file: manifest.fr.json, manifest.zh_CN.json.
  */
 export function contentLang(): string {
-  return resolveLocale((window as any).dtable?.lang);
+  return intl.getInitOptions().currentLocale || resolveLocale((window as any).dtable?.lang);
 }
 
 function isPlainObject(value: unknown): value is Record<string, any> {

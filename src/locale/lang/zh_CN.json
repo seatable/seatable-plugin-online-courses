@@ -20,17 +20,17 @@
   "automation": {
     "a_link_missing": "缺少一个链接动作",
     "add_conditions": "请添加两个条件：Product reference 和 Document reference 不为空",
-    "add_link_action": "请添加把 {source} 链接到 {target} 的“Add links”动作",
+    "add_link_action": "请添加把 {source} 链接到 {target} 的“添加链接”动作",
     "conditions_required": "需要两个“不为空”条件（Product reference 和 Document reference）",
     "link_action_missing": "缺少链接动作",
-    "link_missing_for": "缺少 {source} → {target} 的“Add links”动作",
+    "link_missing_for": "缺少 {source} → {target} 的“添加链接”动作",
     "no_new_rule": "还没有新的自动化规则——请添加一条、命名并保存",
     "no_rule": "还没有自动化规则——请添加一条、命名并保存",
     "read_failed": "无法读取自动化规则",
     "rule_gone": "你创建的规则不见了——请重新创建",
     "wrong_table": "“{table}”上还没有自动化规则",
     "wrong_table_pinned": "你的规则还没有在“{table}”上触发",
-    "wrong_trigger": "触发条件不是“When a row is added”"
+    "wrong_trigger": "触发条件不是“当一行增加时”"
   },
   "colleague": {
     "already_set": "{row} 已经是 {values}——无需修改。请先恢复原来的值，再重新运行。",
@@ -60,7 +60,7 @@
     "is_this_her": "这确实是你的同事，而不是你自己吗？如果你在这里看到的是自己，插件在本课程余下部分将以你本人的名义操作。",
     "no_name": "（无名称）",
     "placeholder": "粘贴你同事的账户令牌",
-    "rejected": "SeaTable 没有接受这个令牌。请确认你从同事的 Personal settings 页面完整复制了它，并且它属于此服务器。",
+    "rejected": "SeaTable 没有接受这个令牌。请确认你从同事的 个人设置 页面完整复制了它，并且它属于此服务器。",
     "storage_note": "令牌随插件保存在此表格中——下次在任何电脑上都还在。任何与你共享此表格的人都能在这里读到它，所以这个第二个账户应专为本课程创建，不要在别处使用。",
     "stored_rejected": "已保存的令牌不再被接受。请重新粘贴。",
     "use_another": "使用其他令牌"
@@ -82,7 +82,7 @@
     },
     "no_access": "{base} 没有共享给她，所以她无法打开——在你重新共享给她之前，插件也无法在其中代她操作。",
     "permission_r": "只读",
-    "permission_rw": "读写",
+    "permission_rw": "可读写",
     "permission_unknown": "未知权限",
     "refresh": "刷新",
     "shared_failed": "无法读取共享给她的表格。",
@@ -124,7 +124,7 @@
       "failed": "无法以同事的身份进行修改。",
       "replying": "Malika 正在回复…",
       "side_writes": "Malika 正在更新其他几位客户…",
-      "written": "✅ 已写入第 {row} 行。现在打开表格日志并查看这条记录：它是否写明了行、是否由她署名、菜单里是否有 Restore？"
+      "written": "✅ 已写入第 {row} 行。现在打开表格日志并查看这条记录：它是否写明了行、是否由她署名、菜单里是否有 恢复？"
     },
     "feedback": {
       "fail": "❌ 还没有——{reason}。",
@@ -182,7 +182,7 @@
       "linked": "✅ 全部 {count} 行的 {columns} 都已填好。",
       "look_again": "再看一次",
       "not_found": "写入后找不到新的行。",
-      "stalled": "⏳ 已链接 {linked}/{total} 行——{missing} 仍为空。自动化规则可能需要一点时间；请稍等几秒再看。如果仍为空，请检查规则的条件和它的 Add links 动作。",
+      "stalled": "⏳ 已链接 {linked}/{total} 行——{missing} 仍为空。自动化规则可能需要一点时间；请稍等几秒再看。如果仍为空，请检查规则的条件和它的 添加链接 动作。",
       "waiting": "正在等待你的自动化规则… 已链接 {linked}/{total} 行。",
       "writing": "正在写入交货明细行…",
       "wrong_table": "你当前在“{current}”。请打开子表“{table}”，看着这些行出现——然后再添加。"

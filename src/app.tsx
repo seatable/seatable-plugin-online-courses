@@ -52,6 +52,7 @@ import {
 } from './utils/template-utils/utils';
 import {
   CourseManifest,
+  courseName,
   loadAllCourses,
   resolveInitialStepId,
 } from './utils/custom-utils/courseContent';
@@ -486,7 +487,7 @@ const App: React.FC<IAppProps> = (props) => {
         />
         <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
           <Header
-            presetName={findPresetName(pluginPresets, activePresetId)}
+            presetName={courseName(activePresetId) ?? findPresetName(pluginPresets, activePresetId)}
             stepTitle={activeStep?.title}
             controls={floatControls}
             isShowPresets={isShowPresets}

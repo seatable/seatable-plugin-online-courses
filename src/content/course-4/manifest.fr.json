@@ -1,0 +1,99 @@
+{
+  "title": "Cours 4 — Automatisation et intégration",
+  "intro": "Automatisez vos flux de travail et connectez des outils externes.<br><br>Au programme : automatisations sans code, scripts Python, API, webhooks, orchestration avec n8n et extraction de documents par IA, autour d'un scénario de réception en entrepôt.",
+  "steps": {
+    "build-the-linking-automation": {
+      "title": "Étape 2 · Automatiser la liaison des lignes",
+      "instruction": "Créez sur Line items une automatisation qui relie chaque nouvelle ligne à son produit et à son document.",
+      "hint": "Sur Line items : déclencheur « Lorsqu'une ligne est ajoutée », deux conditions (Product reference et Document reference non vides), puis deux actions « Ajouter des liens », l'une vers Products (Reference), l'autre vers Documents (Delivery reference).",
+      "html": "Construisez votre première automatisation. Sur le tableau Line items, créez une automatisation qui relie chaque nouvelle ligne à son Product et à son Document en faisant correspondre les références, sans aucun lien saisi à la main. Choisissez Me guider pas à pas pour la construire phase par phase (chacune vérifiée avant la suivante), ou Je l'ai construite, vérifiez-la si c'est déjà fait.",
+      "successMessage": "Votre automatisation de liaison est terminée : chaque nouvelle ligne trouvera désormais d'elle-même son produit et son document.",
+      "watch": {
+        "html": "Voyez-la à l'œuvre. Votre règle est prête, mais rien ne l'a encore déclenchée : donnons-lui du travail. Ouvrez d'abord le tableau Line items pour voir ce qui se passe, puis laissez le plugin ajouter les lignes de livraison, comme si votre fournisseur avait envoyé la liste propre de ce qui a été chargé dans le camion. Gardez un œil sur les colonnes Product et Document pendant que les lignes arrivent : le plugin n'écrit ni l'une ni l'autre, et pourtant elles se remplissent toutes seules.",
+        "instruction": "Ouvrez le tableau Line items, puis ajoutez les trois lignes de livraison et regardez les liens se remplir.",
+        "successMessage": "Les deux liens se sont remplis tout seuls, sur des lignes que vous n'avez jamais touchées. Vous n'avez pas automatisé cette livraison : vous avez construit une règle valable pour toute ligne qui entrera un jour dans ce tableau, quelle que soit la personne qui l'ajoute."
+      },
+      "automationStages": {
+        "created": {
+          "title": "Automatisation créée",
+          "instruction": "Ajoutez une nouvelle règle dans les Règles d'automatisation et donnez-lui un nom.",
+          "hint": "Il faut quitter le champ du nom de la règle pour qu'elle existe",
+          "html": "Créez l'automatisation. Ouvrez les Règles d'automatisation, ajoutez une nouvelle règle et donnez-lui un nom, puis cliquez sur Vérifier."
+        },
+        "trigger": {
+          "title": "Déclencheur et conditions",
+          "instruction": "Déclencheur « Lorsqu'une ligne est ajoutée », avec Product reference et Document reference tous deux non vides.",
+          "hint": "Les conditions se règlent dans le panneau Paramètres du déclencheur",
+          "html": "Réglez le déclencheur et ses conditions. Choisissez « Lorsqu'une ligne est ajoutée », puis ajoutez deux conditions pour qu'il ne s'exécute que sur des lignes complètes : Product reference n'est pas vide et Document reference n'est pas vide."
+        },
+        "action:0": {
+          "title": "Relier le produit",
+          "instruction": "Ajoutez une action « Ajouter des liens » qui fait correspondre Product reference à la Reference d'un produit.",
+          "hint": "Choisissez l'action « Ajouter des liens », puis la colonne Product qu'elle doit remplir",
+          "html": "Reliez le produit. Ajoutez une action « Ajouter des liens » qui remplit la colonne Product : la Product reference de la ligne doit être égale à la Reference d'un produit."
+        },
+        "action:1": {
+          "title": "Relier le document",
+          "instruction": "Ajoutez une seconde action « Ajouter des liens » qui fait correspondre Document reference à la Delivery reference d'un document.",
+          "hint": "La même action, cette fois pour remplir Document",
+          "html": "Reliez le document. Ajoutez une seconde action « Ajouter des liens » qui remplit la colonne Document : la Document reference de la ligne doit être égale à la Delivery reference d'un document. Votre automatisation est alors complète."
+        }
+      }
+    },
+    "a-reviewer-for-a-short-delivery": {
+      "title": "Étape 3 · Assigner un vérificateur à une livraison incomplète",
+      "instruction": "Laissez le plugin créer une livraison incomplète, puis lancez votre règle depuis les Règles d'automatisation et vérifiez.",
+      "hint": "Utilisez Exécuter maintenant dans les Règles d'automatisation : inutile d'attendre l'heure programmée.",
+      "html": "Offrez à votre règle un cas à traiter. Une règle programmée ne montre ce qu'elle vaut que sur une livraison qui demande vraiment de l'attention : plutôt que de vous en faire préparer une, le plugin s'en charge. Il crée une nouvelle livraison et une ligne reçue en quantité inférieure à la commande. Si vous le relancez, il supprime d'abord la livraison, et sa ligne, laissées par l'exécution précédente. Votre automatisation de l'étape 2 rattache la ligne toute seule ; le plugin attend qu'elle l'ait fait.</p> <p>Allez ensuite dans les Règles d'automatisation et cliquez sur Exécuter maintenant sur votre règle de vérification : inutile d'attendre l'heure fixée. Revenez et vérifiez : ce qui est contrôlé, ce n'est pas qu'un vérificateur soit renseigné, mais que ce soit votre automatisation, et non vous, qui l'ait renseigné.",
+      "handoffNote": "C'est terminé ici : retournez sur le site pour poursuivre le cours ↩"
+    },
+    "rewind-and-do-it-for-real": {
+      "title": "Étape 4 · Retirer la livraison, puis la réceptionner pour de bon",
+      "instruction": "Laissez le plugin retirer la livraison préparée, puis réceptionnez-la à nouveau depuis l'application et laissez l'IA lire le bon.",
+      "hint": "Le formulaire est la deuxième page de l'application Delivery check : joignez la photo et envoyez ; tout le reste est lu sur l'image.",
+      "html": "Retirez la livraison. Vous avez la chaîne ; ce qui vous manque, c'est de quoi l'alimenter : cette livraison est déjà dans votre base, avec toutes ses lignes. Laissez le plugin les supprimer, ainsi que le document, pour que le même bon puisse arriver comme il arriverait vraiment. Votre stock revient lui aussi à son état précédent.</p> <p>Réceptionnez-la ensuite pour de vrai : dans l'application Delivery check, ouvrez New delivery note, joignez la photo du bon de livraison et envoyez. Regardez la lecture, l'extraction et le script faire le reste, puis revenez vérifier.</p> <p>Si l'extraction déraille, le plugin écrit les lignes de la livraison à votre place : en entier si elle n'en a produit aucune, corrigées si elle s'est trompée. Ce qui est vérifié, c'est que les lignes sont revenues, jamais que l'IA les a trouvées seule.",
+      "successMessage": "La livraison est de retour, lue sur une photo cette fois, avec des lignes reliées par la règle construite à l'étape 2.",
+      "handoffNote": "C'est terminé ici : retournez sur le site pour poursuivre le cours ↩",
+      "grade": {
+        "noun": "ligne(s) de cette livraison"
+      }
+    },
+    "see-what-seatable-sends": {
+      "title": "Étape 5a · Voir ce qu'envoie SeaTable",
+      "instruction": "Pointez d'abord votre webhook vers le point de test, puis laissez le plugin faire une modification dont vous connaissez la forme.",
+      "hint": "Rien n'est noté ici : tout l'exercice consiste à aller lire ce qui est arrivé à l'autre bout.",
+      "html": "Faites parler votre webhook. Une fois votre webhook pointé vers le point de test, le plugin fait une modification dont vous connaissez la forme : il ajoute une ligne à Products, la modifie quelques secondes plus tard, puis la supprime, laissant votre catalogue exactement comme il était. Gardez la page de test à côté de votre base : les trois modifications sont espacées pour que vous puissiez voir chacune arriver des deux côtés. Si rien n'arrive au point de test, essayez de placer les deux pages dans la même fenêtre de navigateur.</p> <p>Trois opérations, trois requêtes : ce qui a été écrit, ce qui a changé (avec la valeur d'avant), et ce qui a disparu. Rien n'est vérifié ici : lire l'autre côté est tout l'exercice.",
+      "handoffNote": "C'est terminé ici : retournez sur le site pour poursuivre le cours ↩",
+      "demoDoneMessage": "✅ Les trois modifications ont été faites : allez les lire à l'autre bout."
+    },
+    "write-the-deliverys-lines": {
+      "title": "Étape 5b · Ajouter les lignes de la livraison",
+      "instruction": "Laissez le plugin écrire les lignes de la deuxième livraison, plutôt que de recopier trois codes-barres sur une photo.",
+      "hint": "Les lignes arrivent dans Line items et votre règle de l'étape 2 les rattache ; cliquez ensuite sur Notify the dock dans le document.",
+      "html": "Laissez le plugin faire la saisie. Le deuxième bon de livraison est dans votre base, mais pas ses lignes. Recopier trois codes-barres sur une photo n'apprend rien : le plugin les écrit pour vous, les mêmes lignes qu'aurait produites une lecture propre de ce bon.</p> <p>Elles arrivent dans Line items avec leurs références : la règle construite à l'étape 2 rattache donc chacune à son produit et à son document dès son arrivée. Rien n'est vérifié ici.</p> <p>Terminez ensuite comme le ferait le bureau : comparez la liste au bon, et cliquez sur Notify the dock dans le document.",
+      "handoffNote": "C'est terminé ici : retournez sur le site pour poursuivre le cours ↩",
+      "demoLabel": "Écrire les lignes",
+      "demoDoneMessage": "✅ Les lignes de la livraison sont dans Line items, reliées par votre propre règle."
+    },
+    "the-electronic-delivery-note": {
+      "title": "Étape 7a · Le bon de livraison électronique",
+      "instruction": "Laissez le plugin déposer le bon de livraison électronique, puis allez envoyer une de ses lignes depuis la documentation de l'API.",
+      "hint": "Rien n'est noté ici : cela dépose seulement le bon dans votre base, pour que les lignes que vous enverrez aient de quoi se rattacher.",
+      "html": "Dans la peau du système du fournisseur, première partie. L'un de vos fournisseurs génère désormais son bon de livraison au chargement du camion et l'envoie directement dans votre base. Cet échange se fait en deux temps : l'en-tête du bon, puis ses lignes. Le plugin dépose l'en-tête, pour que la partie que vous faites à la main reste courte et lisible.</p> <p>Un nouveau document apparaît dans Documents avec la référence {apiDeliveryReference} et aucun fichier joint : il n'y a plus rien à photographier. Si vous le relancez, il supprime d'abord ce document, avec toute ligne déjà envoyée dessus.</p> <p>Ensuite, c'est à vous, de retour sur le site : envoyez au moins une ligne dans Line items depuis la documentation de l'API. Revenez ici à l'étape 7b une fois qu'elle est envoyée.",
+      "handoffNote": "Allez maintenant envoyer une de ses lignes depuis la documentation de l'API ↩",
+      "demoLabel": "Créer la livraison",
+      "demoDoneMessage": "✅ Le bon de livraison est dans votre base, sans lignes et sans fichier."
+    },
+    "check-the-pushed-line": {
+      "title": "Étape 7b · Vérifier la ligne envoyée",
+      "instruction": "Envoyez au moins une ligne dans Line items depuis la documentation de l'API, puis vérifiez qu'elle est arrivée, s'est rattachée et est bien passée par l'API.",
+      "hint": "Dans la documentation de l'API, table_name vaut \"Line items\" et la ligne doit avoir la Document reference \"{apiDeliveryReference}\", une Product reference de votre catalogue et une Qty.",
+      "html": "La seconde partie vous revient. Depuis la documentation de l'API, envoyez au moins une ligne dans Line items : la référence {apiDeliveryReference} dans Document reference, un produit de votre catalogue dans Product reference, et une Qty.</p> <p>Ce qui est vérifié, ce n'est pas seulement que votre ligne est arrivée, mais qu'elle s'est rattachée, à son produit et à son document, grâce à l'automatisation construite à l'étape 2, et qu'elle vient bien de l'extérieur : une ligne saisie à la main dans la grille ne compte pas ici.",
+      "successMessage": "Votre ligne est arrivée par l'API et s'est rattachée en chemin : ni scanner, ni appareil photo, ni clavier, et rien dans votre base ne fait la différence.",
+      "handoffNote": "C'est terminé ici : retournez sur le site pour poursuivre le cours ↩",
+      "grade": {
+        "noun": "ligne envoyée"
+      }
+    }
+  }
+}

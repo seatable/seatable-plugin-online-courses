@@ -1,0 +1,40 @@
+{
+  "title": "Einführungskurs zum Plugin",
+  "intro": "Eine kurze Einführung in das Plugin: wie ein Kurs abläuft, was die Buttons bewirken und wie Sie es zu einer verschiebbaren Werkzeugleiste verkleinern.",
+  "steps": {
+    "welcome": {
+      "title": "Schritt 1 · Willkommen",
+      "html": "<h1>Willkommen 👋</h1> <p>Dieses kleine Panel begleitet Sie durch die Kurse. Es führt Sie durch die praktischen Übungen und prüft Ihre Arbeit direkt in Ihrer Base.</p> <p>Nehmen Sie sich eine Minute, um es kennenzulernen – dann sind Sie für jeden Kurs bereit. Mit Weiter oben gehen Sie durch diese Einführung.</p>"
+    },
+    "how-a-course-works": {
+      "title": "Schritt 2 · So läuft ein Kurs ab",
+      "html": "<h1>So läuft ein Kurs ab</h1> <p>Die Kurse lesen Sie hauptsächlich auf der Website. An bestimmten Stellen werden Sie aufgefordert, dieses Plugin zu öffnen und einen Schritt auszuwählen: Dort arbeiten Sie in Ihrer Base, und das Plugin prüft das Ergebnis.</p> <p>Über die Liste links wechseln Sie zwischen den Schritten des Plugins. Die Schritte sind wie auf der Website nummeriert (Schritt&nbsp;2, Schritt&nbsp;6 …) – eine Lücke in der Nummerierung bedeutet einfach, dass diese Schritte auf der Website stattfinden.</p>"
+    },
+    "room-for-your-base": {
+      "title": "Schritt 3 · Die Höhe des Panels einstellen",
+      "instruction": "Ziehen Sie den Griff oben in der Mitte dieses Panels, um es höher oder niedriger zu machen, und klicken Sie dann auf Prüfen.",
+      "html": "Manche Seiten, wie diese hier, sind Übungen: Das Panel schrumpft dann zu einem Streifen am unteren Rand, damit Ihre Base sichtbar bleibt, während Sie darin arbeiten. Übungen sind in der Liste links mit <i class=\"dtable-font dtable-icon-rename\"></i> markiert; die anderen Seiten öffnen sich in voller Höhe. Ziehen Sie den Griff oben in der Mitte dieses Panels, um es höher oder niedriger zu machen, und klicken Sie dann oben auf <i class=\"dtable-font dtable-icon-check-mark\"></i> Prüfen. Die gewählte Höhe wird für die folgenden Übungen beibehalten.",
+      "successMessage": "Erledigt – die nächsten Übungen öffnen sich in dieser Höhe."
+    },
+    "the-buttons": {
+      "title": "Schritt 4 · Die Buttons",
+      "hint": "Das ist ein Hinweis: Er bleibt verborgen, bis Sie ihn anfordern. Mit Hinweis ausblenden blenden Sie ihn wieder aus.",
+      "html": "<h1>Die Buttons</h1> <p>Die obere Leiste enthält alles, was Sie für den aktuellen Schritt brauchen:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>Zurück</b>: zum vorherigen Schritt.</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>Hinweis</b>: einen Hinweis anzeigen, wenn Sie nicht weiterkommen.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Prüfen</b> (oder <i class=\"dtable-font dtable-icon-right\"></i> <b>Weiter</b>): Ihre Arbeit prüfen und weitergehen, sobald sie bestanden ist.</li> </ul> <p>Ganz rechts befinden sich die Fenstersteuerungen: <i class=\"dtable-font dtable-icon-full-screen\"></i> verkleinert zur Werkzeugleiste, <i class=\"dtable-font dtable-icon-x\"></i> schließt.</p>"
+    },
+    "the-movable-toolbar": {
+      "title": "Schritt 5 · Das Plugin verkleinern",
+      "html": "<h1>Das Plugin verkleinern</h1> <p>Das Panel ist Ihnen bei der Arbeit in der Base im Weg? Klicken Sie auf Verkleinern (<i class=\"dtable-font dtable-icon-full-screen\"></i>, oben rechts), um es zu einer kleinen Werkzeugleiste zu machen, die Sie beliebig verschieben können.</p> <p>Solange es eine Werkzeugleiste ist, bleibt die ganze Base bedienbar – nichts wird blockiert –, und das Wichtigste behalten Sie:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Verschieben</b>: dorthin, wo sie nicht stört.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: die Anweisung (und einen Hinweis) jederzeit anzeigen.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Prüfen</b>: Ihre Arbeit prüfen, ohne das Panel zu öffnen.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Vergrößern</b>: das ganze Panel zurückholen.</li> </ul> <p>Im nächsten Schritt probieren Sie es selbst aus.</p>"
+    },
+    "try-the-toolbar": {
+      "title": "Schritt 6 · Jetzt sind Sie dran",
+      "instruction": "Verkleinern Sie das Plugin zur Werkzeugleiste, ziehen Sie sie in die rechte untere Ecke und klicken Sie dann auf Prüfen.",
+      "hint": "Verkleinern mit dem Symbol <i class=\"dtable-font dtable-icon-full-screen\"></i> oben rechts; verschieben mit dem Griff <i class=\"dtable-font dtable-icon-drag\"></i> der Werkzeugleiste; dann auf <i class=\"dtable-font dtable-icon-check-mark\"></i> in der Werkzeugleiste klicken. „Rechts unten“ meint das rechte untere Viertel Ihres gesamten Bildschirms.",
+      "html": "Jetzt sind Sie dran. Klicken Sie auf Verkleinern (<i class=\"dtable-font dtable-icon-full-screen\"></i>, oben rechts), um dieses Panel zur Werkzeugleiste zu machen, ziehen Sie sie in das rechte untere Viertel Ihres Bildschirms und klicken Sie dann in der Werkzeugleiste auf <i class=\"dtable-font dtable-icon-check-mark\"></i> Prüfen.",
+      "successMessage": "Perfekt – die Werkzeugleiste beherrschen Sie 🎉 Öffnen Sie das Plugin wieder und klicken Sie auf Weiter, um die Einführung abzuschließen."
+    },
+    "youre-ready": {
+      "title": "Schritt 7 · Sie sind bereit",
+      "html": "<h1>Sie sind bereit</h1> <p>Das war die Einführung. Wählen Sie links in der Liste einen Kurs, um zu beginnen: Jeder öffnet sich mit seiner Einführung.</p> <p>Dieser Einführungskurs bleibt in der Liste, Sie können also jederzeit zurückkommen.</p>"
+    }
+  }
+}

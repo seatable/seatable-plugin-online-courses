@@ -518,10 +518,25 @@ const COURSE_ROSTER: Omit<CourseMeta, 'name' | 'intro'>[] = [
   { id: 'course-7', access: 'soon' },
 ];
 
-export const COURSES: CourseMeta[] = COURSE_ROSTER.map((c) => {
-  const { title, intro } = getCourseTexts(c.id);
-  return { ...c, name: title, intro };
-});
+// The roster with each course's name and intro in the CURRENT language — read at call
+// time, never cached: the presets stored in a base keep the name they were seeded with,
+// so whatever shows a course's name asks here instead (see courseName).
+function coursesInCurrentLanguage(): CourseMeta[] {
+  return COURSE_ROSTER.map((c) => {
+    const { title, intro } = getCourseTexts(c.id);
+    return { ...c, name: title, intro };
+  });
+}
+
+// Seeds the course presets (custom-components/index.tsx). The names stored with them are
+// a fallback only: the course list and the header show courseName().
+export const COURSES: CourseMeta[] = coursesInCurrentLanguage();
+
+/** A course's name in the language SeaTable is displayed in; undefined for an unknown id. */
+export function courseName(courseId: string): string | undefined {
+  if (!COURSE_ROSTER.some((c) => c.id === courseId)) return undefined;
+  return getCourseTexts(courseId).title;
+}
 
 const NOTE_STYLE =
   'margin-top:22px;padding:12px 14px;border-radius:8px;font-size:14px;line-height:1.5;';
@@ -893,7 +908,7 @@ function course3ContentSteps(): CourseStep[] {
 // Build every demo course manifest: an Introduction page, plus the active/dummy
 // pages for Courses 4 and 3.
 export function buildAllFallbackManifests(): CourseManifest[] {
-  return COURSES.map((c) => {
+  return coursesInCurrentLanguage().map((c) => {
     // The Welcome tour is fully in-plugin — its own pages, no generic intro.
     if (c.id === 'welcome') {
       return { courseId: c.id, title: c.name, steps: welcomeContentSteps() };

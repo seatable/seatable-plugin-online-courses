@@ -20,17 +20,17 @@
   "automation": {
     "a_link_missing": "il manque une action de lien",
     "add_conditions": "ajoutez les deux conditions : Product reference et Document reference ne sont pas vides",
-    "add_link_action": "ajoutez l'action « Add links » qui relie {source} à {target}",
+    "add_link_action": "ajoutez l'action « Ajouter des liens » qui relie {source} à {target}",
     "conditions_required": "les deux conditions « non vide » (Product reference et Document reference) sont nécessaires",
     "link_action_missing": "il manque l'action de lien",
-    "link_missing_for": "il manque l'action « Add links » pour {source} → {target}",
+    "link_missing_for": "il manque l'action « Ajouter des liens » pour {source} → {target}",
     "no_new_rule": "pas encore de NOUVELLE règle d'automatisation : ajoutez-en une, nommez-la et enregistrez-la",
     "no_rule": "pas encore de règle d'automatisation : ajoutez-en une, nommez-la et enregistrez-la",
     "read_failed": "impossible de lire les automatisations",
     "rule_gone": "la règle que vous avez créée a disparu : créez-la à nouveau",
     "wrong_table": "pas encore d'automatisation sur « {table} »",
     "wrong_table_pinned": "votre règle ne se déclenche pas encore sur « {table} »",
-    "wrong_trigger": "le déclencheur n'est pas « When a row is added »"
+    "wrong_trigger": "le déclencheur n'est pas « Lorsqu'une ligne est ajoutée »"
   },
   "colleague": {
     "already_set": "{row} vaut déjà {values} : rien à modifier. Remettez d'abord l'ancienne valeur, puis relancez.",
@@ -60,7 +60,7 @@
     "is_this_her": "Est-ce bien votre collègue, et pas vous ? Si vous vous reconnaissez ici, le plugin agirait en votre nom pendant tout le reste du cours.",
     "no_name": "(sans nom)",
     "placeholder": "Collez le jeton de compte de votre collègue",
-    "rejected": "SeaTable n'a pas accepté ce jeton. Vérifiez que vous l'avez copié en entier, depuis la page Personal settings de votre collègue, et qu'il correspond à ce serveur.",
+    "rejected": "SeaTable n'a pas accepté ce jeton. Vérifiez que vous l'avez copié en entier, depuis la page Paramètres personnels de votre collègue, et qu'il correspond à ce serveur.",
     "storage_note": "Le jeton est enregistré avec le plugin, dans cette base : vous le retrouverez la prochaine fois, sur n'importe quel ordinateur. Toute personne avec qui vous partagez la base peut l'y lire, c'est pourquoi ce deuxième compte doit être créé pour le cours et ne servir nulle part ailleurs.",
     "stored_rejected": "Le jeton enregistré n'est plus accepté. Collez-le à nouveau.",
     "use_another": "Utiliser un autre jeton"
@@ -94,7 +94,7 @@
     "back": "Retour",
     "checking": "Vérification…",
     "close": "Fermer",
-    "drag": "Faites glisser pour la déplacer",
+    "drag": "Cliquer-glisser pour déplacer",
     "hide_hint": "Masquer l'indice",
     "hide_hint_toggle": "▾ Masquer l'indice",
     "hint": "Indice",
@@ -124,7 +124,7 @@
       "failed": "Impossible de faire la modification au nom de la collègue.",
       "replying": "Malika répond…",
       "side_writes": "Malika met à jour quelques autres clients…",
-      "written": "✅ Écrit sur la ligne {row}. Ouvrez maintenant le journal de la base et lisez l'entrée : nomme-t-elle la ligne, est-elle signée par elle, et son menu propose-t-il Restore ?"
+      "written": "✅ Écrit sur la ligne {row}. Ouvrez maintenant le journal de la base et lisez l'entrée : nomme-t-elle la ligne, est-elle signée par elle, et son menu propose-t-il Restaurer ?"
     },
     "feedback": {
       "fail": "❌ Pas encore : {reason}.",
@@ -156,16 +156,16 @@
     "page_load_failed": "⚠️ Impossible de charger cette page.",
     "preparing": "Préparation…",
     "rewind": {
-      "again": "Rembobiner à nouveau",
+      "again": "Retirer à nouveau",
       "done_one": "✅ {count} ligne et le document supprimés. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
       "done_other": "✅ {count} lignes et le document supprimés. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
       "done_stock_one": "✅ {count} ligne et le document supprimés, stock remis en état. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
       "done_stock_other": "✅ {count} lignes et le document supprimés, stock remis en état. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
-      "failed": "Impossible de rembobiner la livraison.",
+      "failed": "Impossible de retirer la livraison.",
       "nothing": "✅ Plus rien à supprimer : cette livraison n'est déjà plus dans votre base. Réceptionnez-la à nouveau depuis l'application.",
-      "run": "Rembobiner la livraison"
+      "run": "Retirer la livraison"
     },
-    "rewinding": "Rembobinage…",
+    "rewinding": "Retrait en cours…",
     "seed": {
       "failed": "Impossible de préparer la livraison.",
       "not_linked": "⚠️ La livraison est là, mais sa ligne n'est pas encore rattachée : vérifiez l'automatisation construite à l'étape 2, puis lancez votre règle.",
@@ -182,7 +182,7 @@
       "linked": "✅ {columns} renseignés sur les {count} lignes.",
       "look_again": "Regarder à nouveau",
       "not_found": "Les nouvelles lignes sont introuvables après leur écriture.",
-      "stalled": "⏳ {linked}/{total} lignes rattachées, {missing} encore vide(s). Une automatisation peut prendre un moment : attendez quelques secondes et regardez à nouveau. Si rien ne change, vérifiez les conditions de votre règle et ses actions Add links.",
+      "stalled": "⏳ {linked}/{total} lignes rattachées, {missing} encore vide(s). Une automatisation peut prendre un moment : attendez quelques secondes et regardez à nouveau. Si rien ne change, vérifiez les conditions de votre règle et ses actions « Ajouter des liens ».",
       "waiting": "En attente de votre automatisation… {linked}/{total} lignes rattachées.",
       "writing": "Écriture des lignes de livraison…",
       "wrong_table": "Vous êtes sur « {current} ». Ouvrez le tableau « {table} » pour voir les lignes arriver, puis ajoutez-les."

@@ -16,9 +16,9 @@
       "automationStages": {
         "created": {
           "title": "Automation created",
-          "instruction": "Add a new rule in the Automations editor and give it a name.",
+          "instruction": "Open Automation rules, add a new rule and give it a name.",
           "hint": "The name field of the rule has to be focused out for it to exist",
-          "html": "Create the automation. Open the Automations editor and add a new rule and give it a name, then click Check."
+          "html": "Create the automation. Open Automation rules, add a new rule and give it a name, then click Check."
         },
         "trigger": {
           "title": "Trigger + guard",
@@ -42,9 +42,9 @@
     },
     "a-reviewer-for-a-short-delivery": {
       "title": "Step 3 · A reviewer for a short delivery",
-      "instruction": "Let the plugin create a short delivery, then run your rule from the automation editor and verify.",
-      "hint": "Use Run now in the automation editor — no need to wait for the scheduled hour.",
-      "html": "Give your rule something to find. A scheduled rule only shows what it is worth on a delivery that actually needs attention — so rather than have you stage one, the plugin does it: it creates a new delivery and one line received short of what was ordered. Run it again and it first removes the delivery, and its line, left by the previous run. Your step-2 automation attaches the line on its own; the plugin waits until it has.</p> <p>Then go to the Automations editor and press Run now on your reviewer rule — no need to wait for the hour you set. Come back and verify: what is checked is not that a reviewer is there, but that your automation, and not you, is the one that put it there.",
+      "instruction": "Let the plugin create a short delivery, then run your rule from Automation rules and verify.",
+      "hint": "Use Run now in Automation rules — no need to wait for the scheduled hour.",
+      "html": "Give your rule something to find. A scheduled rule only shows what it is worth on a delivery that actually needs attention — so rather than have you stage one, the plugin does it: it creates a new delivery and one line received short of what was ordered. Run it again and it first removes the delivery, and its line, left by the previous run. Your step-2 automation attaches the line on its own; the plugin waits until it has.</p> <p>Then open Automation rules and press Run now on your reviewer rule — no need to wait for the hour you set. Come back and verify: what is checked is not that a reviewer is there, but that your automation, and not you, is the one that put it there.",
       "handoffNote": "You’re done here — head back to the website to continue the course ↩"
     },
     "rewind-and-do-it-for-real": {

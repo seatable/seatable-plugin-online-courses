@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 // Interfaces
 import { IPresetItemProps } from '../../../../utils/template-interfaces/PluginPresets/Item.interface';
+import { courseName } from '../../../../utils/custom-utils/courseContent';
 // Styles
 import styles from '../../../../styles/template-styles/Plugin.module.scss';
 import '../../../../assets/css/plugin-layout.css';
@@ -16,15 +17,18 @@ const PresetItem: React.FC<IPresetItemProps> = ({
   pluginPresets,
   onSelectPreset,
 }) => {
-  const [pName, setPName] = useState(p.name);
+  // The name in the current language — the one stored with the preset is whatever
+  // language the base was first opened in.
+  const name: string = courseName(p._id) ?? p.name;
+  const [pName, setPName] = useState(name);
 
   const onWindowResize = () => {
-    if (window.innerWidth <= 1200 && p.name.length > 15) {
-      setPName(p.name.slice(0, 15) + '...');
-    } else if (window.innerWidth > 1200 && p.name.length > 25) {
-      setPName(p.name.slice(0, 25) + '...');
+    if (window.innerWidth <= 1200 && name.length > 15) {
+      setPName(name.slice(0, 15) + '...');
+    } else if (window.innerWidth > 1200 && name.length > 25) {
+      setPName(name.slice(0, 25) + '...');
     } else {
-      setPName(p.name);
+      setPName(name);
     }
   };
 
@@ -35,7 +39,7 @@ const PresetItem: React.FC<IPresetItemProps> = ({
     return () => {
       window.removeEventListener('resize', onWindowResize);
     };
-  }, [p.name]);
+  }, [name]);
 
   return (
     <div>

@@ -24,14 +24,14 @@
     "malika-answers": {
       "title": "Step 3b · Malika answers",
       "instruction": "Let Malika do what you asked: she updates James Bennett’s industry, then replies to you.",
-      "html": "<h1>Malika answers</h1> <p>Malika has read your request. With the button below, she does what you asked: she changes James Bennett’s industry from Manufacturing to Technology, then replies in the comment thread.</p> <p>While she is in the base, she also updates a few other customers of her own — you will come across those changes in Step 4.</p> <p>Then look at your own bell, in this base. Her reply does not mention you, yet it has reached you: you started this conversation, so you are part of it.</p>",
+      "html": "<h1>Malika answers</h1> <p>Malika has read your request. With the button above, she does what you asked: she changes James Bennett’s industry from Manufacturing to Technology, then replies in the comment thread.</p> <p>While she is in the base, she also updates a few other customers of her own — you will come across those changes in Step 4.</p> <p>Then look at your own bell, in this base. Her reply does not mention you, yet it has reached you: you started this conversation, so you are part of it.</p>",
       "demoLabel": "Let Malika answer",
       "demoDoneMessage": "✅ Malika has set James Bennett’s industry to Technology and replied in the thread."
     },
     "malika-changes-a-status": {
       "title": "Step 4 · Malika changes a status",
       "instruction": "Let Malika mark James Bennett as a client — then read her change in the logs, on the website.",
-      "html": "<h1>Malika changes a status</h1> <p>Malika believes James Bennett has just signed. With the button below, she gets to work in the grid: among a few other updates to your customers, she changes his status from Prospect to Client.</p> <p>Then go back to the website to find her change in the logs.</p>",
+      "html": "<h1>Malika changes a status</h1> <p>Malika believes James Bennett has just signed. With the button above, she gets to work in the grid: among a few other updates to your customers, she changes his status from Prospect to Client.</p> <p>Then go back to the website to find her change in the logs.</p>",
       "demoLabel": "Let Malika change the status",
       "demoDoneMessage": "✅ Malika has updated a few customers — among them, James Bennett’s status, from Prospect to Client."
     }
