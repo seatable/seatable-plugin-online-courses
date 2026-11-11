@@ -22,6 +22,8 @@
     "add_conditions": "add both conditions — Product reference and Document reference are not empty",
     "add_link_action": "add the “Add links” action linking {source} to {target}",
     "conditions_required": "both not-empty conditions (Product reference and Document reference) are required",
+    "extra_conditions": "keep only the two conditions asked for — Product reference and Document reference are not empty; any other keeps some rows from triggering the rule",
+    "extra_link_match": "your “Add links” action from {source} to {target} matches on more than that one pair of columns: keep only that match, or some rows won’t be linked",
     "link_action_missing": "the link action is missing",
     "link_missing_for": "the “Add links” action for {source} → {target} is missing",
     "no_new_rule": "no NEW automation rule yet — add one, name it, and save it",
@@ -30,6 +32,7 @@
     "rule_gone": "the rule you created is gone — create it again",
     "wrong_table": "no automation on \"{table}\" yet",
     "wrong_table_pinned": "your rule doesn’t trigger on \"{table}\" yet",
+    "wrong_condition": "the condition on {column} must check that the column is not empty",
     "wrong_trigger": "the trigger isn’t “when a new row is added”"
   },
   "colleague": {
@@ -101,6 +104,7 @@
     "reopen": "Reopen the course",
     "show_hint_toggle": "▸ Show hint",
     "show_instruction": "Show the instruction",
+    "expand_to_follow": "Expand the course to follow this step.",
     "shrink_toolbar": "Shrink to a movable toolbar"
   },
   "course": {
@@ -136,6 +140,8 @@
     "handoff_default": "The next step continues on the website ↩",
     "intro": {
       "external": "📌 This course is currently not supported by the plugin, but you can follow it on {link}.",
+      "missing": "📌 This base’s structure doesn’t seem to match this course. Open the course’s base before you start — the plugin’s steps read and write there.",
+      "missing_link": "You’ll find it on {link}.",
       "soon": "🚧 Coming soon."
     },
     "introduction": "Introduction",
@@ -159,7 +165,6 @@
     "page_load_failed": "⚠️ Couldn’t load this page.",
     "preparing": "Preparing…",
     "rewind": {
-      "again": "Rewind again",
       "done_one": "✅ {count} line and the document removed. Now receive the delivery again from the app.",
       "done_other": "✅ {count} lines and the document removed. Now receive the delivery again from the app.",
       "done_stock_one": "✅ {count} line and the document removed, stock put back. Now receive the delivery again from the app.",
@@ -184,6 +189,8 @@
       "failed": "Could not add the delivery lines.",
       "linked": "✅ {columns} filled in on all {count} lines.",
       "look_again": "Look again",
+      "missing_target": "“{value}” in “{table}”",
+      "missing_targets": "⚠️ Nothing was added: this base lacks what the delivery lines link to — {list}. Put it back (or re-import the course’s base), then press {look_again}.",
       "not_found": "The new lines could not be found after writing them.",
       "stalled": "⏳ {linked}/{total} lines linked — {missing} still empty. Automations can take a moment; give it a few seconds and look again. If it stays empty, check your rule's conditions and its Add links actions.",
       "waiting": "Waiting for your automation… {linked}/{total} lines linked.",
@@ -193,7 +200,8 @@
     "working": "Working…",
     "writing": "Writing…",
     "wrong_table": "You’re looking at “{current}”. Open “{table}” first, or you will miss what happens.",
-    "wrong_view": "Open the “{view}” view of “{table}” first — in this one the change happens off-screen and you will miss it."
+    "wrong_view": "Open the “{view}” view of “{table}” first — in this one the change happens off-screen and you will miss it.",
+    "your_turn": "Your turn:"
   },
   "courses": {
     "checkpoints_caption": "Plugin checkpoints — follow the rest of the course on the website",
@@ -237,7 +245,8 @@
     "add_folder": "Add a folder",
     "apps": "Apps",
     "bases": "Bases",
-    "general": "General({count})",
+    "general": "General ({count})",
+    "general_bare": "General",
     "my_bases": "My bases",
     "no_notifications": "No notifications",
     "notification": "Notification",

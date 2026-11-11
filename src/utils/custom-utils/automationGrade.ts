@@ -157,7 +157,7 @@ export interface GuidedRuleTracking {
 interface ResolvedRule {
   triggerTableId: string;
   triggerEvent: string;
-  conditions: { key: string; predicate: string }[];
+  conditions: { key: string; predicate: string; column: string }[];
   conjunction: string;
   linkActions: { sourceKey: string; targetTableId: string; targetKey: string }[];
 }
@@ -173,7 +173,7 @@ function resolveRule(rule: AutomationRuleRule): ResolvedRule | { missing: string
     const col = getColumn(triggerTable, c.column);
     if (!col)
       return { missing: t('grade.what.column', { column: c.column, table: rule.trigger_table }) };
-    conditions.push({ key: col.key, predicate: c.predicate });
+    conditions.push({ key: col.key, predicate: c.predicate, column: c.column });
   }
 
   const linkActions: ResolvedRule['linkActions'] = [];
@@ -220,6 +220,9 @@ function hasConditions(rule: any, r: ResolvedRule): boolean {
     filters.some((f) => f?.column_key === c.key && f?.filter_predicate === c.predicate)
   );
   if (!all) return false;
+  // Nothing more than asked: an extra condition would keep some rows from firing
+  // the rule in real use, so it is not "the" rule (2026-11-11 test).
+  if (extraConditions(rule, r)) return false;
   // Only enforce the conjunction when it actually matters (2+ conditions).
   if (r.conditions.length >= 2) {
     return (rule?.trigger?.filter_conjunction || 'And') === r.conjunction;
@@ -227,22 +230,76 @@ function hasConditions(rule: any, r: ResolvedRule): boolean {
   return true;
 }
 
-/** An *Add links* action linking `source → target` exists (either match orientation). */
+/**
+ * A condition asked for sits on its column with the wrong test (e.g. "is empty"
+ * instead of "is not empty"): the column's name, so the message can say which. It
+ * comes before "extra conditions", which this case would otherwise read as.
+ */
+function wrongPredicateColumn(rule: any, r: ResolvedRule): string | undefined {
+  const filters: any[] = rule?.trigger?.filters || [];
+  return r.conditions.find(
+    (c) =>
+      filters.some((f) => f?.column_key === c.key) &&
+      !filters.some((f) => f?.column_key === c.key && f?.filter_predicate === c.predicate)
+  )?.column;
+}
+
+// The message for a trigger whose conditions are not the ones asked for: a test
+// the wrong way round, else conditions beyond the ones asked for, else `fallback`.
+function conditionsReason(rule: any, r: ResolvedRule, fallback: string): string {
+  const wrong = wrongPredicateColumn(rule, r);
+  if (wrong) return t('automation.wrong_condition', { column: wrong });
+  const allThere = r.conditions.every((c) =>
+    (rule?.trigger?.filters || []).some(
+      (f: any) => f?.column_key === c.key && f?.filter_predicate === c.predicate
+    )
+  );
+  return allThere && extraConditions(rule, r) ? t('automation.extra_conditions') : fallback;
+}
+
+/** The trigger carries conditions beyond the ones asked for. */
+function extraConditions(rule: any, r: ResolvedRule): boolean {
+  const filters: any[] = (rule?.trigger?.filters || []).filter((f: any) => f?.column_key);
+  return filters.some(
+    (f) => !r.conditions.some((c) => f.column_key === c.key && f.filter_predicate === c.predicate)
+  );
+}
+
+// The match conditions of an *Add links* action that set at least a column.
+function matchConditions(a: any): any[] {
+  return (a?.match_conditions || []).filter((m: any) => m?.column_key || m?.other_column_key);
+}
+
+// An *Add links* action to the right table that matches on the expected pair.
+// Accept either orientation of column_key/other_column_key — the API's convention
+// (source in the current table, target in the linked table) vs the reverse — so
+// grading doesn't hinge on which side SeaTable stores where.
+function linksOnPair(a: any, la: ResolvedRule['linkActions'][number]): boolean {
+  if (a?.type !== LINK_ACTION_TYPE) return false;
+  if (a?.linked_table_id !== la.targetTableId) return false;
+  return matchConditions(a).some(
+    (m) =>
+      (m?.column_key === la.sourceKey && m?.other_column_key === la.targetKey) ||
+      (m?.column_key === la.targetKey && m?.other_column_key === la.sourceKey)
+  );
+}
+
+/**
+ * An *Add links* action linking `source → target` exists, matching on that pair
+ * ONLY: a second match condition would leave rows unlinked in real use, yet it used
+ * to pass (2026-11-11 test).
+ */
 function hasLinkAction(rule: any, la: ResolvedRule['linkActions'][number]): boolean {
-  const actions: any[] = rule?.actions || [];
-  return actions.some((a) => {
-    if (a?.type !== LINK_ACTION_TYPE) return false;
-    if (a?.linked_table_id !== la.targetTableId) return false;
-    const matches: any[] = a?.match_conditions || [];
-    // Accept either orientation of column_key/other_column_key — the API's
-    // convention (source in the current table, target in the linked table) vs the
-    // reverse — so grading doesn't hinge on which side SeaTable stores where.
-    return matches.some(
-      (m) =>
-        (m?.column_key === la.sourceKey && m?.other_column_key === la.targetKey) ||
-        (m?.column_key === la.targetKey && m?.other_column_key === la.sourceKey)
-    );
-  });
+  return (rule?.actions || []).some(
+    (a: any) => linksOnPair(a, la) && matchConditions(a).length === 1
+  );
+}
+
+/** The action is there, but matches on more than the expected pair. */
+function hasOverMatchedLinkAction(rule: any, la: ResolvedRule['linkActions'][number]): boolean {
+  return (rule?.actions || []).some(
+    (a: any) => linksOnPair(a, la) && matchConditions(a).length > 1
+  );
 }
 
 // Does this rule fully satisfy the whole spec (order-independent on actions)?
@@ -322,13 +379,14 @@ export async function gradeAutomationRule(
     if (candidates.some((rl) => hasTrigger(rl, resolved) && hasConditions(rl, resolved))) {
       return { kind: 'pass' };
     }
-    // Distinguish a wrong trigger from missing conditions for a helpful message.
+    // Distinguish a wrong trigger from missing / extra conditions for a helpful message.
     if (!candidates.some((rl) => hasTrigger(rl, resolved))) {
       return { kind: 'fail', reason: t('automation.wrong_trigger') };
     }
+    const triggered = candidates.find((rl) => hasTrigger(rl, resolved));
     return {
       kind: 'fail',
-      reason: t('automation.add_conditions'),
+      reason: conditionsReason(triggered, resolved, t('automation.add_conditions')),
     };
   }
 
@@ -338,6 +396,14 @@ export async function gradeAutomationRule(
     if (!la) return { kind: 'fail', reason: `no link action #${i} defined in the exercise` };
     if (candidates.some((rl) => hasLinkAction(rl, la))) return { kind: 'pass' };
     const src = rule.link_actions?.[i];
+    if (src && candidates.some((rl) => hasOverMatchedLinkAction(rl, la)))
+      return {
+        kind: 'fail',
+        reason: t('automation.extra_link_match', {
+          source: src.source_column,
+          target: src.target_table,
+        }),
+      };
     return {
       kind: 'fail',
       reason: src
@@ -360,11 +426,19 @@ export async function gradeAutomationRule(
   if (!hasConditions(best, resolved)) {
     return {
       kind: 'fail',
-      reason: t('automation.conditions_required'),
+      reason: conditionsReason(best, resolved, t('automation.conditions_required')),
     };
   }
   const missingLink = resolved.linkActions.findIndex((la) => !hasLinkAction(best, la));
   const src = rule.link_actions?.[missingLink];
+  if (src && hasOverMatchedLinkAction(best, resolved.linkActions[missingLink]))
+    return {
+      kind: 'fail',
+      reason: t('automation.extra_link_match', {
+        source: src.source_column,
+        target: src.target_table,
+      }),
+    };
   return {
     kind: 'fail',
     reason: src

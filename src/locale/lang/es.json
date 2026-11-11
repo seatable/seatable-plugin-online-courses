@@ -22,6 +22,8 @@
     "add_conditions": "añada las dos condiciones: Product reference y Document reference no están vacíos",
     "add_link_action": "añada la acción «Añadir enlaces» que vincula {source} con {target}",
     "conditions_required": "se necesitan las dos condiciones «no vacío» (Product reference y Document reference)",
+    "extra_conditions": "mantenga solo las dos condiciones pedidas (Product reference y Document reference no están vacíos): cualquier otra impediría que algunas filas activen la regla",
+    "extra_link_match": "su acción «Añadir enlaces» de {source} a {target} compara más que ese único par de columnas: mantenga solo esa correspondencia, o algunas filas no se vincularán",
     "link_action_missing": "falta la acción de vínculo",
     "link_missing_for": "falta la acción «Añadir enlaces» para {source} → {target}",
     "no_new_rule": "todavía no hay ninguna regla de automatización NUEVA: añada una, póngale un nombre y guárdela",
@@ -30,6 +32,7 @@
     "rule_gone": "la regla que creó ha desaparecido: créela de nuevo",
     "wrong_table": "todavía no hay ninguna automatización en «{table}»",
     "wrong_table_pinned": "su regla todavía no se activa en «{table}»",
+    "wrong_condition": "la condición sobre {column} debe comprobar que la columna no está vacía",
     "wrong_trigger": "el desencadenante no es «When a row is added»"
   },
   "colleague": {
@@ -101,6 +104,7 @@
     "reopen": "Volver a abrir el curso",
     "show_hint_toggle": "▸ Mostrar pista",
     "show_instruction": "Mostrar la consigna",
+    "expand_to_follow": "Amplíe el curso para seguir este paso.",
     "shrink_toolbar": "Reducir a una barra de herramientas móvil"
   },
   "course": {
@@ -134,6 +138,8 @@
     "handoff_default": "El siguiente paso continúa en el sitio web ↩",
     "intro": {
       "external": "📌 El plugin todavía no es compatible con este curso, pero puede seguirlo en {link}.",
+      "missing": "📌 La estructura de esta base no parece corresponder a este curso. Abra la base del curso antes de empezar: los pasos del plugin leen y escriben en ella.",
+      "missing_link": "La encontrará en {link}.",
       "soon": "🚧 Próximamente."
     },
     "introduction": "Introducción",
@@ -156,7 +162,6 @@
     "page_load_failed": "⚠️ No se pudo cargar esta página.",
     "preparing": "Preparando…",
     "rewind": {
-      "again": "Retirar de nuevo",
       "done_one": "✅ {count} línea y el documento eliminados. Ahora reciba la entrega de nuevo desde la aplicación.",
       "done_other": "✅ {count} líneas y el documento eliminados. Ahora reciba la entrega de nuevo desde la aplicación.",
       "done_stock_one": "✅ {count} línea y el documento eliminados, stock restablecido. Ahora reciba la entrega de nuevo desde la aplicación.",
@@ -181,6 +186,8 @@
       "failed": "No se pudieron añadir las líneas de la entrega.",
       "linked": "✅ {columns} rellenados en las {count} líneas.",
       "look_again": "Volver a mirar",
+      "missing_target": "«{value}» en «{table}»",
+      "missing_targets": "⚠️ No se ha añadido nada: a esta base le falta aquello a lo que se vinculan las líneas de entrega: {list}. Restáurelo (o vuelva a importar la base del curso) y pulse {look_again}.",
       "not_found": "No se encontraron las nuevas líneas después de escribirlas.",
       "stalled": "⏳ {linked}/{total} líneas vinculadas: {missing} todavía vacío(s). Una automatización puede tardar un poco; espere unos segundos y vuelva a mirar. Si sigue vacío, compruebe las condiciones de su regla y sus acciones Añadir enlaces.",
       "waiting": "Esperando a su automatización… {linked}/{total} líneas vinculadas.",
@@ -190,7 +197,8 @@
     "working": "En curso…",
     "writing": "Escribiendo…",
     "wrong_table": "Está en «{current}». Abra primero «{table}»; si no, no verá lo que ocurre.",
-    "wrong_view": "Abra primero la vista «{view}» de «{table}»: en esta, el cambio ocurre fuera de la pantalla y no lo vería."
+    "wrong_view": "Abra primero la vista «{view}» de «{table}»: en esta, el cambio ocurre fuera de la pantalla y no lo vería.",
+    "your_turn": "Su turno:"
   },
   "courses": {
     "checkpoints_caption": "Puntos de control del plugin: siga el resto del curso en el sitio web",
@@ -233,7 +241,8 @@
     "add_base_or_folder": "Añadir base o carpeta",
     "apps": "Apps",
     "bases": "Bases",
-    "general": "General({count})",
+    "general": "General ({count})",
+    "general_bare": "General",
     "my_bases": "Mis bases",
     "no_notifications": "Sin notificaciones",
     "notification": "Notificación",

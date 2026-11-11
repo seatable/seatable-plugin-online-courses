@@ -4,34 +4,34 @@
   "steps": {
     "malika-joins-you": {
       "title": "Étape 2a · Malika vous rejoint",
-      "instruction": "Collez ci-dessous le jeton de compte de votre collègue, et vérifiez que le plugin salue la bonne personne.",
+      "instruction": "Dans son compte, ouvrez Paramètres personnels et copiez le jeton de compte. Collez-le ci-dessous, et vérifiez que le plugin salue la bonne personne.",
       "hint": "Dans la section Jeton de compte de ses Paramètres personnels, il faudra peut-être d'abord cliquer sur Générer un jeton de compte, si elle n'en a jamais eu.",
-      "html": "<h1>Le jeton de votre collègue</h1> <p>Un seul réglage, une seule fois. C'est lui qui permet au plugin d'agir pour Malika, sans que vous ayez jamais à vous connecter à son compte.</p> <p>Dans son compte, ouvrez Paramètres personnels et copiez le jeton de compte. Collez-le ici.</p>",
+      "html": "<h1>Le jeton de votre collègue</h1> <p>Un seul réglage, une seule fois. C'est lui qui permet au plugin d'agir pour Malika, sans que vous ayez jamais à vous connecter à son compte.</p>",
       "demoDoneMessage": "✅ Votre collègue est configurée : le plugin peut agir pour elle."
     },
     "malikas-home-page": {
       "title": "Étape 2b · La page d'accueil de Malika",
-      "instruction": "Partagez cette base avec Malika, puis cliquez sur Actualiser ici et ouvrez sa cloche : le partage arrive sur sa page d'accueil.",
-      "html": "<h1>La page d'accueil de Malika</h1> <p>Ce que voit Malika, sans vous connecter à son compte : sa vraie cloche, et les bases partagées avec elle.</p> <p>Partagez cette base avec elle, puis cliquez sur Actualiser, comme si elle rechargeait sa page. Sa cloche affiche le partage, et la base apparaît sous Bases partagées avec moi. Retirez le partage et actualisez de nouveau pour voir son accès disparaître ; puis partagez de nouveau la base en Lecture / écriture.</p>",
+      "instruction": "Partagez cette base avec Malika, puis cliquez sur Actualiser, comme si elle rechargeait sa page. Retirez le partage et actualisez de nouveau pour voir son accès disparaître ; puis partagez de nouveau la base en Lecture / écriture.",
+      "html": "<h1>La page d'accueil de Malika</h1> <p>Ce que voit Malika, sans vous connecter à son compte : sa vraie cloche, et les bases partagées avec elle.</p> <p>Une fois la base partagée, sa cloche affiche le partage, et la base apparaît sous Bases partagées avec moi.</p>",
       "demoDoneMessage": "✅ Cette base est partagée avec Malika, avec l'autorisation Lecture / écriture."
     },
     "malikas-window-in-this-base": {
       "title": "Étape 3a · Ce que Malika voit dans la base",
-      "instruction": "Après chaque commentaire que vous écrivez sur James Bennett, cliquez sur Actualiser ici et regardez sa cloche.",
-      "html": "<h1>Ce que Malika voit dans la base</h1> <p>Voici sa fenêtre dans cette base. La cloche est ici celle de la base : le partage de l'étape 2 n'y figure pas. Sur sa page d'accueil, ces notifications sont rangées sous Bases.</p> <p>Après chaque commentaire écrit sur James Bennett, cliquez sur Actualiser, comme si elle rechargeait la base. Votre premier commentaire ne lui apporte rien. Dès que vous la mentionnez, elle fait partie de la conversation, et chaque nouveau commentaire sur la ligne lui parvient, qu'il la mentionne ou non.</p>",
+      "instruction": "Après chaque commentaire que vous écrivez sur James Bennett, cliquez sur Actualiser, comme si elle rechargeait la base, et regardez sa cloche.",
+      "html": "<h1>Ce que Malika voit dans la base</h1> <p>Voici sa fenêtre dans cette base. La cloche est ici celle de la base : le partage de l'étape 2 n'y figure pas. Sur sa page d'accueil, ces notifications sont rangées sous Bases.</p> <p>Votre premier commentaire ne lui apporte rien. Dès que vous la mentionnez, elle fait partie de la conversation, et chaque nouveau commentaire sur la ligne lui parvient, qu'il la mentionne ou non.</p>",
       "demoDoneMessage": "✅ Votre mention est arrivée jusqu'à Malika."
     },
     "malika-answers": {
       "title": "Étape 3b · Malika répond",
-      "instruction": "Laissez Malika faire ce que vous avez demandé : elle met à jour le secteur de James Bennett, puis vous répond.",
-      "html": "<h1>Malika répond</h1> <p>Malika a lu votre demande. Avec le bouton ci-dessus, elle fait ce que vous lui avez demandé : elle remplace le secteur de James Bennett, Manufacturing, par Technology, puis répond dans le fil de commentaires.</p> <p>Tant qu'elle est dans la base, elle met aussi à jour quelques autres clients dont elle s'occupe : vous retrouverez ces modifications à l'étape 4.</p> <p>Regardez ensuite votre propre cloche, dans cette base. Sa réponse ne vous mentionne pas, et pourtant elle vous est parvenue : c'est vous qui avez lancé cette conversation, vous en faites donc partie.</p>",
+      "instruction": "Laissez Malika faire ce que vous avez demandé, puis regardez votre propre cloche, dans cette base.",
+      "html": "<p>Malika a lu votre demande. Avec le bouton ci-dessus, elle fait ce que vous lui avez demandé : elle remplace le secteur de James Bennett, Manufacturing, par Technology, puis répond dans le fil de commentaires.</p> <p>Tant qu'elle est dans la base, elle met aussi à jour quelques autres clients dont elle s'occupe : vous retrouverez ces modifications à l'étape 4.</p> <p>Sa réponse ne vous mentionne pas, et pourtant elle vous parvient : c'est vous qui avez lancé cette conversation, vous en faites donc partie.</p>",
       "demoLabel": "Laisser Malika répondre",
       "demoDoneMessage": "✅ Malika a remplacé le secteur de James Bennett par Technology et a répondu dans le fil."
     },
     "malika-changes-a-status": {
       "title": "Étape 4 · Malika modifie un statut",
-      "instruction": "Laissez Malika passer James Bennett en client, puis retrouvez sa modification dans les journaux, sur le site.",
-      "html": "<h1>Malika modifie un statut</h1> <p>Malika pense que James Bennett vient de signer. Avec le bouton ci-dessus, elle se met au travail dans la grille : parmi quelques autres mises à jour de vos clients, elle fait passer son statut de Prospect à Client.</p> <p>Retournez ensuite sur le site pour retrouver sa modification dans les journaux.</p>",
+      "instruction": "Laissez Malika passer James Bennett en client, puis retournez sur le site pour retrouver sa modification dans les journaux.",
+      "html": "<p>Malika pense que James Bennett vient de signer. Avec le bouton ci-dessus, elle se met au travail dans la grille : parmi quelques autres mises à jour de vos clients, elle fait passer son statut de Prospect à Client.</p>",
       "demoLabel": "Laisser Malika changer le statut",
       "demoDoneMessage": "✅ Malika a mis à jour quelques clients, dont le statut de James Bennett, passé de Prospect à Client."
     }

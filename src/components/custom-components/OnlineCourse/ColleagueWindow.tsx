@@ -198,7 +198,7 @@ const S: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid #eef0f3',
     fontSize: 13,
   },
-  tabOn: { color: ORANGE, fontWeight: 600, borderBottom: `2px solid ${ORANGE}`, paddingBottom: 4 },
+  tabOn: { color: ORANGE, borderBottom: `2px solid ${ORANGE}`, paddingBottom: 4 },
   tabOff: { color: NAVY, paddingBottom: 4 },
   entry: { display: 'flex', gap: 9, padding: '10px 14px', borderBottom: '1px solid #f2f4f6' },
   dot: {
@@ -663,8 +663,13 @@ const ColleagueWindow: React.FC<Props> = ({ surface, caption, onSuccess, onFailu
                 {/* The bracketed count is the UNREAD of that category alone: the
                     bell's badge is the sum across the three (5 = General(4) + Bases(1)).
                     Bases and Apps stay bare — this endpoint answers for General, and a
-                    number we cannot read would be a number we invented. */}
-                <span style={S.tabOn}>{t('seatable_ui.general', { count: unread })}</span>
+                    number we cannot read would be a number we invented. No count at 0,
+                    as SeaTable itself shows. */}
+                <span style={S.tabOn}>
+                  {unread > 0
+                    ? t('seatable_ui.general', { count: unread })
+                    : t('seatable_ui.general_bare')}
+                </span>
                 <span style={S.tabOff}>{t('seatable_ui.bases')}</span>
                 <span style={S.tabOff}>{t('seatable_ui.apps')}</span>
               </div>

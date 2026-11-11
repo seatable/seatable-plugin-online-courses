@@ -12,8 +12,8 @@
     },
     "room-for-your-base": {
       "title": "Étape 3 · Régler la hauteur du panneau",
-      "instruction": "Faites glisser la poignée en haut au centre de ce panneau pour l'agrandir ou le réduire, puis cliquez sur Vérifier.",
-      "html": "Certaines pages, comme celle-ci, sont des exercices : le panneau se réduit à une bande en bas de l'écran, pour que votre base reste visible pendant que vous y travaillez. Les exercices sont signalés par <i class=\"dtable-font dtable-icon-rename\"></i> dans la liste à gauche ; les autres pages s'ouvrent en pleine hauteur. Faites glisser la poignée en haut au centre de ce panneau pour l'agrandir ou le réduire, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> Vérifier, en haut. La hauteur choisie est conservée pour les exercices suivants.",
+      "instruction": "Faites glisser la poignée en haut au centre de ce panneau pour l'agrandir ou le réduire, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> Vérifier, en haut.",
+      "html": "Certaines pages, comme celle-ci, sont des exercices : le panneau se réduit à une bande en bas de l'écran, pour que votre base reste visible pendant que vous y travaillez. Les exercices sont signalés par <i class=\"dtable-font dtable-icon-rename\"></i> dans la liste à gauche ; les autres pages s'ouvrent en pleine hauteur. La hauteur choisie est conservée pour les exercices suivants.",
       "successMessage": "C'est fait : les prochains exercices s'ouvriront à cette hauteur."
     },
     "the-buttons": {
@@ -23,13 +23,13 @@
     },
     "the-movable-toolbar": {
       "title": "Étape 5 · Réduire le plugin",
-      "html": "<h1>Réduire le plugin</h1> <p>Le panneau vous gêne pour travailler dans votre base ? Cliquez sur l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) pour le transformer en une petite barre d'outils que vous pouvez déplacer où vous voulez.</p> <p>Tant qu'il est en barre d'outils, toute la base reste accessible, rien n'est bloqué, et vous gardez l'essentiel :</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Déplacer</b> : placez-la là où elle ne vous gêne pas.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b> : affichez la consigne (et un indice) à tout moment.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Vérifier</b> : vérifiez votre travail sans rouvrir le panneau.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Agrandir</b> : rouvrez le panneau complet.</li> </ul> <p>À l'étape suivante, c'est à vous.</p>"
+      "html": "<h1>Réduire le plugin</h1> <p>Quand le panneau vous gêne pour travailler dans votre base, l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) le transforme en une petite barre d'outils que vous pouvez déplacer où vous voulez. Vous l'essaierez à l'étape suivante.</p> <p>Tant qu'il est en barre d'outils, toute la base reste accessible, rien n'est bloqué, et vous gardez l'essentiel :</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Déplacer</b> : placez-la là où elle ne vous gêne pas.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b> : affichez la consigne (et un indice) à tout moment.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Vérifier</b> : vérifiez votre travail sans rouvrir le panneau.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Agrandir</b> : rouvrez le panneau complet.</li> </ul>"
     },
     "try-the-toolbar": {
       "title": "Étape 6 · À vous de jouer",
-      "instruction": "Réduisez le plugin en barre d'outils, placez-la dans le coin inférieur droit, puis cliquez sur Vérifier.",
+      "instruction": "Cliquez sur l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) pour transformer ce panneau en barre d'outils, faites-la glisser dans le quart inférieur droit de votre écran, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> Vérifier dans la barre d'outils.",
       "hint": "Réduisez avec l'icône <i class=\"dtable-font dtable-icon-full-screen\"></i> en haut à droite ; déplacez la barre avec la poignée <i class=\"dtable-font dtable-icon-drag\"></i> ; puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> dans la barre d'outils. « Coin inférieur droit » désigne le quart inférieur droit de tout votre écran.",
-      "html": "À votre tour : cliquez sur l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) pour transformer ce panneau en barre d'outils, faites-la glisser dans le quart inférieur droit de votre écran, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> Vérifier dans la barre d'outils.",
+      "html": "<h1>Essayez la barre d'outils</h1> <p>Place à la pratique de la page précédente : la barre d'outils, et son bouton Vérifier.</p>",
       "successMessage": "Parfait, vous maîtrisez la barre d'outils 🎉 Rouvrez le plugin, puis cliquez sur Suivant pour terminer la présentation."
     },
     "youre-ready": {

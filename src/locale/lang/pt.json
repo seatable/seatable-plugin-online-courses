@@ -22,6 +22,8 @@
     "add_conditions": "adicione as duas condições: Product reference e Document reference não estão vazios",
     "add_link_action": "adicione a ação «Adicione links» que liga {source} a {target}",
     "conditions_required": "são necessárias as duas condições «não vazio» (Product reference e Document reference)",
+    "extra_conditions": "mantenha apenas as duas condições pedidas (Product reference e Document reference não estão vazios): qualquer outra impediria algumas linhas de acionar a regra",
+    "extra_link_match": "a sua ação «Adicione links» de {source} para {target} compara mais do que esse único par de colunas: mantenha apenas essa correspondência, ou algumas linhas não serão ligadas",
     "link_action_missing": "falta a ação de ligação",
     "link_missing_for": "falta a ação «Adicione links» para {source} → {target}",
     "no_new_rule": "ainda não há nenhuma regra de automação NOVA: adicione uma, dê-lhe um nome e guarde-a",
@@ -30,6 +32,7 @@
     "rule_gone": "a regra que criou desapareceu: crie-a de novo",
     "wrong_table": "ainda não há nenhuma automação em «{table}»",
     "wrong_table_pinned": "a sua regra ainda não é acionada em «{table}»",
+    "wrong_condition": "a condição sobre {column} deve verificar que a coluna não está vazia",
     "wrong_trigger": "o acionador não é «When a row is added»"
   },
   "colleague": {
@@ -101,6 +104,7 @@
     "reopen": "Reabrir o curso",
     "show_hint_toggle": "▸ Mostrar dica",
     "show_instruction": "Mostrar a instrução",
+    "expand_to_follow": "Amplie o curso para seguir este passo.",
     "shrink_toolbar": "Reduzir a uma barra de ferramentas móvel"
   },
   "course": {
@@ -134,6 +138,8 @@
     "handoff_default": "O passo seguinte continua no site ↩",
     "intro": {
       "external": "📌 Este curso ainda não é suportado pelo plugin, mas pode segui-lo em {link}.",
+      "missing": "📌 A estrutura desta base não parece corresponder a este curso. Abra a base do curso antes de começar: é nela que os passos do plugin leem e escrevem.",
+      "missing_link": "Encontra-a em {link}.",
       "soon": "🚧 Em breve."
     },
     "introduction": "Introdução",
@@ -156,7 +162,6 @@
     "page_load_failed": "⚠️ Não foi possível carregar esta página.",
     "preparing": "A preparar…",
     "rewind": {
-      "again": "Retirar de novo",
       "done_one": "✅ {count} linha e o documento removidos. Agora receba a entrega de novo a partir da aplicação.",
       "done_other": "✅ {count} linhas e o documento removidos. Agora receba a entrega de novo a partir da aplicação.",
       "done_stock_one": "✅ {count} linha e o documento removidos, stock reposto. Agora receba a entrega de novo a partir da aplicação.",
@@ -181,6 +186,8 @@
       "failed": "Não foi possível adicionar as linhas da entrega.",
       "linked": "✅ {columns} preenchidos nas {count} linhas.",
       "look_again": "Ver de novo",
+      "missing_target": "«{value}» em «{table}»",
+      "missing_targets": "⚠️ Nada foi adicionado: falta nesta base aquilo a que as linhas de entrega se ligam: {list}. Reponha-o (ou volte a importar a base do curso) e clique em {look_again}.",
       "not_found": "As novas linhas não foram encontradas depois de escritas.",
       "stalled": "⏳ {linked}/{total} linhas ligadas: {missing} ainda vazio(s). Uma automação pode demorar um pouco; espere alguns segundos e veja de novo. Se continuar vazio, verifique as condições da sua regra e as ações Adicione links.",
       "waiting": "À espera da sua automação… {linked}/{total} linhas ligadas.",
@@ -190,7 +197,8 @@
     "working": "Em curso…",
     "writing": "A escrever…",
     "wrong_table": "Está em «{current}». Abra primeiro «{table}»; caso contrário, não verá o que acontece.",
-    "wrong_view": "Abra primeiro a vista «{view}» de «{table}»: nesta, a alteração acontece fora do ecrã e não a veria."
+    "wrong_view": "Abra primeiro a vista «{view}» de «{table}»: nesta, a alteração acontece fora do ecrã e não a veria.",
+    "your_turn": "A sua vez:"
   },
   "courses": {
     "checkpoints_caption": "Pontos de verificação do plugin: siga o resto do curso no site",
@@ -233,7 +241,8 @@
     "add_base_or_folder": "Adicione uma base ou pasta",
     "apps": "Aplicativas",
     "bases": "Bases",
-    "general": "Em geral({count})",
+    "general": "Em geral ({count})",
+    "general_bare": "Em geral",
     "my_bases": "Minhas bases",
     "no_notifications": "Nenhuma notificação",
     "notification": "Notificação",

@@ -686,7 +686,7 @@ const FloatToolbar: React.FC<{
           ))}
         </div>
       )}
-      {infoOpen && controls && (controls.instruction || controls.feedback) && (
+      {infoOpen && controls && (
         <div
           style={{
             ...tb.popover,
@@ -700,7 +700,14 @@ const FloatToolbar: React.FC<{
             onClick={() => setInfoOpen(false)}>
             <i className="dtable-font dtable-icon-x" style={{ fontSize: 11 }} />
           </button>
-          {controls.instruction && <div style={tb.popText}>{controls.instruction}</div>}
+          {controls.title && <div style={tb.popTitle}>{controls.title}</div>}
+          {controls.instruction ? (
+            // Authored HTML, like the hint below it: SeaTable's own icons show here too.
+            <div style={tb.popText} dangerouslySetInnerHTML={{ __html: controls.instruction }} />
+          ) : (
+            // A page to read, not to do: its body doesn't fit here, so point to it.
+            <div style={{ ...tb.popText, ...tb.popMuted }}>{t('controls.expand_to_follow')}</div>
+          )}
           {controls.help && (
             <div style={tb.hintWrap}>
               <button type="button" style={tb.hintToggle} onClick={controls.help.toggle}>
@@ -802,7 +809,9 @@ const tb: Record<string, React.CSSProperties> = {
     color: 'rgba(255,255,255,0.7)',
     cursor: 'pointer',
   },
+  popTitle: { paddingRight: 14, marginBottom: 4, fontWeight: 600 },
   popText: { paddingRight: 14 },
+  popMuted: { color: 'rgba(255,255,255,0.7)' },
   hintWrap: { marginTop: 6 },
   hintToggle: {
     padding: 0,

@@ -9,7 +9,12 @@
  * toolbar geometry/drag/click-through; the runner owns what the buttons DO.
  */
 export interface FloatControls {
-  /** Current step's (or automation sub-stage's) instruction, plain text. */
+  /** Current step's title ("Step 3 · …"), shown at the top of the info popover on every page. */
+  title?: string;
+  /**
+   * Current step's (or automation sub-stage's) instruction — authored HTML (icons).
+   * Empty on a page with nothing to do: the popover then says to expand the course.
+   */
   instruction: string;
   /** Back handler — absent when there's nothing to go back to (disables the button). */
   onBack?: () => void;

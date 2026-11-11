@@ -6,52 +6,50 @@
       "title": "Passo 2 · Automatizar a ligação das linhas",
       "instruction": "Crie em Line items uma automação que ligue cada nova linha ao seu produto e ao seu documento.",
       "hint": "Em Line items: acionador «When a row is added», duas condições (Product reference e Document reference não vazios) e depois duas ações «Adicione links», uma para Products (Reference) e outra para Documents (Delivery reference).",
-      "html": "Crie a sua primeira automação. Na tabela Line items, crie uma automação que ligue cada nova linha ao seu Product e ao seu Document fazendo corresponder as referências, sem nenhuma ligação introduzida à mão. Escolha Guiar-me passo a passo para a construir fase a fase (cada uma verificada antes da seguinte), ou Já a construí: verifique-a se já o fez.",
+      "html": "<h1>Construa a automação de ligação</h1> <p>A sua primeira automação: cada nova linha de Line items encontra sozinha o seu Product e o seu Document fazendo corresponder as referências, sem nenhuma ligação introduzida à mão.</p> <p>Escolha Guiar-me passo a passo para a construir fase a fase, cada uma verificada antes da seguinte, ou Já a construí: verifique-a se já o fez. Regras de automação está na sua base, atrás deste painel: reduza o plugin (<i class=\"dtable-font dtable-icon-full-screen\"></i>) para lá chegar; Guiar-me passo a passo fá-lo por si.</p>",
       "successMessage": "A sua automação de ligação está concluída: cada nova linha vai agora encontrar sozinha o seu produto e o seu documento.",
       "watch": {
-        "html": "Veja-a em ação. A sua regra está pronta, mas nada a acionou ainda: vamos dar-lhe trabalho. Abra primeiro a tabela Line items para ver o que acontece e deixe o plugin adicionar as linhas da entrega, como se o seu fornecedor tivesse enviado a lista limpa do que foi carregado no camião. Fique de olho nas colunas Product e Document enquanto as linhas chegam: o plugin não escreve nenhuma delas e, no entanto, preenchem-se sozinhas.",
-        "instruction": "Abra a tabela Line items, adicione as três linhas da entrega e veja as ligações preencherem-se.",
+        "html": "Veja-a em ação. A sua regra está pronta, mas nada a acionou ainda: vamos dar-lhe trabalho. O plugin adiciona as linhas da entrega, como se o seu fornecedor tivesse enviado a lista limpa do que foi carregado no camião. Não escreve nem a coluna Product nem a coluna Document.",
+        "instruction": "Abra a tabela Line items, adicione as três linhas da entrega e fique de olho nas colunas Product e Document: preenchem-se sozinhas.",
         "successMessage": "As duas ligações preencheram-se sozinhas, em linhas em que nunca tocou. Não automatizou esta entrega: construiu uma regra válida para qualquer linha que entre nesta tabela, seja quem for que a adicione."
       },
       "automationStages": {
         "created": {
           "title": "Automação criada",
-          "instruction": "Abra Regras de automação, adicione uma nova regra e dê-lhe um nome.",
-          "hint": "É preciso sair do campo do nome da regra para que ela exista",
-          "html": "Crie a automação. Abra Regras de automação, adicione uma nova regra e dê-lhe um nome; depois clique em Verificar."
+          "instruction": "Abra Regras de automação, adicione uma nova regra e dê-lhe um nome; depois clique em Verificar.",
+          "hint": "É preciso sair do campo do nome da regra para que ela exista"
         },
         "trigger": {
           "title": "Acionador e condições",
-          "instruction": "Acionador «When a row is added», com Product reference e Document reference não vazios.",
+          "instruction": "Escolha «When a row is added» e adicione duas condições: Product reference não está vazio e Document reference não está vazio.",
           "hint": "As condições configuram-se no painel Trigger settings",
-          "html": "Configure o acionador e as suas condições. Escolha «When a row is added» e adicione duas condições para que só seja executado em linhas completas: Product reference não está vazio e Document reference não está vazio."
+          "html": "Configure o acionador e as suas condições, para que a regra só seja executada em linhas completas."
         },
         "action:0": {
           "title": "Ligar o produto",
-          "instruction": "Adicione uma ação «Adicione links» que faça corresponder Product reference à Reference de um produto.",
-          "hint": "Escolha a ação «Adicione links» e depois a coluna Product que ela deve preencher",
-          "html": "Ligue o produto. Adicione uma ação «Adicione links» que preencha a coluna Product: a Product reference da linha deve ser igual à Reference de um produto."
+          "instruction": "Adicione uma ação «Adicione links» que preencha a coluna Product: a Product reference da linha deve ser igual à Reference de um produto.",
+          "hint": "Escolha a ação «Adicione links» e depois a coluna Product que ela deve preencher"
         },
         "action:1": {
           "title": "Ligar o documento",
-          "instruction": "Adicione uma segunda ação «Adicione links» que faça corresponder Document reference à Delivery reference de um documento.",
+          "instruction": "Adicione uma segunda ação «Adicione links» que preencha a coluna Document: a Document reference da linha deve ser igual à Delivery reference de um documento.",
           "hint": "A mesma ação outra vez, desta vez para preencher Document",
-          "html": "Ligue o documento. Adicione uma segunda ação «Adicione links» que preencha a coluna Document: a Document reference da linha deve ser igual à Delivery reference de um documento. A sua automação fica assim completa."
+          "html": "Uma última ação, e a sua automação fica completa."
         }
       }
     },
     "a-reviewer-for-a-short-delivery": {
       "title": "Passo 3 · Atribuir um revisor a uma entrega incompleta",
-      "instruction": "Deixe o plugin criar uma entrega incompleta, execute a sua regra a partir de Regras de automação e verifique.",
+      "instruction": "Deixe o plugin criar a entrega incompleta. Abra depois Regras de automação e clique em Corra agora na sua regra de revisão (não precisa de esperar pela hora definida), e volte para verificar.",
       "hint": "Use Corra agora em Regras de automação: não precisa de esperar pela hora programada.",
-      "html": "Dê à sua regra um caso para tratar. Uma regra programada só mostra o que vale perante uma entrega que precisa mesmo de atenção: em vez de lhe pedir que prepare uma, o plugin trata disso. Cria uma nova entrega e uma linha recebida em quantidade inferior à encomendada. Se o voltar a executar, primeiro remove a entrega, e a sua linha, deixadas pela execução anterior. A sua automação do passo 2 liga a linha sozinha; o plugin espera que o faça.</p> <p>Abra depois Regras de automação e clique em Corra agora na sua regra de revisão: não precisa de esperar pela hora definida. Volte e verifique: o que se verifica não é que haja um revisor, mas que quem o atribuiu foi a sua automação, e não uma intervenção manual.",
+      "html": "<p>Dê à sua regra um caso para tratar. Uma regra programada só mostra o que vale perante uma entrega que precisa mesmo de atenção: em vez de lhe pedir que prepare uma, o plugin trata disso. Cria uma nova entrega e uma linha recebida em quantidade inferior à encomendada. Se o voltar a executar, primeiro remove a entrega, e a sua linha, deixadas pela execução anterior. A sua automação do passo 2 liga a linha sozinha; o plugin espera que o faça.</p> <p>O que se verifica não é que haja um revisor, mas que quem o atribuiu foi a sua automação, e não uma intervenção manual.",
       "handoffNote": "Terminou aqui: volte ao site para continuar o curso ↩"
     },
     "rewind-and-do-it-for-real": {
       "title": "Passo 4 · Retirar a entrega e recebê-la a sério",
-      "instruction": "Deixe o plugin retirar a entrega preparada, receba-a de novo a partir da aplicação e deixe a IA ler a guia.",
+      "instruction": "Deixe o plugin retirar a entrega. Receba-a depois a sério: na aplicação Delivery check, abra New delivery note, anexe a foto da guia de remessa e envie. Veja a leitura, a extração e o script fazerem o resto, e volte para verificar.",
       "hint": "O formulário é a segunda página da aplicação Delivery check: anexe a foto e envie; tudo o resto é lido da imagem.",
-      "html": "Retire a entrega. Tem a cadeia; o que lhe falta é com que a alimentar: essa entrega já está na sua base, com todas as linhas. Deixe o plugin removê-las, juntamente com o documento, para que a mesma guia possa chegar como chegaria na realidade. O seu stock volta também ao estado anterior.</p> <p>Receba-a depois a sério: na aplicação Delivery check, abra New delivery note, anexe a foto da guia de remessa e envie. Veja a leitura, a extração e o script fazerem o resto, e volte para verificar.</p> <p>Se a extração correr mal, o plugin escreve as linhas da entrega por si: completas se não produziu nenhuma, corrigidas se se enganou. O que se verifica é que as linhas voltaram, nunca que a IA acertou sozinha.",
+      "html": "<p>Retire a entrega. Tem a cadeia; o que lhe falta é com que a alimentar: essa entrega já está na sua base, com todas as linhas. Deixe o plugin removê-las, juntamente com o documento, para que a mesma guia possa chegar como chegaria na realidade. O seu stock volta também ao estado anterior. Depois de concluído o passo, Recomeçar retira de novo a entrega da mesma forma, para que a possa receber mais uma vez.</p> <p>Se a extração correr mal, o plugin escreve as linhas da entrega por si: completas se não produziu nenhuma, corrigidas se se enganou. O que se verifica é que as linhas voltaram, nunca que a IA acertou sozinha.",
       "successMessage": "A entrega voltou, lida desta vez a partir de uma foto, com as linhas ligadas pela regra do passo 2.",
       "handoffNote": "Terminou aqui: volte ao site para continuar o curso ↩",
       "grade": {
@@ -60,35 +58,35 @@
     },
     "see-what-seatable-sends": {
       "title": "Passo 5a · Ver o que o SeaTable envia",
-      "instruction": "Aponte primeiro o seu webhook para o ponto de teste e deixe o plugin fazer uma alteração cuja forma conhece.",
+      "instruction": "Aponte o seu webhook para o ponto de teste e mantenha a página de teste ao lado da sua base; depois deixe o plugin fazer a sua alteração.",
       "hint": "Nada é avaliado aqui: todo o exercício consiste em ir ler o que chegou do outro lado.",
-      "html": "Ponha o seu webhook a falar. Com o webhook apontado para o ponto de teste, o plugin faz uma alteração cuja forma conhece: adiciona uma linha a Products, edita-a uns segundos depois e depois elimina-a, deixando o seu catálogo exatamente como estava. Mantenha a página de teste ao lado da sua base: as três alterações estão espaçadas para que veja cada uma chegar dos dois lados. Se nada chegar ao ponto de teste, experimente pôr as duas páginas na mesma janela do navegador.</p> <p>Três operações, três pedidos: o que foi escrito, o que mudou (com o valor anterior) e o que desapareceu. Nada é verificado aqui: ler o outro lado é todo o exercício.",
+      "html": "<p>Ponha o seu webhook a falar. O plugin faz uma alteração cuja forma conhece: adiciona uma linha a Products, edita-a uns segundos depois e depois elimina-a, deixando o seu catálogo exatamente como estava. As três alterações estão espaçadas para que veja cada uma chegar dos dois lados. Se nada chegar ao ponto de teste, experimente pôr as duas páginas na mesma janela do navegador.</p> <p>Três operações, três pedidos: o que foi escrito, o que mudou (com o valor anterior) e o que desapareceu. Nada é verificado aqui: ler o outro lado é todo o exercício.",
       "handoffNote": "Terminou aqui: volte ao site para continuar o curso ↩",
       "demoDoneMessage": "✅ As três alterações foram feitas: vá lê-las do outro lado."
     },
     "write-the-deliverys-lines": {
       "title": "Passo 5b · Adicionar as linhas da entrega",
-      "instruction": "Deixe o plugin escrever as linhas da segunda entrega, em vez de copiar três códigos de barras de uma foto.",
+      "instruction": "Deixe o plugin escrever as linhas da segunda entrega. Termine depois como o escritório faria: compare a lista com a guia e clique em Notify the dock no documento.",
       "hint": "As linhas chegam a Line items e a sua regra do passo 2 liga-as; depois clique em Notify the dock no documento.",
-      "html": "Deixe o plugin fazer a introdução. A segunda guia de remessa está na sua base, mas as linhas não. Copiar três códigos de barras de uma foto não ensina nada: o plugin escreve-as por si, as mesmas linhas que uma leitura limpa dessa guia teria produzido.</p> <p>Chegam a Line items com as suas referências, por isso a regra do passo 2 liga cada uma ao seu produto e ao seu documento logo que chega. Nada é verificado aqui.</p> <p>Termine depois como o escritório faria: compare a lista com a guia e clique em Notify the dock no documento.",
+      "html": "<p>Deixe o plugin fazer a introdução. A segunda guia de remessa está na sua base, mas as linhas não. Copiar três códigos de barras de uma foto não ensina nada: o plugin escreve-as por si, as mesmas linhas que uma leitura limpa dessa guia teria produzido.</p> <p>Chegam a Line items com as suas referências, por isso a regra do passo 2 liga cada uma ao seu produto e ao seu documento logo que chega. Nada é verificado aqui.",
       "handoffNote": "Terminou aqui: volte ao site para continuar o curso ↩",
       "demoLabel": "Escrever as linhas",
       "demoDoneMessage": "✅ As linhas da entrega estão em Line items, ligadas pela sua própria regra."
     },
     "the-electronic-delivery-note": {
       "title": "Passo 7a · A guia de remessa eletrónica",
-      "instruction": "Deixe o plugin depositar a guia de remessa eletrónica e vá enviar uma das suas linhas a partir da documentação da API.",
+      "instruction": "Deixe o plugin depositar o cabeçalho da guia. Depois, de volta ao site, envie pelo menos uma linha para Line items a partir da documentação da API, e volte aqui no passo 7b quando a tiver enviado.",
       "hint": "Nada é avaliado aqui: isto só deposita a guia na sua base, para que as linhas que enviar tenham a que se ligar.",
-      "html": "Na pele do sistema do fornecedor, primeira parte. Um dos seus fornecedores gera agora a guia de remessa quando o camião é carregado e envia-a diretamente para a sua base. Esta troca faz-se em dois tempos: o cabeçalho da guia e depois as linhas. O plugin deposita o cabeçalho, para que a parte que faz à mão seja curta e legível.</p> <p>Aparece um novo documento em Documents com a referência {apiDeliveryReference} e sem ficheiro anexado: já não há nada para fotografar. Se o voltar a executar, primeiro remove esse documento, com qualquer linha já enviada para ele.</p> <p>Depois é a sua vez, de volta ao site: envie pelo menos uma linha para Line items a partir da documentação da API. Volte aqui no passo 7b quando a tiver enviado.",
+      "html": "<p>Na pele do sistema do fornecedor, primeira parte. Um dos seus fornecedores gera agora a guia de remessa quando o camião é carregado e envia-a diretamente para a sua base. Esta troca faz-se em dois tempos: o cabeçalho da guia e depois as linhas. O plugin deposita o cabeçalho, para que a parte que faz à mão seja curta e legível.</p> <p>Aparece um novo documento em Documents com a referência {apiDeliveryReference} e sem ficheiro anexado: já não há nada para fotografar. Se o voltar a executar, primeiro remove esse documento, com qualquer linha já enviada para ele.",
       "handoffNote": "Agora vá enviar uma das suas linhas a partir da documentação da API ↩",
       "demoLabel": "Criar a entrega",
       "demoDoneMessage": "✅ A guia de remessa está na sua base, sem linhas e sem ficheiro."
     },
     "check-the-pushed-line": {
       "title": "Passo 7b · Verificar a linha enviada",
-      "instruction": "Envie pelo menos uma linha para Line items a partir da documentação da API e verifique que chegou, se ligou e entrou pela API.",
+      "instruction": "Envie pelo menos uma linha para Line items a partir da documentação da API e verifique.",
       "hint": "Na documentação da API, table_name é \"Line items\" e a linha precisa da Document reference \"{apiDeliveryReference}\", de uma Product reference do seu catálogo e de uma Qty.",
-      "html": "A segunda parte é consigo. A partir da documentação da API, envie pelo menos uma linha para Line items: a referência {apiDeliveryReference} em Document reference, um produto do seu catálogo em Product reference e uma Qty.</p> <p>O que se verifica não é só que a sua linha chegou, mas que se ligou, ao seu produto e ao seu documento, graças à automação do passo 2, e que veio mesmo de fora: uma linha escrita à mão na grelha não conta aqui.",
+      "html": "<p>A segunda parte é consigo: uma linha para esta guia, com a referência {apiDeliveryReference} em Document reference, um produto do seu catálogo em Product reference e uma Qty.</p> <p>O que se verifica não é só que a sua linha chegou, mas que se ligou, ao seu produto e ao seu documento, graças à automação do passo 2, e que veio mesmo de fora: uma linha escrita à mão na grelha não conta aqui.",
       "successMessage": "A sua linha entrou pela API e ligou-se pelo caminho: sem leitor de códigos, sem câmara, sem teclado, e nada na sua base nota a diferença.",
       "handoffNote": "Terminou aqui: volte ao site para continuar o curso ↩",
       "grade": {

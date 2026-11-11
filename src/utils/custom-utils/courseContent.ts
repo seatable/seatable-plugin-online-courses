@@ -63,9 +63,10 @@ export interface CourseStep {
   /** Optional override for the handoff sentence (else a generic one). */
   handoffNote?: string;
   /**
-   * Short single-sentence instruction for the floating-icon caption. Kept concise
-   * on purpose — the full-size plugin shows the richer `html`; this is what stays
-   * readable under the shrunk icon. Falls back to the stripped `html` if absent.
+   * The one sentence saying what to do now — light HTML (SeaTable icons allowed).
+   * The SINGLE source for it: shown in the page as a "Your turn:" block under the
+   * body AND in the floating toolbar, so the `html` body must not repeat it. A page
+   * without one shows its title in the toolbar.
    */
   instruction?: string;
   /**
@@ -504,7 +505,7 @@ export interface CourseMeta {
   name: string; // preset display name
   access: CourseAccess;
   intro: string; // HTML description
-  helpUrl?: string; // external courses only
+  helpUrl?: string; // the course's page on the website (external courses, and the base to import)
 }
 
 const COURSE_ROSTER: Omit<CourseMeta, 'name' | 'intro'>[] = [
@@ -512,7 +513,7 @@ const COURSE_ROSTER: Omit<CourseMeta, 'name' | 'intro'>[] = [
   { id: 'course-1', access: 'external', helpUrl: 'https://seatable.com/help/online-course-1/' },
   { id: 'course-2', access: 'external', helpUrl: 'https://seatable.com/help/online-course-2/' },
   { id: 'course-3', access: 'active', helpUrl: 'https://seatable.com/help/online-course-3/' },
-  { id: 'course-4', access: 'active' },
+  { id: 'course-4', access: 'active', helpUrl: 'https://seatable.com/help/online-course-4/' },
   { id: 'course-5', access: 'soon' },
   { id: 'course-6', access: 'soon' },
   { id: 'course-7', access: 'soon' },
@@ -538,6 +539,19 @@ export function courseName(courseId: string): string | undefined {
   return getCourseTexts(courseId).title;
 }
 
+// A link to a course's page on the website, shown bare (no scheme, no trailing slash),
+// in the colour of the orange notes it sits in.
+function websiteLink(url: string): string {
+  const shown = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  return `<a href="${url}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>`;
+}
+
+/** The link to a course's page on the website (where its base is downloaded), if it has one. */
+export function courseWebsiteLink(courseId: string): string | undefined {
+  const url = COURSE_ROSTER.find((c) => c.id === courseId)?.helpUrl;
+  return url ? websiteLink(url) : undefined;
+}
+
 const NOTE_STYLE =
   'margin-top:22px;padding:12px 14px;border-radius:8px;font-size:14px;line-height:1.5;';
 
@@ -546,8 +560,7 @@ const NOTE_STYLE =
 function introHtml(c: CourseMeta): string {
   let note = '';
   if (c.access === 'external') {
-    const shown = (c.helpUrl || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    const link = `<a href="${c.helpUrl}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>`;
+    const link = websiteLink(c.helpUrl || '');
     note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">${t('course.intro.external', { link })}</div>`;
   } else if (c.access === 'soon') {
     note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">${t('course.intro.soon')}</div>`;
@@ -574,8 +587,10 @@ function welcomeContentSteps(): CourseStep[] {
     { id: 'the-buttons', type: 'course' },
     { id: 'the-movable-toolbar', type: 'course' },
     {
+      // A full page, not an exercise: the panel has to be at full height for the
+      // learner to shrink it, and the page heads it with its own H1 (2026-11-10).
       id: 'try-the-toolbar',
-      type: 'exercise',
+      type: 'course',
       grade: { kind: 'plugin-ui', check: 'toolbar-lower-right' },
     },
     // A full-height page to end on: the course list on the left is only readable
@@ -595,7 +610,7 @@ function course4ContentSteps(): CourseStep[] {
     [
       {
         id: 'build-the-linking-automation',
-        type: 'exercise',
+        type: 'course',
         continuesOn: 'website',
         demo: 'automation-guided',
         automationStages: LINK_AUTOMATION_STAGES,

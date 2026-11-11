@@ -4,34 +4,34 @@
   "steps": {
     "malika-joins-you": {
       "title": "Schritt 2a · Malika kommt dazu",
-      "instruction": "Fügen Sie unten das Account-Token Ihrer Kollegin ein und prüfen Sie, ob das Plugin die richtige Person begrüßt.",
+      "instruction": "Öffnen Sie in ihrem Account die Persönlichen Einstellungen und kopieren Sie das Account-Token. Fügen Sie es unten ein und prüfen Sie, ob das Plugin die richtige Person begrüßt.",
       "hint": "Im Bereich Account-Token ihrer Persönlichen Einstellungen müssen Sie unter Umständen zuerst auf Account-Token erzeugen klicken, falls sie noch nie eines hatte.",
-      "html": "<h1>Das Token Ihrer Kollegin</h1> <p>Eine einzige Einstellung, ein einziges Mal. Mit ihr kann das Plugin für Malika handeln – ohne dass Sie sich je mit ihrem Account anmelden müssen.</p> <p>Öffnen Sie in ihrem Account die Persönlichen Einstellungen und kopieren Sie das Account-Token. Fügen Sie es hier ein.</p>",
+      "html": "<h1>Das Token Ihrer Kollegin</h1> <p>Eine einzige Einstellung, ein einziges Mal. Mit ihr kann das Plugin für Malika handeln – ohne dass Sie sich je mit ihrem Account anmelden müssen.</p>",
       "demoDoneMessage": "✅ Ihre Kollegin ist eingerichtet – das Plugin kann für sie handeln."
     },
     "malikas-home-page": {
       "title": "Schritt 2b · Malikas Startseite",
-      "instruction": "Geben Sie diese Base für Malika frei, klicken Sie dann hier auf Aktualisieren und öffnen Sie ihre Glocke – die Freigabe landet auf ihrer Startseite.",
-      "html": "<h1>Malikas Startseite</h1> <p>Was Malika sieht, ohne dass Sie sich mit ihrem Account anmelden: ihre echte Glocke und die für sie freigegebenen Bases.</p> <p>Geben Sie diese Base für sie frei und klicken Sie dann auf Aktualisieren – so, als würde sie ihre Seite neu laden. Ihre Glocke zeigt die Freigabe, und unter An mich freigegebene Bases erscheint die Base. Entziehen Sie die Freigabe und aktualisieren Sie erneut, um zu sehen, wie ihr Zugriff verschwindet; geben Sie die Base dann wieder als Lesen und Schreiben frei.</p>",
+      "instruction": "Geben Sie diese Base für Malika frei und klicken Sie dann auf Aktualisieren – so, als würde sie ihre Seite neu laden. Entziehen Sie die Freigabe und aktualisieren Sie erneut, um zu sehen, wie ihr Zugriff verschwindet; geben Sie die Base dann wieder als Lesen und Schreiben frei.",
+      "html": "<h1>Malikas Startseite</h1> <p>Was Malika sieht, ohne dass Sie sich mit ihrem Account anmelden: ihre echte Glocke und die für sie freigegebenen Bases.</p> <p>Sobald die Base freigegeben ist, zeigt ihre Glocke die Freigabe, und unter An mich freigegebene Bases erscheint die Base.</p>",
       "demoDoneMessage": "✅ Diese Base ist für Malika freigegeben, mit der Berechtigung Lesen und Schreiben."
     },
     "malikas-window-in-this-base": {
       "title": "Schritt 3a · Was Malika in der Base sieht",
-      "instruction": "Klicken Sie nach jedem Kommentar, den Sie zu James Bennett schreiben, hier auf Aktualisieren und sehen Sie sich ihre Glocke an.",
-      "html": "<h1>Was Malika in der Base sieht</h1> <p>Hier sehen Sie ihr Fenster in dieser Base. Die Glocke ist hier die der Base: Die Freigabe aus Schritt 2 ist nicht darin. Auf ihrer Startseite stehen diese Benachrichtigungen unter Bases.</p> <p>Klicken Sie nach jedem Kommentar zu James Bennett auf Aktualisieren – so, als würde sie die Base neu laden. Ihr erster Kommentar bringt ihr nichts. Sobald Sie sie erwähnen, gehört sie zur Konversation, und jeder neue Kommentar in der Zeile erreicht sie – ob er sie erwähnt oder nicht.</p>",
+      "instruction": "Klicken Sie nach jedem Kommentar, den Sie zu James Bennett schreiben, auf Aktualisieren – so, als würde sie die Base neu laden – und sehen Sie sich ihre Glocke an.",
+      "html": "<h1>Was Malika in der Base sieht</h1> <p>Hier sehen Sie ihr Fenster in dieser Base. Die Glocke ist hier die der Base: Die Freigabe aus Schritt 2 ist nicht darin. Auf ihrer Startseite stehen diese Benachrichtigungen unter Bases.</p> <p>Ihr erster Kommentar bringt ihr nichts. Sobald Sie sie erwähnen, gehört sie zur Konversation, und jeder neue Kommentar in der Zeile erreicht sie – ob er sie erwähnt oder nicht.</p>",
       "demoDoneMessage": "✅ Ihre Erwähnung hat Malika erreicht."
     },
     "malika-answers": {
       "title": "Schritt 3b · Malika antwortet",
-      "instruction": "Lassen Sie Malika tun, worum Sie gebeten haben: Sie aktualisiert die Branche von James Bennett und antwortet Ihnen dann.",
-      "html": "<h1>Malika antwortet</h1> <p>Malika hat Ihre Bitte gelesen. Mit dem Button oben tut sie, worum Sie gebeten haben: Sie ändert die Branche von James Bennett von Manufacturing auf Technology und antwortet dann in der Konversation.</p> <p>Wenn sie schon in der Base ist, aktualisiert sie auch ein paar andere Kunden, die sie betreut – diesen Änderungen begegnen Sie in Schritt 4.</p> <p>Sehen Sie sich dann Ihre eigene Glocke in dieser Base an. Ihre Antwort erwähnt Sie nicht und hat Sie trotzdem erreicht: Sie haben diese Konversation begonnen, also gehören Sie dazu.</p>",
+      "instruction": "Lassen Sie Malika tun, worum Sie gebeten haben, und sehen Sie sich dann Ihre eigene Glocke in dieser Base an.",
+      "html": "<p>Malika hat Ihre Bitte gelesen. Mit dem Button oben tut sie, worum Sie gebeten haben: Sie ändert die Branche von James Bennett von Manufacturing auf Technology und antwortet dann in der Konversation.</p> <p>Wenn sie schon in der Base ist, aktualisiert sie auch ein paar andere Kunden, die sie betreut – diesen Änderungen begegnen Sie in Schritt 4.</p> <p>Ihre Antwort erwähnt Sie nicht und erreicht Sie trotzdem: Sie haben diese Konversation begonnen, also gehören Sie dazu.</p>",
       "demoLabel": "Malika antworten lassen",
       "demoDoneMessage": "✅ Malika hat die Branche von James Bennett auf Technology gesetzt und in der Konversation geantwortet."
     },
     "malika-changes-a-status": {
       "title": "Schritt 4 · Malika ändert einen Status",
-      "instruction": "Lassen Sie Malika James Bennett als Kunden markieren – und lesen Sie ihre Änderung dann auf der Website in den Logs nach.",
-      "html": "<h1>Malika ändert einen Status</h1> <p>Malika glaubt, dass James Bennett gerade unterschrieben hat. Mit dem Button oben macht sie sich im Raster an die Arbeit: Neben ein paar anderen Aktualisierungen Ihrer Kunden ändert sie seinen Status von Prospect auf Client.</p> <p>Gehen Sie dann zurück zur Website, um ihre Änderung in den Logs zu finden.</p>",
+      "instruction": "Lassen Sie Malika James Bennett als Kunden markieren und gehen Sie dann zurück zur Website, um ihre Änderung in den Logs zu finden.",
+      "html": "<p>Malika glaubt, dass James Bennett gerade unterschrieben hat. Mit dem Button oben macht sie sich im Raster an die Arbeit: Neben ein paar anderen Aktualisierungen Ihrer Kunden ändert sie seinen Status von Prospect auf Client.</p>",
       "demoLabel": "Malika den Status ändern lassen",
       "demoDoneMessage": "✅ Malika hat ein paar Kunden aktualisiert – darunter den Status von James Bennett, von Prospect auf Client."
     }

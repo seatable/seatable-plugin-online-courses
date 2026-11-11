@@ -22,6 +22,8 @@
     "add_conditions": "fügen Sie beide Bedingungen hinzu: Product reference und Document reference sind nicht leer",
     "add_link_action": "fügen Sie die Aktion „Links hinzufügen“ hinzu, die {source} mit {target} verknüpft",
     "conditions_required": "beide Nicht-leer-Bedingungen (Product reference und Document reference) sind erforderlich",
+    "extra_conditions": "behalten Sie nur die beiden verlangten Bedingungen (Product reference und Document reference sind nicht leer): jede weitere verhindert, dass manche Zeilen die Regel auslösen",
+    "extra_link_match": "Ihre Aktion „Links hinzufügen“ von {source} zu {target} vergleicht mehr als dieses eine Spaltenpaar: behalten Sie nur diese Zuordnung, sonst werden manche Zeilen nicht verknüpft",
     "link_action_missing": "die Verknüpfungsaktion fehlt",
     "link_missing_for": "die Aktion „Links hinzufügen“ für {source} → {target} fehlt",
     "no_new_rule": "noch keine NEUE Automationsregel – legen Sie eine an, benennen Sie sie und speichern Sie sie",
@@ -30,6 +32,7 @@
     "rule_gone": "die von Ihnen angelegte Regel ist verschwunden – legen Sie sie erneut an",
     "wrong_table": "noch keine Automation auf „{table}“",
     "wrong_table_pinned": "Ihre Regel löst noch nicht auf „{table}“ aus",
+    "wrong_condition": "die Bedingung auf {column} muss prüfen, dass die Spalte nicht leer ist",
     "wrong_trigger": "der Auslöser ist nicht „Wenn eine Zeile hinzugefügt wird“"
   },
   "colleague": {
@@ -101,6 +104,7 @@
     "reopen": "Kurs wieder öffnen",
     "show_hint_toggle": "▸ Hinweis anzeigen",
     "show_instruction": "Anweisung anzeigen",
+    "expand_to_follow": "Vergrößern Sie den Kurs, um diesem Schritt zu folgen.",
     "shrink_toolbar": "Zu einer verschiebbaren Werkzeugleiste verkleinern"
   },
   "course": {
@@ -134,6 +138,8 @@
     "handoff_default": "Der nächste Schritt geht auf der Website weiter ↩",
     "intro": {
       "external": "📌 Dieser Kurs wird vom Plugin derzeit nicht unterstützt, Sie können ihn aber auf {link} absolvieren.",
+      "missing": "📌 Der Aufbau dieser Base scheint nicht zu diesem Kurs zu passen. Öffnen Sie vor dem Start die Base des Kurses – dort lesen und schreiben die Schritte des Plugins.",
+      "missing_link": "Sie finden sie auf {link}.",
       "soon": "🚧 Demnächst verfügbar."
     },
     "introduction": "Einführung",
@@ -156,7 +162,6 @@
     "page_load_failed": "⚠️ Diese Seite konnte nicht geladen werden.",
     "preparing": "Wird vorbereitet…",
     "rewind": {
-      "again": "Erneut zurücksetzen",
       "done_one": "✅ {count} Zeile und das Dokument entfernt. Erfassen Sie die Lieferung jetzt erneut über die App.",
       "done_other": "✅ {count} Zeilen und das Dokument entfernt. Erfassen Sie die Lieferung jetzt erneut über die App.",
       "done_stock_one": "✅ {count} Zeile und das Dokument entfernt, Bestand zurückgesetzt. Erfassen Sie die Lieferung jetzt erneut über die App.",
@@ -181,6 +186,8 @@
       "failed": "Die Lieferzeilen konnten nicht hinzugefügt werden.",
       "linked": "✅ {columns} in allen {count} Zeilen ausgefüllt.",
       "look_again": "Erneut nachsehen",
+      "missing_target": "„{value}“ in „{table}“",
+      "missing_targets": "⚠️ Es wurde nichts hinzugefügt: In dieser Base fehlt, womit die Lieferpositionen verknüpft werden – {list}. Stellen Sie es wieder her (oder importieren Sie die Base des Kurses erneut) und klicken Sie dann auf {look_again}.",
       "not_found": "Die neuen Zeilen wurden nach dem Schreiben nicht gefunden.",
       "stalled": "⏳ {linked}/{total} Zeilen verknüpft – {missing} noch leer. Automationen brauchen manchmal einen Moment; warten Sie ein paar Sekunden und sehen Sie erneut nach. Bleibt es leer, prüfen Sie die Bedingungen Ihrer Regel und ihre Aktionen „Links hinzufügen“.",
       "waiting": "Warten auf Ihre Automation… {linked}/{total} Zeilen verknüpft.",
@@ -190,7 +197,8 @@
     "working": "Wird ausgeführt…",
     "writing": "Wird geschrieben…",
     "wrong_table": "Sie sind in „{current}“. Öffnen Sie zuerst „{table}“, sonst verpassen Sie, was passiert.",
-    "wrong_view": "Öffnen Sie zuerst die Ansicht „{view}“ von „{table}“ – in dieser hier passiert die Änderung außerhalb des sichtbaren Bereichs."
+    "wrong_view": "Öffnen Sie zuerst die Ansicht „{view}“ von „{table}“ – in dieser hier passiert die Änderung außerhalb des sichtbaren Bereichs.",
+    "your_turn": "Ihre Aufgabe:"
   },
   "courses": {
     "checkpoints_caption": "Prüfpunkte im Plugin – der Rest des Kurses findet auf der Website statt",
@@ -234,7 +242,8 @@
     "add_folder": "Ordner hinzufügen",
     "apps": "Apps",
     "bases": "Bases",
-    "general": "Allgemein({count})",
+    "general": "Allgemein ({count})",
+    "general_bare": "Allgemein",
     "my_bases": "Meine Bases",
     "no_notifications": "Keine Benachrichtigungen",
     "notification": "Benachrichtigung",

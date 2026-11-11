@@ -35,7 +35,7 @@
  * null, so an uncertain read blocks nothing.
  */
 
-import { getTableByName } from './sdkRead';
+import { findRowByMatch, getTableByName } from './sdkRead';
 import { t } from '../../locale/t';
 
 function sdk(): any {
@@ -214,4 +214,35 @@ export async function awaitLinks(
 
   if (progress.pending === 0) return { kind: 'linked' };
   return { kind: progress.pending === progress.total ? 'none' : 'partial', progress };
+}
+
+/**
+ * What the watch rows will be linked to, and this base lacks: for each *Add links*
+ * action, every value the rows carry in its source column must match a row of the
+ * target table. Checked BEFORE the rows are written — otherwise they are added, the
+ * rule rightly finds nothing to link, and the learner is told to check a rule that
+ * is fine (2026-11-11 test: the delivery's document had been deleted from the base).
+ *
+ * Only speaks on a positive answer: a target table that cannot be read is skipped.
+ */
+export function missingLinkTargets(
+  rows: Record<string, any>[],
+  linkActions: { source_column: string; target_table: string; target_column: string }[]
+): { table: string; value: string }[] {
+  const missing: { table: string; value: string }[] = [];
+  for (const la of linkActions) {
+    const table = getTableByName(la.target_table);
+    if (!table) continue;
+    const values = new Set(
+      rows
+        .map((r) => r[la.source_column])
+        .filter((v) => v !== null && v !== undefined && v !== '')
+        .map(String)
+    );
+    values.forEach((value) => {
+      if (!findRowByMatch(table, la.target_column, value))
+        missing.push({ table: la.target_table, value });
+    });
+  }
+  return missing;
 }
