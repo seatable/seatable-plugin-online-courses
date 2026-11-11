@@ -12,8 +12,8 @@
     },
     "room-for-your-base": {
       "title": "Schritt 3 · Die Höhe des Panels einstellen",
-      "instruction": "Ziehen Sie den Griff oben in der Mitte dieses Panels, um es höher oder niedriger zu machen, und klicken Sie dann auf Prüfen.",
-      "html": "Manche Seiten, wie diese hier, sind Übungen: Das Panel schrumpft dann zu einem Streifen am unteren Rand, damit Ihre Base sichtbar bleibt, während Sie darin arbeiten. Übungen sind in der Liste links mit <i class=\"dtable-font dtable-icon-rename\"></i> markiert; die anderen Seiten öffnen sich in voller Höhe. Ziehen Sie den Griff oben in der Mitte dieses Panels, um es höher oder niedriger zu machen, und klicken Sie dann oben auf <i class=\"dtable-font dtable-icon-check-mark\"></i> Prüfen. Die gewählte Höhe wird für die folgenden Übungen beibehalten.",
+      "instruction": "Ziehen Sie den Griff oben in der Mitte dieses Panels, um es höher oder niedriger zu machen, und klicken Sie dann oben auf <i class=\"dtable-font dtable-icon-check-mark\"></i> Prüfen.",
+      "html": "Manche Seiten, wie diese hier, sind Übungen: Das Panel schrumpft dann zu einem Streifen am unteren Rand, damit Ihre Base sichtbar bleibt, während Sie darin arbeiten. Übungen sind in der Liste links mit <i class=\"dtable-font dtable-icon-rename\"></i> markiert; die anderen Seiten öffnen sich in voller Höhe. Die gewählte Höhe wird für die folgenden Übungen beibehalten.",
       "successMessage": "Erledigt – die nächsten Übungen öffnen sich in dieser Höhe."
     },
     "the-buttons": {
@@ -23,13 +23,13 @@
     },
     "the-movable-toolbar": {
       "title": "Schritt 5 · Das Plugin verkleinern",
-      "html": "<h1>Das Plugin verkleinern</h1> <p>Das Panel ist Ihnen bei der Arbeit in der Base im Weg? Klicken Sie auf Verkleinern (<i class=\"dtable-font dtable-icon-full-screen\"></i>, oben rechts), um es zu einer kleinen Werkzeugleiste zu machen, die Sie beliebig verschieben können.</p> <p>Solange es eine Werkzeugleiste ist, bleibt die ganze Base bedienbar – nichts wird blockiert –, und das Wichtigste behalten Sie:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Verschieben</b>: dorthin, wo sie nicht stört.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: die Anweisung (und einen Hinweis) jederzeit anzeigen.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Prüfen</b>: Ihre Arbeit prüfen, ohne das Panel zu öffnen.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Vergrößern</b>: das ganze Panel zurückholen.</li> </ul> <p>Im nächsten Schritt probieren Sie es selbst aus.</p>"
+      "html": "<h1>Das Plugin verkleinern</h1> <p>Wenn das Panel bei der Arbeit in der Base im Weg ist, macht Verkleinern (<i class=\"dtable-font dtable-icon-full-screen\"></i>, oben rechts) daraus eine kleine Werkzeugleiste, die Sie beliebig verschieben können. Im nächsten Schritt probieren Sie es selbst aus.</p> <p>Solange es eine Werkzeugleiste ist, bleibt die ganze Base bedienbar – nichts wird blockiert –, und das Wichtigste behalten Sie:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Verschieben</b>: dorthin, wo sie nicht stört.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: die Anweisung (und einen Hinweis) jederzeit anzeigen.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Prüfen</b>: Ihre Arbeit prüfen, ohne das Panel zu öffnen.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Vergrößern</b>: das ganze Panel zurückholen.</li> </ul>"
     },
     "try-the-toolbar": {
       "title": "Schritt 6 · Jetzt sind Sie dran",
-      "instruction": "Verkleinern Sie das Plugin zur Werkzeugleiste, ziehen Sie sie in die rechte untere Ecke und klicken Sie dann auf Prüfen.",
+      "instruction": "Klicken Sie auf Verkleinern (<i class=\"dtable-font dtable-icon-full-screen\"></i>, oben rechts), um dieses Panel zur Werkzeugleiste zu machen, ziehen Sie sie in das rechte untere Viertel Ihres Bildschirms und klicken Sie dann in der Werkzeugleiste auf <i class=\"dtable-font dtable-icon-check-mark\"></i> Prüfen.",
       "hint": "Verkleinern mit dem Symbol <i class=\"dtable-font dtable-icon-full-screen\"></i> oben rechts; verschieben mit dem Griff <i class=\"dtable-font dtable-icon-drag\"></i> der Werkzeugleiste; dann auf <i class=\"dtable-font dtable-icon-check-mark\"></i> in der Werkzeugleiste klicken. „Rechts unten“ meint das rechte untere Viertel Ihres gesamten Bildschirms.",
-      "html": "Jetzt sind Sie dran. Klicken Sie auf Verkleinern (<i class=\"dtable-font dtable-icon-full-screen\"></i>, oben rechts), um dieses Panel zur Werkzeugleiste zu machen, ziehen Sie sie in das rechte untere Viertel Ihres Bildschirms und klicken Sie dann in der Werkzeugleiste auf <i class=\"dtable-font dtable-icon-check-mark\"></i> Prüfen.",
+      "html": "<h1>Die Werkzeugleiste ausprobieren</h1> <p>Zeit, das auf der vorigen Seite Gezeigte zu nutzen: die Werkzeugleiste und ihr Prüfen.</p>",
       "successMessage": "Perfekt – die Werkzeugleiste beherrschen Sie 🎉 Öffnen Sie das Plugin wieder und klicken Sie auf Weiter, um die Einführung abzuschließen."
     },
     "youre-ready": {

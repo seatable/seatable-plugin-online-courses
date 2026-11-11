@@ -6,52 +6,50 @@
       "title": "Schritt 2 · Zeilen automatisch verknüpfen",
       "instruction": "Erstellen Sie auf Line items eine Automation, die jede neue Zeile mit ihrem Produkt und ihrem Dokument verknüpft.",
       "hint": "Auf Line items: Auslöser „Wenn eine Zeile hinzugefügt wird“, zwei Bedingungen (Product reference und Document reference nicht leer), dann zwei Aktionen „Links hinzufügen“ – eine zu Products (Reference), eine zu Documents (Delivery reference).",
-      "html": "Bauen Sie Ihre erste Automation. Erstellen Sie auf der Tabelle Line items eine Automation, die jede neue Zeile über passende Referenzen mit ihrem Product und ihrem Document verknüpft – ohne eine einzige Verknüpfung von Hand. Wählen Sie Schritt für Schritt anleiten, um sie Teil für Teil zu bauen (jeder Teil wird vor dem nächsten geprüft), oder Schon erstellt – bitte prüfen, wenn Sie sie bereits gebaut haben.",
+      "html": "<h1>Die Verknüpfungs-Automation bauen</h1> <p>Ihre erste Automation: Jede neue Zeile in Line items findet über passende Referenzen von selbst ihr Product und ihr Document – ohne eine einzige Verknüpfung von Hand.</p> <p>Wählen Sie Schritt für Schritt anleiten, um sie Teil für Teil zu bauen, wobei jeder Teil vor dem nächsten geprüft wird, oder Schon erstellt – bitte prüfen, wenn Sie sie bereits gebaut haben. Die Automatisierungsregeln liegen in Ihrer Base, hinter diesem Panel: Verkleinern Sie das Plugin (<i class=\"dtable-font dtable-icon-full-screen\"></i>), um sie zu erreichen – Schritt für Schritt anleiten erledigt das für Sie.</p>",
       "successMessage": "Ihre Verknüpfungs-Automation ist fertig – jede neue Zeile findet ihr Produkt und ihr Dokument jetzt von selbst.",
       "watch": {
-        "html": "Sehen Sie ihr bei der Arbeit zu. Ihre Regel steht, aber noch hat nichts sie ausgelöst – also geben wir ihr etwas zu tun. Öffnen Sie zuerst die Tabelle Line items, damit Sie es sehen, und lassen Sie das Plugin dann die Lieferzeilen einfügen – als hätte Ihr Lieferant eine saubere Liste dessen geschickt, was auf den Lkw geladen wurde. Behalten Sie die Spalten Product und Document im Blick, während die Zeilen ankommen: Das Plugin schreibt keine der beiden, und doch füllen sich beide von selbst.",
-        "instruction": "Öffnen Sie die Tabelle Line items, fügen Sie dann die drei Lieferzeilen hinzu und sehen Sie zu, wie sich die Verknüpfungen füllen.",
+        "html": "Sehen Sie ihr bei der Arbeit zu. Ihre Regel steht, aber noch hat nichts sie ausgelöst – also geben wir ihr etwas zu tun: Das Plugin fügt die Lieferzeilen ein, als hätte Ihr Lieferant eine saubere Liste dessen geschickt, was auf den Lkw geladen wurde. Die Spalten Product und Document schreibt es nicht.",
+        "instruction": "Öffnen Sie die Tabelle Line items, fügen Sie dann die drei Lieferzeilen hinzu und behalten Sie die Spalten Product und Document im Blick: Beide füllen sich von selbst.",
         "successMessage": "Beide Verknüpfungen haben sich von selbst gefüllt, in Zeilen, die Sie nie angefasst haben. Sie haben nicht diese eine Lieferung automatisiert – Sie haben eine Regel gebaut, die für jede Zeile gilt, die je in diese Tabelle kommt, egal wer sie einträgt."
       },
       "automationStages": {
         "created": {
           "title": "Automation angelegt",
-          "instruction": "Legen Sie in den Automatisierungsregeln eine neue Regel an und geben Sie ihr einen Namen.",
-          "hint": "Das Namensfeld der Regel muss verlassen werden, damit sie existiert",
-          "html": "Legen Sie die Automation an. Öffnen Sie die Automatisierungsregeln, legen Sie eine neue Regel an, geben Sie ihr einen Namen und klicken Sie dann auf Prüfen."
+          "instruction": "Öffnen Sie die Automatisierungsregeln, legen Sie eine neue Regel an, geben Sie ihr einen Namen und klicken Sie dann auf Prüfen.",
+          "hint": "Das Namensfeld der Regel muss verlassen werden, damit sie existiert"
         },
         "trigger": {
           "title": "Auslöser und Bedingungen",
-          "instruction": "Auslöser „Wenn eine Zeile hinzugefügt wird“, mit Product reference und Document reference beide nicht leer.",
+          "instruction": "Wählen Sie „Wenn eine Zeile hinzugefügt wird“ und fügen Sie dann zwei Bedingungen hinzu: Product reference ist nicht leer und Document reference ist nicht leer.",
           "hint": "Die Bedingungen stellen Sie in den Auslösereinstellungen ein",
-          "html": "Stellen Sie den Auslöser und seine Bedingungen ein. Wählen Sie „Wenn eine Zeile hinzugefügt wird“ und fügen Sie dann zwei Bedingungen hinzu, damit er nur bei vollständigen Zeilen läuft: Product reference ist nicht leer und Document reference ist nicht leer."
+          "html": "Stellen Sie den Auslöser und seine Bedingungen ein, damit die Regel nur bei vollständigen Zeilen läuft."
         },
         "action:0": {
           "title": "Das Produkt verknüpfen",
-          "instruction": "Fügen Sie eine Aktion „Links hinzufügen“ hinzu, die Product reference mit der Reference eines Produkts abgleicht.",
-          "hint": "Wählen Sie die Aktion „Links hinzufügen“ und dann die Spalte Product, die sie füllen soll",
-          "html": "Verknüpfen Sie das Produkt. Fügen Sie eine Aktion „Links hinzufügen“ hinzu, die die Spalte Product füllt: Die Product reference der Zeile soll der Reference eines Produkts entsprechen."
+          "instruction": "Fügen Sie eine Aktion „Links hinzufügen“ hinzu, die die Spalte Product füllt: Die Product reference der Zeile soll der Reference eines Produkts entsprechen.",
+          "hint": "Wählen Sie die Aktion „Links hinzufügen“ und dann die Spalte Product, die sie füllen soll"
         },
         "action:1": {
           "title": "Das Dokument verknüpfen",
-          "instruction": "Fügen Sie eine zweite Aktion „Links hinzufügen“ hinzu, die Document reference mit der Delivery reference eines Dokuments abgleicht.",
+          "instruction": "Fügen Sie eine zweite Aktion „Links hinzufügen“ hinzu, die die Spalte Document füllt: Die Document reference der Zeile soll der Delivery reference eines Dokuments entsprechen.",
           "hint": "Dieselbe Aktion noch einmal, diesmal für Document",
-          "html": "Verknüpfen Sie das Dokument. Fügen Sie eine zweite Aktion „Links hinzufügen“ hinzu, die die Spalte Document füllt: Die Document reference der Zeile soll der Delivery reference eines Dokuments entsprechen. Damit ist Ihre Automation vollständig."
+          "html": "Noch eine letzte Aktion, und Ihre Automation ist vollständig."
         }
       }
     },
     "a-reviewer-for-a-short-delivery": {
       "title": "Schritt 3 · Einer unvollständigen Lieferung einen Prüfer zuweisen",
-      "instruction": "Lassen Sie das Plugin eine unvollständige Lieferung anlegen, führen Sie dann Ihre Regel in den Automatisierungsregeln aus und prüfen Sie.",
+      "instruction": "Lassen Sie das Plugin die unvollständige Lieferung anlegen. Gehen Sie dann in die Automatisierungsregeln, klicken Sie bei Ihrer Prüfer-Regel auf Jetzt ausführen – Sie müssen nicht auf die eingestellte Uhrzeit warten – und kommen Sie zum Prüfen zurück.",
       "hint": "Nutzen Sie Jetzt ausführen in den Automatisierungsregeln – Sie müssen nicht auf die geplante Uhrzeit warten.",
-      "html": "Geben Sie Ihrer Regel einen Fall zum Bearbeiten. Eine geplante Regel zeigt erst an einer Lieferung, die wirklich Aufmerksamkeit braucht, was sie kann – statt Sie eine vorbereiten zu lassen, übernimmt das das Plugin: Es legt eine neue Lieferung und eine Zeile an, von der weniger eingegangen ist als bestellt. Starten Sie es erneut, entfernt es zuerst die Lieferung und ihre Zeile aus dem vorherigen Durchlauf. Ihre Automation aus Schritt 2 verknüpft die Zeile von selbst; das Plugin wartet, bis das geschehen ist.</p> <p>Gehen Sie dann in die Automatisierungsregeln und klicken Sie bei Ihrer Prüfer-Regel auf Jetzt ausführen – Sie müssen nicht auf die eingestellte Uhrzeit warten. Kommen Sie zurück und prüfen Sie: Geprüft wird nicht, ob ein Prüfer eingetragen ist, sondern ob Ihre Automation ihn eingetragen hat und nicht Sie.",
+      "html": "<p>Geben Sie Ihrer Regel einen Fall zum Bearbeiten. Eine geplante Regel zeigt erst an einer Lieferung, die wirklich Aufmerksamkeit braucht, was sie kann – statt Sie eine vorbereiten zu lassen, übernimmt das das Plugin: Es legt eine neue Lieferung und eine Zeile an, von der weniger eingegangen ist als bestellt. Starten Sie es erneut, entfernt es zuerst die Lieferung und ihre Zeile aus dem vorherigen Durchlauf. Ihre Automation aus Schritt 2 verknüpft die Zeile von selbst; das Plugin wartet, bis das geschehen ist.</p> <p>Geprüft wird nicht, ob ein Prüfer eingetragen ist, sondern ob Ihre Automation ihn eingetragen hat und nicht Sie.",
       "handoffNote": "Hier sind Sie fertig – weiter geht es auf der Website ↩"
     },
     "rewind-and-do-it-for-real": {
       "title": "Schritt 4 · Lieferung entfernen und richtig erfassen",
-      "instruction": "Lassen Sie das Plugin die vorbereitete Lieferung wieder entfernen, erfassen Sie sie dann erneut über die App und lassen Sie die KI den Lieferschein lesen.",
+      "instruction": "Lassen Sie das Plugin die Lieferung wieder herausnehmen. Erfassen Sie sie dann echt: Öffnen Sie in der App Delivery check die Seite New delivery note, hängen Sie das Foto des Lieferscheins an und senden Sie ab. Sehen Sie zu, wie Lesen, Extraktion und Skript den Rest erledigen, und kommen Sie dann zum Prüfen zurück.",
       "hint": "Das Formular ist die zweite Seite der App Delivery check – Foto anhängen und absenden; alles andere wird aus dem Bild gelesen.",
-      "html": "Nehmen Sie die Lieferung wieder heraus. Die Kette steht – was fehlt, ist etwas, womit Sie sie füttern können: Diese Lieferung ist samt Zeilen bereits in Ihrer Base. Lassen Sie das Plugin die Zeilen und das Dokument entfernen, damit derselbe Lieferschein so ankommen kann, wie er es wirklich täte. Auch Ihr Bestand wird zurückgesetzt.</p> <p>Erfassen Sie sie dann echt: Öffnen Sie in der App Delivery check die Seite New delivery note, hängen Sie das Foto des Lieferscheins an und senden Sie ab. Sehen Sie zu, wie Lesen, Extraktion und Skript den Rest erledigen – und kommen Sie dann zum Prüfen zurück.</p> <p>Geht die Extraktion schief, schreibt das Plugin die Zeilen der Lieferung für Sie – vollständig, wenn sie keine erzeugt hat, korrigiert, wenn sie falsch lag. Geprüft wird, dass die Zeilen wieder da sind, nie, dass die KI sie allein richtig erkannt hat.",
+      "html": "<p>Nehmen Sie die Lieferung wieder heraus. Die Kette steht – was fehlt, ist etwas, womit Sie sie füttern können: Diese Lieferung ist samt Zeilen bereits in Ihrer Base. Lassen Sie das Plugin die Zeilen und das Dokument entfernen, damit derselbe Lieferschein so ankommen kann, wie er es wirklich täte. Auch Ihr Bestand wird zurückgesetzt. Ist der Schritt geschafft, nimmt Neu beginnen die Lieferung auf dieselbe Weise wieder heraus, damit Sie sie noch einmal erfassen können.</p> <p>Geht die Extraktion schief, schreibt das Plugin die Zeilen der Lieferung für Sie – vollständig, wenn sie keine erzeugt hat, korrigiert, wenn sie falsch lag. Geprüft wird, dass die Zeilen wieder da sind, nie, dass die KI sie allein richtig erkannt hat.",
       "successMessage": "Die Lieferung ist zurück – diesmal von einem Foto gelesen, mit Zeilen, die Ihre Regel aus Schritt 2 verknüpft hat.",
       "handoffNote": "Hier sind Sie fertig – weiter geht es auf der Website ↩",
       "grade": {
@@ -60,35 +58,35 @@
     },
     "see-what-seatable-sends": {
       "title": "Schritt 5a · Sehen, was SeaTable sendet",
-      "instruction": "Richten Sie Ihren Webhook zuerst auf den Test-Endpunkt aus und lassen Sie das Plugin dann eine Änderung vornehmen, deren Form Sie kennen.",
+      "instruction": "Richten Sie Ihren Webhook auf den Test-Endpunkt aus und behalten Sie die Testseite neben Ihrer Base im Blick; lassen Sie dann das Plugin seine Änderung vornehmen.",
       "hint": "Hier wird nichts bewertet – die ganze Übung besteht darin, nachzulesen, was am anderen Ende ankam.",
-      "html": "Bringen Sie Ihren Webhook zum Sprechen. Sobald Ihr Webhook auf den Test-Endpunkt zeigt, nimmt das Plugin eine Änderung vor, deren Form Sie kennen: Es fügt Products eine Zeile hinzu, bearbeitet sie ein paar Sekunden später und löscht sie dann wieder – Ihr Katalog bleibt genau, wie er war. Behalten Sie die Testseite neben Ihrer Base im Blick: Die drei Änderungen sind zeitlich versetzt, damit Sie jede auf beiden Seiten ankommen sehen. Kommt am Endpunkt nichts an, legen Sie beide Seiten in dasselbe Browserfenster.</p> <p>Drei Vorgänge, drei Anfragen: was geschrieben wurde, was sich geändert hat (mit dem vorherigen Wert) und was verschwunden ist. Hier wird nichts geprüft – die andere Seite zu lesen, ist die ganze Übung.",
+      "html": "<p>Bringen Sie Ihren Webhook zum Sprechen. Das Plugin nimmt eine Änderung vor, deren Form Sie kennen: Es fügt Products eine Zeile hinzu, bearbeitet sie ein paar Sekunden später und löscht sie dann wieder – Ihr Katalog bleibt genau, wie er war. Die drei Änderungen sind zeitlich versetzt, damit Sie jede auf beiden Seiten ankommen sehen. Kommt am Endpunkt nichts an, legen Sie beide Seiten in dasselbe Browserfenster.</p> <p>Drei Vorgänge, drei Anfragen: was geschrieben wurde, was sich geändert hat (mit dem vorherigen Wert) und was verschwunden ist. Hier wird nichts geprüft – die andere Seite zu lesen, ist die ganze Übung.",
       "handoffNote": "Hier sind Sie fertig – weiter geht es auf der Website ↩",
       "demoDoneMessage": "✅ Die drei Änderungen sind erfolgt – lesen Sie sie am anderen Ende nach."
     },
     "write-the-deliverys-lines": {
       "title": "Schritt 5b · Die Zeilen der Lieferung hinzufügen",
-      "instruction": "Lassen Sie das Plugin die Zeilen der zweiten Lieferung schreiben, statt drei Barcodes von einem Foto abzutippen.",
+      "instruction": "Lassen Sie das Plugin die Zeilen der zweiten Lieferung schreiben. Schließen Sie dann so ab, wie es das Büro tun würde: Gleichen Sie die Liste mit dem Lieferschein ab und klicken Sie im Dokument auf Notify the dock.",
       "hint": "Die Zeilen landen in Line items, und Ihre Regel aus Schritt 2 verknüpft sie; klicken Sie dann im Dokument auf Notify the dock.",
-      "html": "Lassen Sie das Plugin tippen. Der zweite Lieferschein ist in Ihrer Base, seine Zeilen nicht. Drei Barcodes von einem Foto abzutippen, bringt nichts bei – also schreibt das Plugin sie für Sie, genau die Zeilen, die ein sauberes Lesen dieses Lieferscheins ergeben hätte.</p> <p>Sie landen mit ihren Referenzen in Line items, sodass Ihre Regel aus Schritt 2 jede beim Eintreffen mit ihrem Produkt und ihrem Dokument verknüpft. Hier wird nichts geprüft.</p> <p>Schließen Sie dann so ab, wie es das Büro tun würde: Gleichen Sie die Liste mit dem Lieferschein ab und klicken Sie im Dokument auf Notify the dock.",
+      "html": "<p>Lassen Sie das Plugin tippen. Der zweite Lieferschein ist in Ihrer Base, seine Zeilen nicht. Drei Barcodes von einem Foto abzutippen, bringt nichts bei – also schreibt das Plugin sie für Sie, genau die Zeilen, die ein sauberes Lesen dieses Lieferscheins ergeben hätte.</p> <p>Sie landen mit ihren Referenzen in Line items, sodass Ihre Regel aus Schritt 2 jede beim Eintreffen mit ihrem Produkt und ihrem Dokument verknüpft. Hier wird nichts geprüft.",
       "handoffNote": "Hier sind Sie fertig – weiter geht es auf der Website ↩",
       "demoLabel": "Zeilen schreiben",
       "demoDoneMessage": "✅ Die Zeilen der Lieferung sind in Line items, verknüpft durch Ihre eigene Regel."
     },
     "the-electronic-delivery-note": {
       "title": "Schritt 7a · Der elektronische Lieferschein",
-      "instruction": "Lassen Sie das Plugin den elektronischen Lieferschein einfügen und senden Sie dann eine seiner Zeilen über die API-Dokumentation.",
+      "instruction": "Lassen Sie das Plugin den Kopf des Lieferscheins anlegen. Senden Sie dann, zurück auf der Website, über die API-Dokumentation mindestens eine Zeile in Line items und kommen Sie zu Schritt 7b hierher zurück, sobald sie gesendet ist.",
       "hint": "Hier wird nichts bewertet – das legt nur den Lieferschein in Ihre Base, damit Ihre gesendeten Zeilen etwas haben, womit sie sich verknüpfen.",
-      "html": "Schlüpfen Sie in die Rolle des Lieferantensystems – erster Teil. Einer Ihrer Lieferanten erzeugt seinen Lieferschein jetzt beim Beladen des Lkw und schickt ihn direkt in Ihre Base. Dieser Austausch läuft in zwei Teilen ab: erst der Kopf des Lieferscheins, dann seine Zeilen. Das Plugin legt den Kopf an, damit der Teil, den Sie von Hand erledigen, kurz und übersichtlich bleibt.</p> <p>In Documents erscheint ein neues Dokument mit der Referenz {apiDeliveryReference} und ohne angehängte Datei – es gibt nichts mehr zu fotografieren. Starten Sie es erneut, entfernt es zuerst dieses Dokument samt aller bereits dorthin gesendeten Zeilen.</p> <p>Dann sind Sie dran, zurück auf der Website: Senden Sie über die API-Dokumentation mindestens eine Zeile in Line items. Kommen Sie zu Schritt 7b hierher zurück, sobald sie gesendet ist.",
+      "html": "<p>Schlüpfen Sie in die Rolle des Lieferantensystems – erster Teil. Einer Ihrer Lieferanten erzeugt seinen Lieferschein jetzt beim Beladen des Lkw und schickt ihn direkt in Ihre Base. Dieser Austausch läuft in zwei Teilen ab: erst der Kopf des Lieferscheins, dann seine Zeilen. Das Plugin legt den Kopf an, damit der Teil, den Sie von Hand erledigen, kurz und übersichtlich bleibt.</p> <p>In Documents erscheint ein neues Dokument mit der Referenz {apiDeliveryReference} und ohne angehängte Datei – es gibt nichts mehr zu fotografieren. Starten Sie es erneut, entfernt es zuerst dieses Dokument samt aller bereits dorthin gesendeten Zeilen.",
       "handoffNote": "Senden Sie jetzt eine seiner Zeilen über die API-Dokumentation ↩",
       "demoLabel": "Neue Lieferung anlegen",
       "demoDoneMessage": "✅ Der Lieferschein ist in Ihrer Base, ohne Zeilen und ohne Datei."
     },
     "check-the-pushed-line": {
       "title": "Schritt 7b · Die gesendete Zeile prüfen",
-      "instruction": "Senden Sie über die API-Dokumentation mindestens eine Zeile in Line items und prüfen Sie dann, dass sie angekommen ist, sich verknüpft hat und über die API kam.",
+      "instruction": "Senden Sie über die API-Dokumentation mindestens eine Zeile in Line items und prüfen Sie dann.",
       "hint": "In der API-Dokumentation ist table_name \"Line items\", und die Zeile braucht die Document reference \"{apiDeliveryReference}\", eine Product reference aus Ihrem Katalog und eine Qty.",
-      "html": "Der zweite Teil liegt bei Ihnen. Senden Sie über die API-Dokumentation mindestens eine Zeile in Line items: die Referenz {apiDeliveryReference} in Document reference, ein Produkt aus Ihrem Katalog in Product reference und eine Qty.</p> <p>Geprüft wird nicht nur, dass Ihre Zeile angekommen ist, sondern dass sie sich verknüpft hat – mit ihrem Produkt und ihrem Dokument – über die Automation aus Schritt 2, und dass sie wirklich von außen kam: Eine von Hand ins Raster getippte Zeile zählt hier nicht.",
+      "html": "<p>Der zweite Teil liegt bei Ihnen: eine Zeile für diesen Lieferschein, mit der Referenz {apiDeliveryReference} in Document reference, einem Produkt aus Ihrem Katalog in Product reference und einer Qty.</p> <p>Geprüft wird nicht nur, dass Ihre Zeile angekommen ist, sondern dass sie sich verknüpft hat – mit ihrem Produkt und ihrem Dokument – über die Automation aus Schritt 2, und dass sie wirklich von außen kam: Eine von Hand ins Raster getippte Zeile zählt hier nicht.",
       "successMessage": "Ihre Zeile kam über die API und hat sich unterwegs verknüpft – kein Scanner, keine Kamera, keine Tastatur, und nichts in Ihrer Base kann den Unterschied erkennen.",
       "handoffNote": "Hier sind Sie fertig – weiter geht es auf der Website ↩",
       "grade": {

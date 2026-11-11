@@ -5,6 +5,7 @@ import {
   fetchStepHtml,
   findStep,
   stepIndex,
+  courseWebsiteLink,
 } from '../../../utils/custom-utils/courseContent';
 import { AutomationRuleRule, Outcome } from '../../../utils/custom-utils/grader';
 import { gradeStep } from '../../../utils/custom-utils/opLogGrade';
@@ -17,6 +18,7 @@ import {
 } from '../../../utils/custom-utils/courseStore';
 import {
   countDeliveryLines,
+  deliveryDocumentAvailable,
   reloadDeliveryLines,
   rewindDelivery,
 } from '../../../utils/custom-utils/rewindDelivery';
@@ -34,10 +36,12 @@ import {
   awaitLinks,
   getActiveTableName,
   getActiveViewName,
+  missingLinkTargets,
   tableHasView,
 } from '../../../utils/custom-utils/watchAutomation';
 import { FloatControls } from '../../../utils/custom-interfaces/FloatControls';
 import { t } from '../../../locale/t';
+import { missingBaseParts } from '../../../utils/custom-utils/baseCheck';
 
 /**
  * Online courses plugin — manifest-driven runner (Course 3 — Collaboration + others).
@@ -77,12 +81,26 @@ interface OnlineCourseProps {
   onContentHeight?: (px: number) => void;
 }
 
-// Strip HTML to a single line of plain text (for the floating-icon caption).
-function htmlToText(html: string): string {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+// A full-height page can still have something to verify or a plugin action to run
+// (Welcome 6, Course 4 step 2): it then behaves like an exercise, at full height.
+function interactivePageFor(step: CourseStep): boolean {
+  return (
+    !!step.grade ||
+    (!!step.demo && step.demo !== 'colleague-window' && step.demo !== 'colleague-setup')
+  );
 }
+
+// The page's "Your turn:" block: the one sentence saying what to do now. It is the
+// SAME text the floating toolbar shows — the step's (or stage's, or the watch demo's)
+// `instruction` — so the page body never repeats it. A border and an indent, no
+// tinted box: next to the table/view note it would make one colour too many.
+const InstructionBlock: React.FC<{ html?: string }> = ({ html }) =>
+  html ? (
+    <div style={S.todo}>
+      <span style={S.todoLabel}>{t('course.your_turn')}</span>{' '}
+      <span dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  ) : null;
 
 // --- forward navigation (website-unfolding handoff) -------------------------
 // The website is the course spine; the plugin holds only the interactive
@@ -216,7 +234,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     }
     // A page with nothing to do or to observe is done once it has been opened. The
     // windows on Malika are not: they wait for what they exist to show.
-    if (step.type === 'course' && !step.colleagueWindow && step.demo !== 'colleague-setup') {
+    if (step.type === 'course' && !step.grade && !step.demo) {
       setCourseFlag(manifest.courseId, doneFlag(step.id), true);
     }
     setWatchPhase('idle');
@@ -245,6 +263,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   // Grading may be async (op-log rules hit the activity-log REST endpoint).
   const onVerify = async () => {
     if (!step?.grade || verifying) return;
+    // A check answers the step; what the last action said ("3 lines and the document
+    // removed…") is history by then, and stacked above the result it read as part of
+    // it (2026-11-11 test, Course 4 step 4).
+    setDemoStatus('');
     setVerifying(true);
     try {
       setOutcome(
@@ -434,8 +456,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
   // The safety net REPLACES what the extraction produced rather than adding to it,
   // so a run that wrote two lines out of three doesn't leave the base with five.
-  const runLoadExample = async () => {
-    if (demoRunning || !step?.example || !step?.rewind) return;
+  // Resolves true when the lines are written and have a document to attach to.
+  const runLoadExample = async (): Promise<boolean> => {
+    if (demoRunning || !step?.example || !step?.rewind) return false;
+    let attachable = false;
     setDemoRunning(true);
     setDemoStatus(t('course.writing'));
     try {
@@ -457,10 +481,12 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       // Only a lifecycle step owns this flag; on Step 4 the safety net rides inside a
       // graded step and must not mark it done.
       if (isWriteLines) markDemoDone();
+      attachable = res.documentFound;
     } catch (err: any) {
       setDemoStatus(t('course.error', { message: err?.message || t('course.lines.failed') }));
     }
     setDemoRunning(false);
+    return attachable;
   };
 
   // --- automation-guided actions --------------------------------------------
@@ -629,6 +655,24 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
   const runWatch = async () => {
     if (!watch || watchPhase === 'running') return;
+    // Nothing to link the rows to (a document or product removed from the base): say
+    // so, and write nothing — the rule is not the problem.
+    const absent = missingLinkTargets(
+      watch.rows,
+      step?.grade?.kind === 'automation-rule' ? (step.grade.link_actions ?? []) : []
+    );
+    if (absent.length) {
+      setWatchNote(
+        t('course.watch.missing_targets', {
+          list: absent
+            .map((m) => t('course.watch.missing_target', { value: m.value, table: m.table }))
+            .join(', '),
+          look_again: t('course.watch.look_again'),
+        })
+      );
+      setWatchPhase('stalled');
+      return;
+    }
     setWatchPhase('running');
     setWatchNote(t('course.watch.writing'));
     try {
@@ -662,6 +706,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   // the buttons living in the body.
   const buildFloatControls = (): FloatControls => {
     const fc = baseFloatControls();
+    if (step) fc.title = step.title;
     // Inside the guided build, prefer the CURRENT stage's hint: the step's own hint
     // describes the finished automation, which would give away the stages the
     // learner has not reached yet. Falls back to the step hint when a stage has none.
@@ -678,7 +723,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const baseFloatControls = (): FloatControls => {
     if (!step) return { instruction: '' };
     const onBack = prevStep ? goPrev : undefined;
-    const text = step.instruction ?? htmlToText(html);
+    // A page with nothing to do has no instruction: the toolbar then says to expand
+    // the course — never its body flattened to one line (lists and icons lost,
+    // 2026-11-10 test). The step title is added for every page in buildFloatControls.
+    const text = step.instruction ?? '';
     // Forward after a pass: an in-plugin Next, else (website handoff) no button —
     // the closer surfaces in `feedback` instead.
     const forwardPrimary: FloatControls['primary'] | undefined =
@@ -692,7 +740,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
     // Lesson page: only a forward. A window on Malika moves on in-plugin only once
     // it has shown what it is there for.
-    if (step.type === 'course' && !isColleagueSetup)
+    if (step.type === 'course' && !isColleagueSetup && !interactivePageFor(step))
       return {
         instruction: text,
         onBack,
@@ -704,10 +752,20 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     if (watching) {
       // In 'ready' the instruction is the nudge itself when they're on the wrong
       // table — that's the one thing to do before pressing.
-      const watchText =
-        (wPhase === 'ready' && watchTableNote) || watch!.instruction || htmlToText(watch!.html);
+      const watchText = (wPhase === 'ready' && watchTableNote) || watch!.instruction || text;
       let primary: FloatControls['primary'] | undefined;
-      if (wPhase === 'ready')
+      // Like the other actions (actionPrimary), refuse to fire while the learner is
+      // demonstrably on another table: the lines would arrive out of sight, and the
+      // check would then report "0/3 linked" on rows nobody watched (2026-11-11 test).
+      // An unreadable table leaves `watchTableNote` empty, so nothing is blocked.
+      if (wPhase === 'ready' && watchTableNote)
+        primary = {
+          icon: 'run',
+          title: t('course.open_table_first', { table: watch!.table_name }),
+          onClick: () => undefined,
+          disabled: true,
+        };
+      else if (wPhase === 'ready')
         primary = { icon: 'run', title: t('course.watch.add_lines'), onClick: runWatch };
       else if (wPhase === 'running')
         primary = { icon: 'run', title: t('course.working'), onClick: () => {}, busy: true };
@@ -828,14 +886,39 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     // back. The safety net rides along in the primary's menu — the extraction may
     // misfire at any point, and the learner shouldn't have to go looking for it.
     if (isRewind) {
-      // Name the safety net for what it would actually do right now: write the
-      // lines when the extraction left none, fix them when it produced some.
-      const label = countDeliveryLines(step.rewind!)
-        ? t('course.lines.fix')
-        : t('course.lines.write');
-      const loadExample = { label, onClick: runLoadExample };
+      // The menu offers what makes sense in the base AS IT IS NOW, not after the last
+      // click (2026-11-11 test: three options at every turn, and "write the lines"
+      // right after the rewind wrote them with no document to attach to).
+      const lineCount = countDeliveryLines(step.rewind!);
+      const documentThere = deliveryDocumentAvailable(step.rewind!);
+      const menu: { label: string; onClick: () => void }[] = [];
+      // The safety net covers the extraction, not the form: it needs the document the
+      // learner sent. Writing the lines checks the step at once — they are right.
+      if (documentThere)
+        menu.push({
+          label: lineCount ? t('course.lines.fix') : t('course.lines.write'),
+          onClick: async () => {
+            if (await runLoadExample()) await onVerify();
+          },
+        });
+      // Taking the delivery out again only means something when some of it is back.
+      if (documentThere || lineCount)
+        menu.push({ label: t('course.rewind.run'), onClick: runRewind });
       let primary: FloatControls['primary'] | undefined;
-      if (passed) primary = forwardPrimary;
+      // Once passed, the forward is the website (no in-plugin Next), which left the
+      // step with no button at all. Start over takes the delivery out again AND
+      // clears the pass, so the learner can receive it once more; the step's text
+      // says so before the button is there (2026-11-10 test).
+      if (passed)
+        primary = forwardPrimary ?? {
+          icon: 'run',
+          title: t('course.start_over'),
+          onClick: () => {
+            startOver();
+            runRewind();
+          },
+          busy: demoRunning,
+        };
       // Before the rewind the primary just fires: the seeded lines are still there,
       // nothing has been extracted, and a dropdown in front of the one action of the
       // step would be friction offering a safety net against nothing.
@@ -852,11 +935,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           title: t('course.verify'),
           onClick: onVerify,
           busy: verifying || demoRunning,
-          menu: [
-            { label: t('course.verify'), onClick: onVerify },
-            loadExample,
-            { label: t('course.rewind.again'), onClick: runRewind },
-          ],
+          // Nothing to offer yet (no document sent): a bare Verify, no dropdown.
+          menu: menu.length
+            ? [{ label: t('course.verify'), onClick: onVerify }, ...menu]
+            : undefined,
         };
       return {
         instruction: text,
@@ -877,7 +959,17 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     // Automation-guided step: choice → check / guided stepper.
     if (isAutomationGuided) {
       if (autoMode === 'choice') {
+        // Doing the step again: a pass restored from an earlier visit, and the watch
+        // demo of an earlier run, must not hide the demo this new pass leads to
+        // (2026-11-11 test: redoing step 2 never reached the three lines).
+        const freshAttempt = () => {
+          setRestoredPass(false);
+          setWatchPhase('idle');
+          setWatchRowIds([]);
+          setWatchNote('');
+        };
         const guideMe = async () => {
+          freshAttempt();
           setOutcome({ kind: 'idle' });
           setShowHint(false);
           setAutoStageIdx(0);
@@ -895,6 +987,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           onRequestFloat?.();
         };
         const justCheck = () => {
+          freshAttempt();
           setOutcome({ kind: 'idle' });
           setAutoMode('check');
         };
@@ -947,7 +1040,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           busy: verifying,
         };
       return {
-        instruction: stage?.instruction ?? htmlToText(stage?.html || ''),
+        instruction: stage?.instruction ?? stage?.title ?? text,
         onBack: () => {
           setOutcome({ kind: 'idle' });
           setShowHint(false);
@@ -1034,14 +1127,142 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     );
   }
 
-  // Course page (full height): content only — Back/Continue live in the plugin
+  // Working body (an exercise's compact banner, or a full-height page with something
+  // to do): content + optional stage progress / demo status / hint / feedback. Every action (Back, Verify, Run, Next, the guided-build choice)
+  // lives in the plugin header and the floating toolbar — see buildFloatControls.
+  // Once the watch demo takes over, it replaces the step/stage body: the exercise is
+  // already passed and the learner's attention belongs on the rows landing.
+  const guided = isAutomationGuided && autoMode === 'guided' && !watching;
+  // The watch demo owns the body once the exercise passes. Its opening line is the
+  // grade's own pass message: the check succeeded, and the demo is what proves it.
+  // On a full-height page the step's H1 stays at the top while a stage or the watch
+  // demo replaces the rest of the body.
+  // The H1 is taken out of the body so the "you are on the wrong table" note can sit
+  // right under it.
+  const pageH1 = mode === 'course' ? (html.match(/^\s*<h1>[\s\S]*?<\/h1>/)?.[0] ?? '') : '';
+  const bodyHtml = watching
+    ? (wPhase === 'ready' && passed ? `<p>${feedbackText(outcome, step.successMessage)}</p>` : '') +
+      watch!.html
+    : guided
+      ? stages[autoStageIdx]?.html || ''
+      : html.slice(pageH1.length);
+  // The instruction that goes with that body — the same one the toolbar shows.
+  const bodyInstruction = watching
+    ? watch!.instruction
+    : guided
+      ? stages[autoStageIdx]?.instruction
+      : step.instruction;
+  const feedbackMsg = guided
+    ? autoStageIdx >= stages.length - 1
+      ? step.successMessage
+      : t('course.automation.stage_complete')
+    : step.successMessage;
+  // While waiting on the press, the status line carries the "open Line items" nudge
+  // (empty once they're there, or if the host's table can't be read).
+  //
+  // `demoStatus` is live React state, so it is gone the moment the learner pages away
+  // and comes back — which left an action step looking untouched even though its mark
+  // had persisted and its button still said "Start over". So fall back to the step's
+  // stored done-message, the same one the floating toolbar shows.
+  const statusLine = watching
+    ? watchNote
+    : demoStatus || (demoDone ? (step.demoDoneMessage ?? '') : '');
+  // "You're looking at X — open Y first": a note at the top of the page (under its
+  // H1) or of the banner, not a status line under the text, where it was missed.
+  const placeNote = watching ? watchTableNote : tableNote;
+  const feedbackLine = watching
+    ? wPhase === 'linked'
+      ? `✅ ${watch!.successMessage ?? ''}${forward.kind === 'website' ? ` ${forward.note}` : ''}`
+      : null
+    : outcome.kind === 'idle'
+      ? null
+      : passed && forward.kind === 'website'
+        ? `${feedbackText(outcome, step.successMessage)} ${forward.note}`
+        : feedbackText(outcome, feedbackMsg);
+
+  // The working body — stage progress, the text and its "Your turn:" block, the
+  // widgets, status, hint and verify result. The same on both layouts: an exercise
+  // shows it in the compact banner, a full-height page that still has something to
+  // do or check (a grade, a plugin action) shows it as its page.
+  const workingBody = (
+    <>
+      {pageH1 && <div dangerouslySetInnerHTML={{ __html: pageH1 }} />}
+      {placeNote && <div style={S.placeNote}>{placeNote}</div>}
+      {guided && (
+        <div style={S.stageProgress}>
+          {stages.map((s, i) => (
+            <span key={s.stage} style={stagePillStyle(i, autoStageIdx)}>
+              {i < autoStageIdx ? '✓' : `${i + 1}.`} {s.title}
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={S.instruction} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+      <InstructionBlock html={bodyInstruction} />
+      {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
+      {isColleagueWindow && step.colleagueWindow && (
+        <ColleagueWindow
+          surface={step.colleagueWindow.surface}
+          caption={step.colleagueWindow.caption}
+        />
+      )}
+      {statusLine && <div style={S.demoStatus}>{statusLine}</div>}
+      {/* An action step that is done hands back to the website — say so here too,
+          not only in the floating toolbar. A passed verify already carries it. */}
+      {!watching && demoDone && forward.kind === 'website' && !feedbackLine && (
+        <div style={S.demoStatus}>{forward.note}</div>
+      )}
+      {/* Authored HTML, like the step body: a hint can show SeaTable's own icons. */}
+      {showHint && step.hint && !watching && (
+        <div style={S.hint} dangerouslySetInnerHTML={{ __html: step.hint }} />
+      )}
+      {/* A verify result reads like the rest of the step — same size, no bold, no
+          box: its leading symbol (✅ pass, ❌ fail, ⚠️ missing) already says which. */}
+      {feedbackLine && <div style={{ marginTop: 8 }}>{feedbackLine}</div>}
+    </>
+  );
+
+  // A full-height page with something to do or check: the working body, at full height.
+  // (The windows on Malika and the token setup keep their own page below.)
+  const interactivePage = interactivePageFor(step);
+  if (mode === 'course' && interactivePage) {
+    return (
+      <div style={S.coursePage}>
+        <div style={{ ...S.courseInner, fontSize: 15, lineHeight: 1.5 }}>
+          {loadNote && <div style={S.loadNote}>{loadNote}</div>}
+          {workingBody}
+        </div>
+      </div>
+    );
+  }
+
+  // Lesson page (full height): content only — Back/Continue live in the plugin
   // header (and the floating toolbar), driven by buildFloatControls above.
   if (mode === 'course') {
+    // A course's Introduction says up front when this base lacks what the course
+    // works on. A warning, not a lock; nothing to say for a course without steps.
+    // No list in the note: in the wrong base everything is missing, and the check
+    // only knows the tables the steps name, so a list would look complete without
+    // being so (2026-11-11).
+    const missing = step.id === 'introduction' ? missingBaseParts(manifest.steps) : [];
+    // Authored text + our own link (the course page, where the base is downloaded).
+    const siteLink = manifest && courseWebsiteLink(manifest.courseId);
+    const missingNote = missing.length
+      ? t('course.intro.missing') +
+        (siteLink ? ` ${t('course.intro.missing_link', { link: siteLink })}` : '')
+      : '';
     return (
       <div style={S.coursePage}>
         <div style={S.courseInner}>
           {loadNote && <div style={S.loadNote}>{loadNote}</div>}
           <div dangerouslySetInnerHTML={{ __html: html }} />
+          {missingNote && (
+            <div
+              style={{ ...S.placeNote, marginTop: 22 }}
+              dangerouslySetInnerHTML={{ __html: missingNote }}
+            />
+          )}
+          <InstructionBlock html={step.instruction} />
           {showHint && step.hint && (
             <div style={S.hint} dangerouslySetInnerHTML={{ __html: step.hint }} />
           )}
@@ -1058,7 +1279,8 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           )}
           {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
           {(isColleagueWindow || isColleagueSetup) && demoDone && step.demoDoneMessage && (
-            <div style={S.demoStatus}>{step.demoDoneMessage}</div>
+            // Clear of the window above it, as the closer below is (2026-11-11 test).
+            <div style={{ ...S.demoStatus, marginTop: 16 }}>{step.demoDoneMessage}</div>
           )}
           {/* On a page that waits for something, the way on is said once it is there. */}
           {forward.kind === 'website' && (!isColleagueWindow || demoDone) && (
@@ -1069,78 +1291,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     );
   }
 
-  // Exercise (compact banner): content + optional stage progress / demo status /
-  // hint / feedback. Every action (Back, Verify, Run, Next, the guided-build choice)
-  // lives in the plugin header and the floating toolbar — see buildFloatControls.
-  // Once the watch demo takes over, it replaces the step/stage body: the exercise is
-  // already passed and the learner's attention belongs on the rows landing.
-  const guided = isAutomationGuided && autoMode === 'guided' && !watching;
-  // The watch demo owns the body once the exercise passes. Its opening line is the
-  // grade's own pass message: the check succeeded, and the demo is what proves it.
-  const bodyHtml = watching
-    ? (wPhase === 'ready' && passed ? `<p>${feedbackText(outcome, step.successMessage)}</p>` : '') +
-      watch!.html
-    : guided
-      ? stages[autoStageIdx]?.html || ''
-      : html;
-  const feedbackMsg = guided
-    ? autoStageIdx >= stages.length - 1
-      ? step.successMessage
-      : t('course.automation.stage_complete')
-    : step.successMessage;
-  // While waiting on the press, the status line carries the "open Line items" nudge
-  // (empty once they're there, or if the host's table can't be read).
-  //
-  // `demoStatus` is live React state, so it is gone the moment the learner pages away
-  // and comes back — which left an action step looking untouched even though its mark
-  // had persisted and its button still said "Start over". So fall back to the step's
-  // stored done-message, the same one the floating toolbar shows.
-  const statusLine = watching
-    ? watchTableNote || watchNote
-    : demoStatus || tableNote || (demoDone ? (step.demoDoneMessage ?? '') : '');
-  const feedbackLine = watching
-    ? wPhase === 'linked'
-      ? `✅ ${watch!.successMessage ?? ''}${forward.kind === 'website' ? ` ${forward.note}` : ''}`
-      : null
-    : outcome.kind === 'idle'
-      ? null
-      : passed && forward.kind === 'website'
-        ? `${feedbackText(outcome, step.successMessage)} ${forward.note}`
-        : feedbackText(outcome, feedbackMsg);
-
   return (
     <div style={S.banner}>
       <div style={S.bannerMain} ref={bannerRef}>
-        {guided && (
-          <div style={S.stageProgress}>
-            {stages.map((s, i) => (
-              <span key={s.stage} style={stagePillStyle(i, autoStageIdx)}>
-                {i < autoStageIdx ? '✓' : `${i + 1}.`} {s.title}
-              </span>
-            ))}
-          </div>
-        )}
-        <div style={S.instruction} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
-        {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
-        {isColleagueWindow && step.colleagueWindow && (
-          <ColleagueWindow
-            surface={step.colleagueWindow.surface}
-            caption={step.colleagueWindow.caption}
-          />
-        )}
-        {statusLine && <div style={S.demoStatus}>{statusLine}</div>}
-        {/* An action step that is done hands back to the website — say so here too,
-            not only in the floating toolbar. A passed verify already carries it. */}
-        {!watching && demoDone && forward.kind === 'website' && !feedbackLine && (
-          <div style={S.demoStatus}>{forward.note}</div>
-        )}
-        {/* Authored HTML, like the step body: a hint can show SeaTable's own icons. */}
-        {showHint && step.hint && !watching && (
-          <div style={S.hint} dangerouslySetInnerHTML={{ __html: step.hint }} />
-        )}
-        {/* A verify result reads like the rest of the step — same size, no bold, no
-            box: its leading symbol (✅ pass, ❌ fail, ⚠️ missing) already says which. */}
-        {feedbackLine && <div style={{ marginTop: 8 }}>{feedbackLine}</div>}
+        {workingBody}
       </div>
     </div>
   );
@@ -1204,6 +1358,25 @@ const S: Record<string, React.CSSProperties> = {
   bannerMain: { minWidth: 0, fontSize: 15, lineHeight: 1.5 },
   stageProgress: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   instruction: { fontSize: 15, lineHeight: 1.5, color: '#222' },
+  // Same look as the Introduction's "not supported by the plugin" note.
+  placeNote: {
+    marginBottom: 12,
+    padding: '10px 14px',
+    borderRadius: 8,
+    fontSize: 14,
+    lineHeight: 1.5,
+    background: '#fff4e5',
+    color: '#8a5300',
+    border: '1px solid #ffd9a8',
+  },
+  todo: {
+    marginTop: 12,
+    marginLeft: 4,
+    paddingLeft: 12,
+    borderLeft: '4px solid #ff8000',
+    color: '#222',
+  },
+  todoLabel: { fontWeight: 600 },
   hint: {
     marginTop: 8,
     padding: '8px 12px',

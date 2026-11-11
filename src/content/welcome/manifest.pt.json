@@ -12,8 +12,8 @@
     },
     "room-for-your-base": {
       "title": "Passo 3 · Ajustar a altura do painel",
-      "instruction": "Arraste a pega no topo, ao centro deste painel, para o tornar mais alto ou mais baixo, e clique em Verificar.",
-      "html": "Algumas páginas, como esta, são exercícios: o painel reduz-se a uma faixa na parte inferior, para que a sua base continue visível enquanto trabalha nela. Os exercícios têm <i class=\"dtable-font dtable-icon-rename\"></i> na lista à esquerda; as outras páginas abrem em altura completa. Arraste a pega no topo, ao centro deste painel, para o tornar mais alto ou mais baixo, e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> Verificar, no topo. A altura escolhida mantém-se nos exercícios seguintes.",
+      "instruction": "Arraste a pega no topo, ao centro deste painel, para o tornar mais alto ou mais baixo, e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> Verificar, no topo.",
+      "html": "Algumas páginas, como esta, são exercícios: o painel reduz-se a uma faixa na parte inferior, para que a sua base continue visível enquanto trabalha nela. Os exercícios têm <i class=\"dtable-font dtable-icon-rename\"></i> na lista à esquerda; as outras páginas abrem em altura completa. A altura escolhida mantém-se nos exercícios seguintes.",
       "successMessage": "Feito: os próximos exercícios vão abrir com essa altura."
     },
     "the-buttons": {
@@ -23,13 +23,13 @@
     },
     "the-movable-toolbar": {
       "title": "Passo 5 · Reduzir o plugin",
-      "html": "<h1>Reduzir o plugin</h1> <p>O painel atrapalha-o para trabalhar na sua base? Clique no ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) para o transformar numa pequena barra de ferramentas que pode deslocar para onde quiser.</p> <p>Enquanto está reduzido, toda a base continua acessível, nada fica bloqueado, e mantém o essencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Deslocar</b>: coloque-a onde não o incomode.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: mostre a instrução (e uma dica) a qualquer momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verificar</b>: verifique o seu trabalho sem reabrir o painel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: reabra o painel completo.</li> </ul> <p>No passo seguinte, é a sua vez.</p>"
+      "html": "<h1>Reduzir o plugin</h1> <p>Quando o painel o atrapalha a trabalhar na sua base, o ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) transforma-o numa pequena barra de ferramentas que pode deslocar para onde quiser. Vai experimentá-lo no passo seguinte.</p> <p>Enquanto está reduzido, toda a base continua acessível, nada fica bloqueado, e mantém o essencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Deslocar</b>: coloque-a onde não o incomode.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: mostre a instrução (e uma dica) a qualquer momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verificar</b>: verifique o seu trabalho sem reabrir o painel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: reabra o painel completo.</li> </ul>"
     },
     "try-the-toolbar": {
       "title": "Passo 6 · É a sua vez",
-      "instruction": "Reduza o plugin à barra de ferramentas, leve-a para o canto inferior direito e clique em Verificar.",
+      "instruction": "Clique no ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) para transformar este painel na barra de ferramentas, arraste-a para o quarto inferior direito do ecrã e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> Verificar na barra.",
       "hint": "Reduza com o ícone <i class=\"dtable-font dtable-icon-full-screen\"></i> no canto superior direito; desloque a barra com a pega <i class=\"dtable-font dtable-icon-drag\"></i>; depois clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> na barra de ferramentas. «Canto inferior direito» quer dizer o quarto inferior direito de todo o seu ecrã.",
-      "html": "A sua vez: clique no ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) para transformar este painel na barra de ferramentas, arraste-a para o quarto inferior direito do ecrã e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> Verificar na barra.",
+      "html": "<h1>Experimente a barra de ferramentas</h1> <p>Chegou a altura de usar o que a página anterior mostrou: a barra de ferramentas e o seu botão Verificar.</p>",
       "successMessage": "Perfeito, já domina a barra de ferramentas 🎉 Reabra o plugin e clique em Seguinte para terminar a apresentação."
     },
     "youre-ready": {

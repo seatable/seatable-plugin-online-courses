@@ -22,6 +22,8 @@
     "add_conditions": "ajoutez les deux conditions : Product reference et Document reference ne sont pas vides",
     "add_link_action": "ajoutez l'action « Ajouter des liens » qui relie {source} à {target}",
     "conditions_required": "les deux conditions « non vide » (Product reference et Document reference) sont nécessaires",
+    "extra_conditions": "ne gardez que les deux conditions demandées (Product reference et Document reference ne sont pas vides), car toute condition supplémentaire empêcherait certaines lignes de déclencher la règle",
+    "extra_link_match": "votre action « Ajouter des liens » de {source} vers {target} compare d'autres colonnes en plus de celles demandées ; supprimez ces correspondances en trop, sinon certaines lignes ne seront pas rattachées",
     "link_action_missing": "il manque l'action de lien",
     "link_missing_for": "il manque l'action « Ajouter des liens » pour {source} → {target}",
     "no_new_rule": "pas encore de NOUVELLE règle d'automatisation : ajoutez-en une, nommez-la et enregistrez-la",
@@ -30,6 +32,7 @@
     "rule_gone": "la règle que vous avez créée a disparu : créez-la à nouveau",
     "wrong_table": "pas encore d'automatisation sur « {table} »",
     "wrong_table_pinned": "votre règle ne se déclenche pas encore sur « {table} »",
+    "wrong_condition": "la condition sur {column} doit vérifier que la colonne n'est pas vide",
     "wrong_trigger": "le déclencheur n'est pas « Lorsqu'une ligne est ajoutée »"
   },
   "colleague": {
@@ -98,9 +101,10 @@
     "hide_hint": "Masquer l'indice",
     "hide_hint_toggle": "▾ Masquer l'indice",
     "hint": "Indice",
-    "reopen": "Rouvrir le cours",
+    "reopen": "Agrandir le cours",
     "show_hint_toggle": "▸ Afficher l'indice",
     "show_instruction": "Afficher la consigne",
+    "expand_to_follow": "Agrandissez le cours pour suivre cette étape.",
     "shrink_toolbar": "Réduire en une barre d'outils déplaçable"
   },
   "course": {
@@ -134,6 +138,8 @@
     "handoff_default": "L'étape suivante se poursuit sur le site ↩",
     "intro": {
       "external": "📌 Ce cours n'est pas encore pris en charge par le plugin, mais vous pouvez le suivre sur {link}.",
+      "missing": "📌 La structure de cette base ne semble pas correspondre à ce cours. Ouvrez la base du cours avant de commencer : c'est dans cette base que le plugin lit et écrit à chaque étape.",
+      "missing_link": "Vous la trouverez sur la page du cours : {link}.",
       "soon": "🚧 Bientôt disponible."
     },
     "introduction": "Introduction",
@@ -156,7 +162,6 @@
     "page_load_failed": "⚠️ Impossible de charger cette page.",
     "preparing": "Préparation…",
     "rewind": {
-      "again": "Retirer à nouveau",
       "done_one": "✅ {count} ligne et le document supprimés. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
       "done_other": "✅ {count} lignes et le document supprimés. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
       "done_stock_one": "✅ {count} ligne et le document supprimés, stock remis en état. Réceptionnez maintenant la livraison à nouveau depuis l'application.",
@@ -181,6 +186,8 @@
       "failed": "Impossible d'ajouter les lignes de livraison.",
       "linked": "✅ {columns} renseignés sur les {count} lignes.",
       "look_again": "Regarder à nouveau",
+      "missing_target": "« {value} » dans « {table} »",
+      "missing_targets": "⚠️ Rien n'a été ajouté, car il manque dans cette base de quoi rattacher les lignes de livraison : {list}. Remettez-les en place (ou réimportez la base du cours), puis cliquez sur {look_again}.",
       "not_found": "Les nouvelles lignes sont introuvables après leur écriture.",
       "stalled": "⏳ {linked}/{total} lignes rattachées, {missing} encore vide(s). Une automatisation peut prendre un moment : attendez quelques secondes et regardez à nouveau. Si rien ne change, vérifiez les conditions de votre règle et ses actions « Ajouter des liens ».",
       "waiting": "En attente de votre automatisation… {linked}/{total} lignes rattachées.",
@@ -190,7 +197,8 @@
     "working": "En cours…",
     "writing": "Écriture…",
     "wrong_table": "Vous êtes sur « {current} ». Ouvrez d'abord « {table} », sinon vous ne verrez pas ce qui se passe.",
-    "wrong_view": "Ouvrez d'abord la vue « {view} » de « {table} » : dans celle-ci, la modification se fait hors de l'écran et vous ne la verriez pas."
+    "wrong_view": "Ouvrez d'abord la vue « {view} » de « {table} » : dans celle-ci, la modification se fait hors de l'écran et vous ne la verriez pas.",
+    "your_turn": "À faire :"
   },
   "courses": {
     "checkpoints_caption": "Points d'étape du plugin : suivez le reste du cours sur le site",
@@ -198,7 +206,7 @@
     "done": "terminé",
     "exercise": "exercice",
     "exercise_title": "Exercice : le panneau se réduit pour que vous puissiez travailler dans votre base",
-    "expand": "Déplier le cours",
+    "expand": "Agrandir le cours",
     "shrink_icon": "Réduire en une icône déplaçable"
   },
   "grade": {
@@ -234,7 +242,8 @@
     "add_folder": "Ajouter un dossier",
     "apps": "Apps",
     "bases": "Bases",
-    "general": "Général({count})",
+    "general": "Général ({count})",
+    "general_bare": "Général",
     "my_bases": "Mes bases",
     "no_notifications": "Aucune notification",
     "notification": "Notification",

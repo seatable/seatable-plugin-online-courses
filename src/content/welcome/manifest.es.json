@@ -12,8 +12,8 @@
     },
     "room-for-your-base": {
       "title": "Paso 3 · Ajustar la altura del panel",
-      "instruction": "Arrastre el asa situada arriba en el centro de este panel para hacerlo más alto o más bajo, y pulse Comprobar.",
-      "html": "Algunas páginas, como esta, son ejercicios: el panel se reduce a una franja en la parte inferior para que su base siga a la vista mientras trabaja en ella. Los ejercicios llevan <i class=\"dtable-font dtable-icon-rename\"></i> en la lista de la izquierda; las demás páginas se abren a altura completa. Arrastre el asa situada arriba en el centro de este panel para hacerlo más alto o más bajo, y pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> Comprobar, arriba. La altura elegida se mantiene para los ejercicios siguientes.",
+      "instruction": "Arrastre el asa situada arriba en el centro de este panel para hacerlo más alto o más bajo, y pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> Comprobar, arriba.",
+      "html": "Algunas páginas, como esta, son ejercicios: el panel se reduce a una franja en la parte inferior para que su base siga a la vista mientras trabaja en ella. Los ejercicios llevan <i class=\"dtable-font dtable-icon-rename\"></i> en la lista de la izquierda; las demás páginas se abren a altura completa. La altura elegida se mantiene para los ejercicios siguientes.",
       "successMessage": "Hecho: los próximos ejercicios se abrirán a esa altura."
     },
     "the-buttons": {
@@ -23,13 +23,13 @@
     },
     "the-movable-toolbar": {
       "title": "Paso 5 · Reducir el plugin",
-      "html": "<h1>Reducir el plugin</h1> <p>¿El panel le molesta para trabajar en su base? Haga clic en el icono de reducir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, arriba a la derecha) para convertirlo en una pequeña barra de herramientas que puede mover a donde quiera.</p> <p>Mientras está reducido, toda la base sigue accesible, nada queda bloqueado, y conserva lo esencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Mover</b>: colóquela donde no le moleste.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: muestre la consigna (y una pista) en cualquier momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Comprobar</b>: compruebe su trabajo sin volver a abrir el panel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: vuelva a abrir el panel completo.</li> </ul> <p>En el paso siguiente, le toca a usted.</p>"
+      "html": "<h1>Reducir el plugin</h1> <p>Cuando el panel le molesta para trabajar en su base, el icono de reducir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, arriba a la derecha) lo convierte en una pequeña barra de herramientas que puede mover a donde quiera. Lo probará en el paso siguiente.</p> <p>Mientras está reducido, toda la base sigue accesible, nada queda bloqueado, y conserva lo esencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Mover</b>: colóquela donde no le moleste.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: muestre la consigna (y una pista) en cualquier momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Comprobar</b>: compruebe su trabajo sin volver a abrir el panel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: vuelva a abrir el panel completo.</li> </ul>"
     },
     "try-the-toolbar": {
       "title": "Paso 6 · Le toca a usted",
-      "instruction": "Reduzca el plugin a la barra de herramientas, llévela a la esquina inferior derecha y pulse Comprobar.",
+      "instruction": "Haga clic en el icono de reducir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, arriba a la derecha) para convertir este panel en la barra de herramientas, arrástrela al cuarto inferior derecho de su pantalla y pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> Comprobar en la barra.",
       "hint": "Reduzca con el icono <i class=\"dtable-font dtable-icon-full-screen\"></i> de arriba a la derecha; mueva la barra con el asa <i class=\"dtable-font dtable-icon-drag\"></i>; después pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> en la barra de herramientas. «Abajo a la derecha» significa el cuarto inferior derecho de toda su pantalla.",
-      "html": "Su turno: haga clic en el icono de reducir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, arriba a la derecha) para convertir este panel en la barra de herramientas, arrástrela al cuarto inferior derecho de su pantalla y pulse <i class=\"dtable-font dtable-icon-check-mark\"></i> Comprobar en la barra.",
+      "html": "<h1>Pruebe la barra de herramientas</h1> <p>Es el momento de usar lo que mostró la página anterior: la barra de herramientas y su botón Comprobar.</p>",
       "successMessage": "Perfecto, ya domina la barra de herramientas 🎉 Vuelva a abrir el plugin y pulse Siguiente para terminar la presentación."
     },
     "youre-ready": {

@@ -32,6 +32,38 @@ function flatten(obj, prefix = '', out = {}) {
   return out;
 }
 
+// The H1 rule (2026-11-10): a full-height page ('course') opens on its H1; an
+// exercise — the compact banner over the base — has none, to keep the room for the
+// base. Each step's type is in the logic, so it is read from courseContent.ts: every
+// `id: '…'` and the first `type: '…'` after it, before the next id.
+const logicFile = path.resolve(__dirname, '..', 'src', 'utils', 'custom-utils', 'courseContent.ts');
+const stepTypes = {};
+{
+  const source = fs.readFileSync(logicFile, 'utf8');
+  const re = /\bid: '([\w-]+)'([\s\S]*?)(?=\bid: '|$)/g;
+  let m;
+  while ((m = re.exec(source))) {
+    const type = /\btype: '(course|exercise)'/.exec(m[2]);
+    if (type) stepTypes[m[1]] = type[1];
+  }
+}
+function h1Errors(json) {
+  const out = [];
+  Object.entries(json.steps || {}).forEach(([id, step]) => {
+    const html = typeof step.html === 'string' ? step.html : null;
+    const type = stepTypes[id];
+    if (html == null || !type) return;
+    if (type === 'course' && !/^\s*<h1>/.test(html))
+      out.push(`steps.${id}.html: a full-height page must open on its <h1>`);
+    if (type === 'exercise' && /<h1>/.test(html))
+      out.push(`steps.${id}.html: an exercise has no <h1>`);
+    // Text before the first tag, then a closing </p>: the opening <p> is missing.
+    if (/^\s*[^<\s]/.test(html) && /<\/p>/.test(html))
+      out.push(`steps.${id}.html: starts outside a <p> but closes one`);
+  });
+  return out;
+}
+
 let errors = 0;
 for (const courseId of fs.readdirSync(contentDir).sort()) {
   const dir = path.join(contentDir, courseId);
@@ -42,13 +74,23 @@ for (const courseId of fs.readdirSync(contentDir).sort()) {
     errors += 1;
     continue;
   }
-  const english = flatten(JSON.parse(fs.readFileSync(englishFile, 'utf8')));
+  const englishJson = JSON.parse(fs.readFileSync(englishFile, 'utf8'));
+  const english = flatten(englishJson);
+  h1Errors(englishJson).forEach((e) => {
+    console.log(`✗ ${courseId}/manifest.en.json\n    error   ${e}`);
+    errors += 1;
+  });
   const others = fs
     .readdirSync(dir)
     .filter((f) => /^manifest\.[\w-]+\.json$/.test(f) && f !== 'manifest.en.json')
     .sort();
   for (const file of others) {
-    const local = flatten(JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')));
+    const localJson = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+    const local = flatten(localJson);
+    h1Errors(localJson).forEach((e) => {
+      console.log(`✗ ${courseId}/${file}\n    error   ${e}`);
+      errors += 1;
+    });
     const unknown = Object.keys(local).filter((k) => !(k in english));
     const wrongPlaceholders = Object.keys(local).filter(
       (k) => k in english && placeholders(String(local[k])) !== placeholders(String(english[k]))

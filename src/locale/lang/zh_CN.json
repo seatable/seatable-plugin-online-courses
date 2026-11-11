@@ -22,6 +22,8 @@
     "add_conditions": "请添加两个条件：Product reference 和 Document reference 不为空",
     "add_link_action": "请添加把 {source} 链接到 {target} 的“添加链接”动作",
     "conditions_required": "需要两个“不为空”条件（Product reference 和 Document reference）",
+    "extra_conditions": "请只保留要求的两个条件（Product reference 和 Document reference 不为空）：任何其他条件都会让部分行无法触发规则",
+    "extra_link_match": "你从 {source} 到 {target} 的“添加链接”动作匹配了不止这一对列：请只保留这一项匹配，否则部分行不会被链接",
     "link_action_missing": "缺少链接动作",
     "link_missing_for": "缺少 {source} → {target} 的“添加链接”动作",
     "no_new_rule": "还没有新的自动化规则——请添加一条、命名并保存",
@@ -30,6 +32,7 @@
     "rule_gone": "你创建的规则不见了——请重新创建",
     "wrong_table": "“{table}”上还没有自动化规则",
     "wrong_table_pinned": "你的规则还没有在“{table}”上触发",
+    "wrong_condition": "{column} 上的条件应检查该列不为空",
     "wrong_trigger": "触发条件不是“当一行增加时”"
   },
   "colleague": {
@@ -101,6 +104,7 @@
     "reopen": "重新打开课程",
     "show_hint_toggle": "▸ 显示提示",
     "show_instruction": "显示说明",
+    "expand_to_follow": "展开课程以继续这一步。",
     "shrink_toolbar": "缩小为可移动的工具栏"
   },
   "course": {
@@ -134,6 +138,8 @@
     "handoff_default": "下一步请回到网站继续 ↩",
     "intro": {
       "external": "📌 插件暂不支持本课程，但你可以在 {link} 学习。",
+      "missing": "📌 此 base 的结构似乎与本课程不符。开始之前请打开课程的 base——插件的步骤会在其中读取和写入。",
+      "missing_link": "可在 {link} 获取。",
       "soon": "🚧 即将推出。"
     },
     "introduction": "简介",
@@ -156,7 +162,6 @@
     "page_load_failed": "⚠️ 无法加载此页面。",
     "preparing": "正在准备…",
     "rewind": {
-      "again": "再次撤回",
       "done_one": "✅ 已删除 {count} 行和单据。现在请通过应用重新接收这次交货。",
       "done_other": "✅ 已删除 {count} 行和单据。现在请通过应用重新接收这次交货。",
       "done_stock_one": "✅ 已删除 {count} 行和单据，库存已恢复。现在请通过应用重新接收这次交货。",
@@ -181,6 +186,8 @@
       "failed": "无法添加交货明细行。",
       "linked": "✅ 全部 {count} 行的 {columns} 都已填好。",
       "look_again": "再看一次",
+      "missing_target": "“{table}”中的“{value}”",
+      "missing_targets": "⚠️ 未添加任何内容：此 base 中缺少交货行要关联的内容：{list}。请恢复（或重新导入课程的 base），然后点击“{look_again}”。",
       "not_found": "写入后找不到新的行。",
       "stalled": "⏳ 已链接 {linked}/{total} 行——{missing} 仍为空。自动化规则可能需要一点时间；请稍等几秒再看。如果仍为空，请检查规则的条件和它的 添加链接 动作。",
       "waiting": "正在等待你的自动化规则… 已链接 {linked}/{total} 行。",
@@ -190,7 +197,8 @@
     "working": "处理中…",
     "writing": "正在写入…",
     "wrong_table": "你当前在“{current}”。请先打开“{table}”，否则你会错过发生的变化。",
-    "wrong_view": "请先打开“{table}”的视图“{view}”——在当前视图中，变化发生在屏幕之外，你会看不到。"
+    "wrong_view": "请先打开“{table}”的视图“{view}”——在当前视图中，变化发生在屏幕之外，你会看不到。",
+    "your_turn": "轮到你了："
   },
   "courses": {
     "checkpoints_caption": "插件检查点——课程其余部分请在网站上学习",
@@ -235,6 +243,7 @@
     "apps": "应用",
     "bases": "表格",
     "general": "通用({count})",
+    "general_bare": "通用",
     "my_bases": "我的表格",
     "no_notifications": "没有通知",
     "notification": "通知",

@@ -129,6 +129,36 @@ export function countDeliveryLines(spec: RewindSpec): number {
   }
 }
 
+// The documents still missing their reference — the one the learner just sent from
+// the form is among them until the extraction (or the safety net) labels it.
+function unlabelledDocuments(spec: RewindSpec, documentTable: any): any[] {
+  const refColumn = getColumn(documentTable, spec.document.reference_column);
+  return refColumn
+    ? (documentTable?.rows || []).filter((r: any) => {
+        const v = r[refColumn.key];
+        return v === null || v === undefined || String(v).trim() === '';
+      })
+    : [];
+}
+
+/**
+ * Is there a document the delivery's lines can attach to: one carrying its reference,
+ * or the ONE document still without a reference (the learner's, which the safety net
+ * labels — see reloadDeliveryLines). Without it, writing the lines leaves them
+ * orphaned, so the safety net is not offered (2026-11-11 test).
+ */
+export function deliveryDocumentAvailable(spec: RewindSpec): boolean {
+  try {
+    const documentTable = getTableByName(spec.document.table_name);
+    if (!documentTable) return false;
+    if (findRowByMatch(documentTable, spec.document.reference_column, spec.document.reference))
+      return true;
+    return unlabelledDocuments(spec, documentTable).length === 1;
+  } catch {
+    return false;
+  }
+}
+
 /** Delete rows in one store op, tolerating an empty list. */
 function deleteRows(tableName: string, rowIds: string[]): number {
   if (!rowIds.length) return 0;
@@ -262,13 +292,7 @@ export async function reloadDeliveryLines(
   // guess would attach this delivery's lines to somebody else's note.
   let documentLabelled = false;
   if (!documentRow && documentTable) {
-    const refColumn = getColumn(documentTable, spec.document.reference_column);
-    const unlabelled: any[] = refColumn
-      ? (documentTable.rows || []).filter((r: any) => {
-          const v = r[refColumn.key];
-          return v === null || v === undefined || String(v).trim() === '';
-        })
-      : [];
+    const unlabelled = unlabelledDocuments(spec, documentTable);
     if (unlabelled.length === 1) {
       onTick?.(t('action.labelling_document'));
       await learnerUpdateRow(spec.document.table_name, unlabelled[0]._id, {
