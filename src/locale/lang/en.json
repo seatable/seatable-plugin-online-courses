@@ -140,6 +140,7 @@
     "handoff_default": "The next step continues on the website ↩",
     "intro": {
       "external": "📌 This course is currently not supported by the plugin, but you can follow it on {link}.",
+      "finalizing": "🚧 This course is still being finalized: some of its content may change.",
       "missing": "📌 This base’s structure doesn’t seem to match this course. Open the course’s base before you start — the plugin’s steps read and write there.",
       "missing_link": "You’ll find it on {link}.",
       "soon": "🚧 Coming soon."

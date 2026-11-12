@@ -507,6 +507,7 @@ export interface CourseMeta {
   intro: string; // HTML description
   helpUrl?: string; // the course's page on the website, in English (external courses, and the base to import)
   localizedHelp?: boolean; // the website has that page in every language of WEBSITE_HELP_PATHS
+  finalizing?: boolean; // still being finalized: its Introduction says so (remove when it is published)
 }
 
 /**
@@ -550,7 +551,13 @@ const COURSE_ROSTER: Omit<CourseMeta, 'name' | 'intro'>[] = [
     helpUrl: 'https://seatable.com/help/online-course-3/',
     localizedHelp: true,
   },
-  { id: 'course-4', access: 'active', helpUrl: 'https://seatable.com/help/online-course-4/' },
+  {
+    id: 'course-4',
+    access: 'active',
+    helpUrl: 'https://seatable.com/help/online-course-4/',
+    // Shipped with the plugin before the course is listed on the website (2026-11-12).
+    finalizing: true,
+  },
   { id: 'course-5', access: 'soon' },
   { id: 'course-6', access: 'soon' },
   { id: 'course-7', access: 'soon' },
@@ -581,6 +588,11 @@ export function courseName(courseId: string): string | undefined {
 function websiteLink(url: string): string {
   const shown = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
   return `<a href="${url}" target="_blank" rel="noopener" style="color:#b45309;font-weight:600;">${shown}</a>`;
+}
+
+/** Whether a course is still being finalized (its Introduction then says so). */
+export function courseIsFinalizing(courseId: string): boolean {
+  return COURSE_ROSTER.some((c) => c.id === courseId && c.finalizing);
 }
 
 /** The link to a course's page on the website (where its base is downloaded), if it has one. */

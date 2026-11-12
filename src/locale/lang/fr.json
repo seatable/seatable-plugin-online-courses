@@ -138,6 +138,7 @@
     "handoff_default": "L'étape suivante se poursuit sur le site ↩",
     "intro": {
       "external": "📌 Ce cours n'est pas encore pris en charge par le plugin, mais vous pouvez le suivre sur {link}.",
+      "finalizing": "🚧 Ce cours est en cours de finalisation : une partie de son contenu peut encore changer.",
       "missing": "📌 La structure de cette base ne semble pas correspondre à ce cours. Ouvrez la base du cours avant de commencer : c'est dans cette base que le plugin lit et écrit à chaque étape.",
       "missing_link": "Vous la trouverez sur la page du cours : {link}.",
       "soon": "🚧 Bientôt disponible."
