@@ -6,19 +6,10 @@ import { IPresetItemProps } from '../../../../utils/template-interfaces/PluginPr
 import { courseName } from '../../../../utils/custom-utils/courseContent';
 // Styles
 import styles from '../../../../styles/template-styles/Plugin.module.scss';
-import '../../../../assets/css/plugin-layout.css';
 
-// One course in the left-hand list. The course presets are fixed (see
-// custom-components/index.tsx): selecting one is the only action, so the template's
-// rename / duplicate / delete menu and its name input are gone.
-const PresetItem: React.FC<IPresetItemProps> = ({
-  p,
-  activePresetIdx,
-  pluginPresets,
-  onSelectPreset,
-}) => {
-  // The name in the current language — the one stored with the preset is whatever
-  // language the base was first opened in.
+// One course in the left-hand list. Selecting it is the only action.
+const PresetItem: React.FC<IPresetItemProps> = ({ p, active, onSelectPreset }) => {
+  // The name in the current language.
   const name: string = courseName(p._id) ?? p.name;
   const [pName, setPName] = useState(name);
 
@@ -47,11 +38,7 @@ const PresetItem: React.FC<IPresetItemProps> = ({
         <div
           onClick={() => onSelectPreset(p?._id)}
           style={{ display: 'flex' }}
-          className={
-            pluginPresets[activePresetIdx]?._id === p?._id
-              ? styles.plugin_header_viewBtn_active
-              : styles.plugin_header_viewBtn
-          }>
+          className={active ? styles.plugin_header_viewBtn_active : styles.plugin_header_viewBtn}>
           <div className="d-flex align-items-center">
             <p className="mb-0">{pName}</p>
           </div>

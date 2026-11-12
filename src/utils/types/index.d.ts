@@ -9,5 +9,3 @@ declare global {
     dtableWebAPI: any;
   }
 }
-
-export type SettingsOption = 'table' | 'view';

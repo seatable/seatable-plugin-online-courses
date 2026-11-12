@@ -19,9 +19,5 @@
     "pt": "O seu companheiro para os cursos online da SeaTable: guia-o pelos exercícios práticos e verifica o seu trabalho diretamente na sua base.",
     "ru": "Ваш помощник в онлайн-курсах SeaTable: он проведёт вас через практические задания и проверит вашу работу прямо в вашей базе.",
     "zh-cn": "SeaTable 在线课程的学习助手：引导您完成实践练习，并直接在您的数据库中检查您的操作结果。"
-  },
-  "active_components": {
-    "settings_dropdowns": false,
-    "add_row_button": false
   }
 }

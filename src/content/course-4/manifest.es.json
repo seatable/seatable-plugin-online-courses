@@ -2,11 +2,11 @@
   "title": "Curso 4 — Automatización e integración",
   "intro": "Automatice sus flujos de trabajo y conecte herramientas externas.<br><br>Incluye automatizaciones sin código, scripts de Python, la API, webhooks, orquestación con n8n y extracción de documentos con IA, en torno a un escenario de recepción en un almacén.",
   "steps": {
-    "build-the-linking-automation": {
+    "automate-line-linking": {
       "title": "Paso 2 · Automatizar la vinculación de las líneas",
       "instruction": "Cree en Line items una automatización que vincule cada nueva línea con su producto y su documento.",
       "hint": "En Line items: desencadenante «When a row is added», dos condiciones (Product reference y Document reference no vacíos) y luego dos acciones «Añadir enlaces», una hacia Products (Reference) y otra hacia Documents (Delivery reference).",
-      "html": "<h1>Construya la automatización de vinculación</h1> <p>Su primera automatización: cada nueva línea de Line items encuentra por sí sola su Product y su Document haciendo coincidir las referencias, sin ningún enlace introducido a mano.</p> <p>Elija Guiarme paso a paso para construirla fase por fase, cada una comprobada antes de la siguiente, o Ya la construí: compruébela si ya lo ha hecho. Reglas de automatización está en su base, detrás de este panel: reduzca el plugin (<i class=\"dtable-font dtable-icon-full-screen\"></i>) para llegar a ella; Guiarme paso a paso lo hace por usted.</p>",
+      "html": "<h1>Construya la automatización de vinculación</h1> <p>Su primera automatización: cada nueva línea de Line items se vincula por sí sola a su producto y a su documento haciendo coincidir las referencias, sin ningún enlace introducido a mano.</p> <p>Elija <em>Guiarme paso a paso</em> para construirla fase por fase, cada una comprobada antes de la siguiente, o <em>Ya está hecha: comprobar</em> si ya la ha construido. Reglas de automatización está en su base, detrás de este panel: reduzca el plugin (<i class=\"dtable-font dtable-icon-full-screen\"></i>) para llegar a ella; <em>Guiarme paso a paso</em> lo hace por usted.</p>",
       "successMessage": "Su automatización de vinculación está terminada: cada nueva línea encontrará ahora por sí sola su producto y su documento.",
       "watch": {
         "html": "Véala en acción. Su regla está lista, pero nada la ha activado todavía: démosle trabajo. El plugin añade las líneas de la entrega, como si su proveedor hubiera enviado la lista limpia de lo que se cargó en el camión. No escribe ni la columna Product ni la columna Document.",
@@ -16,8 +16,8 @@
       "automationStages": {
         "created": {
           "title": "Automatización creada",
-          "instruction": "Abra Reglas de automatización, añada una nueva regla y póngale un nombre; luego pulse Comprobar.",
-          "hint": "Hay que salir del campo del nombre de la regla para que exista"
+          "instruction": "Abra Reglas de automatización, añada una nueva regla y póngale un nombre; luego pulse <em>Comprobar</em>.",
+          "hint": "La regla solo se crea cuando sale del campo del nombre"
         },
         "trigger": {
           "title": "Desencadenante y condiciones",
@@ -27,12 +27,12 @@
         },
         "action:0": {
           "title": "Vincular el producto",
-          "instruction": "Añada una acción «Añadir enlaces» que rellene la columna Product: la Product reference de la línea debe ser igual a la Reference de un producto.",
+          "instruction": "Añada una acción «Añadir enlaces» que rellene la columna Product: el valor de Product reference de la línea debe ser igual al valor de Reference de un producto.",
           "hint": "Elija la acción «Añadir enlaces» y luego la columna Product que debe rellenar"
         },
         "action:1": {
           "title": "Vincular el documento",
-          "instruction": "Añada una segunda acción «Añadir enlaces» que rellene la columna Document: la Document reference de la línea debe ser igual a la Delivery reference de un documento.",
+          "instruction": "Añada una segunda acción «Añadir enlaces» que rellene la columna Document: el valor de Document reference de la línea debe ser igual al valor de Delivery reference de un documento.",
           "hint": "La misma acción otra vez, esta vez para rellenar Document",
           "html": "Una última acción, y su automatización estará completa."
         }
@@ -40,16 +40,16 @@
     },
     "a-reviewer-for-a-short-delivery": {
       "title": "Paso 3 · Asignar un revisor a una entrega incompleta",
-      "instruction": "Deje que el plugin cree la entrega incompleta. Abra después Reglas de automatización y pulse Ejecutar ahora en su regla de revisión (no hace falta esperar a la hora fijada), y vuelva para comprobar.",
-      "hint": "Use Ejecutar ahora en Reglas de automatización: no hace falta esperar a la hora programada.",
-      "html": "<p>Ofrezca a su regla un caso que tratar. Una regla programada solo demuestra lo que vale ante una entrega que de verdad requiere atención: en lugar de pedirle que prepare una, el plugin se encarga. Crea una nueva entrega y una línea recibida en menor cantidad de la pedida. Si lo vuelve a ejecutar, primero elimina la entrega, y su línea, que dejó la ejecución anterior. Su automatización del paso 2 vincula la línea por sí sola; el plugin espera a que lo haya hecho.</p> <p>Lo que se verifica no es que haya un revisor, sino que fue su automatización, y no usted, quien lo asignó.",
+      "instruction": "Deje que el plugin cree la entrega incompleta. Abra después Reglas de automatización y pulse <em>Ejecutar ahora</em> en su regla de revisión (no hace falta esperar a la hora fijada), y vuelva para comprobar.",
+      "hint": "Use <em>Ejecutar ahora</em> en Reglas de automatización: no hace falta esperar a la hora programada.",
+      "html": "<p>Ofrezca a su regla un caso que tratar. Una regla programada solo demuestra lo que vale ante una entrega que de verdad requiere atención: en lugar de pedirle que prepare una, el plugin se encarga. Crea una nueva entrega y una línea recibida en una cantidad inferior a la pedida. Si lo vuelve a ejecutar, primero elimina la entrega, y su línea, que dejó la ejecución anterior. Su automatización del paso 2 vincula la línea por sí sola; el plugin espera a que lo haya hecho.</p> <p>Lo que se verifica no es que haya un revisor, sino que fue su automatización, y no usted, quien lo asignó.</p>",
       "handoffNote": "Ha terminado aquí: vuelva al sitio web para continuar el curso ↩"
     },
     "rewind-and-do-it-for-real": {
       "title": "Paso 4 · Retirar la entrega y recibirla de verdad",
       "instruction": "Deje que el plugin retire la entrega. Recíbala después de verdad: en la aplicación Delivery check, abra New delivery note, adjunte la foto del albarán y envíe. Vea cómo la lectura, la extracción y el script hacen el resto, y vuelva para comprobar.",
       "hint": "El formulario es la segunda página de la aplicación Delivery check: adjunte la foto y envíe; todo lo demás se lee de la imagen.",
-      "html": "<p>Retire la entrega. Tiene la cadena; lo que le falta es con qué alimentarla: esa entrega ya está en su base, con todas sus líneas. Deje que el plugin las elimine, junto con el documento, para que el mismo albarán pueda llegar como llegaría de verdad. Su stock también vuelve a su estado anterior. Una vez superado el paso, Empezar de nuevo retira otra vez la entrega de la misma manera, para que pueda recibirla una vez más.</p> <p>Si la extracción se tuerce, el plugin escribe las líneas de la entrega por usted: completas si no produjo ninguna, corregidas si se equivocó. Lo que se comprueba es que las líneas han vuelto, nunca que la IA acertara por sí sola.",
+      "html": "<p>Retire la entrega. Tiene la cadena; lo que le falta es con qué alimentarla: esa entrega ya está en su base, con todas sus líneas. Deje que el plugin las elimine, junto con el documento, para que el mismo albarán pueda llegar como llegaría de verdad. Su stock también vuelve a su estado anterior. Una vez superado el paso, <em>Empezar de nuevo</em> retira otra vez la entrega de la misma manera, para que pueda recibirla una vez más.</p> <p>Si la extracción se tuerce, el plugin escribe las líneas de la entrega por usted: completas si no produjo ninguna, corregidas si se equivocó. Lo que se comprueba es que las líneas han vuelto, nunca que la IA acertara por sí sola.</p>",
       "successMessage": "La entrega ha vuelto, leída esta vez de una foto, con sus líneas vinculadas por la regla del paso 2.",
       "handoffNote": "Ha terminado aquí: vuelva al sitio web para continuar el curso ↩",
       "grade": {
@@ -58,26 +58,26 @@
     },
     "see-what-seatable-sends": {
       "title": "Paso 5a · Ver lo que envía SeaTable",
-      "instruction": "Apunte su webhook al punto de prueba y mantenga la página de prueba junto a su base; luego deje que el plugin haga su cambio.",
+      "instruction": "Indique la URL de prueba como destino de su webhook y mantenga la página de prueba junto a su base; luego deje que el plugin haga su cambio.",
       "hint": "Aquí no se puntúa nada: todo el ejercicio consiste en ir a leer lo que llegó al otro extremo.",
-      "html": "<p>Haga hablar a su webhook. El plugin hace un cambio cuya forma conoce: añade una fila a Products, la modifica unos segundos después y luego la elimina, dejando su catálogo exactamente como estaba. Los tres cambios están espaciados para que vea llegar cada uno a ambos lados. Si no llega nada al punto de prueba, pruebe a poner las dos páginas en la misma ventana del navegador.</p> <p>Tres operaciones, tres solicitudes: lo que se escribió, lo que cambió (con el valor anterior) y lo que desapareció. Aquí no se comprueba nada: leer el otro lado es todo el ejercicio.",
+      "html": "<p>Haga hablar a su webhook. El plugin hace un cambio conocido de antemano: añade una fila a Products, la modifica unos segundos después y luego la elimina, dejando su catálogo exactamente como estaba. Los tres cambios están espaciados para que vea llegar cada uno a ambos lados. Si no llega nada a la URL de prueba, pruebe a poner las dos páginas en la misma ventana del navegador.</p> <p>Tres operaciones, tres solicitudes: lo que se escribió, lo que cambió (con el valor anterior) y lo que desapareció. Aquí no se comprueba nada: el ejercicio consiste precisamente en leer lo que llega al otro lado.</p>",
       "handoffNote": "Ha terminado aquí: vuelva al sitio web para continuar el curso ↩",
       "demoDoneMessage": "✅ Se han hecho los tres cambios: vaya a leerlos al otro extremo."
     },
     "write-the-deliverys-lines": {
       "title": "Paso 5b · Añadir las líneas de la entrega",
-      "instruction": "Deje que el plugin escriba las líneas de la segunda entrega. Termine después como lo haría la oficina: compare la lista con el albarán y pulse Notify the dock en el documento.",
-      "hint": "Las líneas llegan a Line items y su regla del paso 2 las vincula; después pulse Notify the dock en el documento.",
-      "html": "<p>Deje que el plugin haga la introducción. El segundo albarán está en su base, pero sus líneas no. Copiar tres códigos de barras de una foto no enseña nada: el plugin las escribe por usted, las mismas líneas que habría producido una lectura limpia de ese albarán.</p> <p>Llegan a Line items con sus referencias, así que la regla del paso 2 vincula cada una con su producto y su documento en cuanto llega. Aquí no se comprueba nada.",
+      "instruction": "Deje que el plugin escriba las líneas de la segunda entrega. Termine después como lo haría la oficina: compare la lista con el albarán y pulse <em>Notify the dock</em> en el documento.",
+      "hint": "Las líneas llegan a Line items y su regla del paso 2 las vincula; después pulse <em>Notify the dock</em> en el documento.",
+      "html": "<p>Deje que el plugin teclee por usted. El segundo albarán está en su base, pero sus líneas no. Copiar tres códigos de barras de una foto no enseña nada: el plugin las escribe por usted, las mismas líneas que habría producido una lectura sin errores de ese albarán.</p> <p>Llegan a Line items con sus referencias, así que la regla del paso 2 vincula cada una con su producto y su documento en cuanto llega. Aquí no se comprueba nada.</p>",
       "handoffNote": "Ha terminado aquí: vuelva al sitio web para continuar el curso ↩",
       "demoLabel": "Escribir las líneas",
       "demoDoneMessage": "✅ Las líneas de la entrega están en Line items, vinculadas por su propia regla."
     },
     "the-electronic-delivery-note": {
       "title": "Paso 7a · El albarán electrónico",
-      "instruction": "Deje que el plugin deposite la cabecera del albarán. Después, de vuelta en el sitio web, envíe al menos una línea a Line items desde la documentación de la API, y vuelva aquí en el paso 7b cuando la haya enviado.",
-      "hint": "Aquí no se puntúa nada: solo deposita el albarán en su base, para que las líneas que envíe tengan con qué vincularse.",
-      "html": "<p>En la piel del sistema del proveedor, primera parte. Uno de sus proveedores genera ahora su albarán al cargar el camión y lo envía directamente a su base. Este intercambio se hace en dos tiempos: la cabecera del albarán y luego sus líneas. El plugin deposita la cabecera, para que la parte que hace usted a mano sea breve y legible.</p> <p>Aparece un nuevo documento en Documents con la referencia {apiDeliveryReference} y sin archivo adjunto: ya no hay nada que fotografiar. Si lo vuelve a ejecutar, primero elimina ese documento, con cualquier línea ya enviada a él.",
+      "instruction": "Deje que el plugin cree la cabecera del albarán. Después, de vuelta en el sitio web, envíe al menos una línea a Line items desde la documentación de la API, y vuelva aquí en el paso 7b cuando la haya enviado.",
+      "hint": "Aquí no se puntúa nada: solo crea el albarán en su base, para que las líneas que envíe tengan con qué vincularse.",
+      "html": "<p>En la piel del sistema del proveedor, primera parte. Uno de sus proveedores genera ahora su albarán al cargar el camión y lo envía directamente a su base. Este intercambio se hace en dos tiempos: la cabecera del albarán y luego sus líneas. El plugin crea la cabecera, para que la parte que hace usted a mano sea breve y legible.</p> <p>Aparece un nuevo documento en Documents con la referencia {apiDeliveryReference} y sin archivo adjunto: ya no hay nada que fotografiar. Si lo vuelve a ejecutar, primero elimina ese documento, junto con las líneas ya enviadas para ese albarán.</p>",
       "handoffNote": "Ahora vaya a enviar una de sus líneas desde la documentación de la API ↩",
       "demoLabel": "Crear la entrega",
       "demoDoneMessage": "✅ El albarán está en su base, sin líneas y sin archivo."
@@ -86,7 +86,7 @@
       "title": "Paso 7b · Comprobar la línea enviada",
       "instruction": "Envíe al menos una línea a Line items desde la documentación de la API y compruebe.",
       "hint": "En la documentación de la API, table_name es \"Line items\" y la fila necesita la Document reference \"{apiDeliveryReference}\", una Product reference de su catálogo y una Qty.",
-      "html": "<p>La segunda parte le toca a usted: una línea para este albarán, con la referencia {apiDeliveryReference} en Document reference, un producto de su catálogo en Product reference y una Qty.</p> <p>Lo que se comprueba no es solo que su línea ha llegado, sino que se ha vinculado, con su producto y su documento, gracias a la automatización del paso 2, y que de verdad viene de fuera: una fila escrita a mano en la cuadrícula no cuenta aquí.",
+      "html": "<p>La segunda parte le toca a usted: una línea para este albarán, con la referencia {apiDeliveryReference} en Document reference, un producto de su catálogo en Product reference y una Qty.</p> <p>Lo que se comprueba no es solo que su línea ha llegado, sino que se ha vinculado, con su producto y su documento, gracias a la automatización del paso 2, y que de verdad viene de fuera: una fila escrita a mano en la cuadrícula no cuenta aquí.</p>",
       "successMessage": "Su línea ha entrado por la API y se ha vinculado por el camino: sin escáner, sin cámara, sin teclado, y nada en su base nota la diferencia.",
       "handoffNote": "Ha terminado aquí: vuelva al sitio web para continuar el curso ↩",
       "grade": {

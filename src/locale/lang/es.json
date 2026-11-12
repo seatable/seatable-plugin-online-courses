@@ -37,23 +37,23 @@
   },
   "colleague": {
     "already_set": "{row} ya es {values}: no hay nada que cambiar. Restablezca primero el valor anterior y vuelva a ejecutarlo.",
-    "base_bell_failed": "Sus notificaciones en la base respondieron {status}",
+    "base_bell_failed": "No se pudieron leer las notificaciones de Malika en esta base ({status}).",
     "base_token_failed": "No se pudo obtener un token de base para ella ({status}).",
-    "cannot_open": "Ella no puede abrir esta base: compruebe el token y que la base siga compartida con ella.",
+    "cannot_open": "Malika no puede abrir esta base: compruebe el token y que la base siga compartida con ella.",
     "checking_landed": "Comprobando que su cambio ha llegado a la base…",
     "column_not_found": "No se encontró la columna «{column}» en «{table}».",
     "connect_failed": "No se pudo conectar a la base en su nombre: su cambio no se hizo. Inténtelo de nuevo en un momento.",
-    "making_change": "Ella está haciendo su cambio…",
+    "making_change": "Malika está haciendo el cambio…",
     "no_reason": "sin motivo indicado",
     "no_row_where": "Ninguna fila donde {column} sea {value}.",
     "no_table_named": "No hay ninguna tabla llamada {table} en esta base.",
     "no_token": "Todavía no hay token de su compañera.",
     "no_token_step2": "Todavía no hay token de su compañera: el curso se lo pide en el paso 2.",
     "not_flushed": "El cambio se hizo localmente pero nunca llegó al servidor. Compruebe que su token es válido y que la conexión se estableció.",
-    "not_landed": "Su cambio se envió pero no aparece en la base. No se hizo nada más: inténtelo de nuevo.",
+    "not_landed": "El cambio de Malika se envió pero no aparece en la base. No se hizo nada más: inténtelo de nuevo.",
     "opening_base": "Abriendo la base en su nombre…",
     "refused": "SeaTable rechazó su cambio: {reason}.",
-    "reply_refused": "Su respuesta fue rechazada ({status}).",
+    "reply_refused": "La respuesta de Malika fue rechazada ({status}).",
     "row_not_found": "Ninguna fila donde {column} sea «{value}».",
     "signing_in": "Iniciando sesión como su compañera…",
     "table_not_found": "No se encontró la tabla «{table}» en la base que ella ve."
@@ -73,7 +73,7 @@
     "a_record": "(sin nombre)",
     "a_team": "un grupo",
     "access_through_group": "Malika ya puede abrir {base} a través de un grupo. Sáquela de ese grupo para seguir este paso: si no, compartir y retirar el acceso no cambia nada para ella.",
-    "bell_failed": "No se pudieron leer sus notificaciones.",
+    "bell_failed": "No se pudieron leer las notificaciones de Malika.",
     "bell_label": "Notificaciones de Malika",
     "bell_label_unread": "Notificaciones de Malika, {count} sin leer",
     "caption_base": "Lo que Malika ve en su propia ventana, en esta base",
@@ -83,7 +83,7 @@
       "comment": "Nuevo comentario añadido al registro {row}.",
       "shared_base": "{who} ha compartido contigo la base {base}"
     },
-    "no_access": "{base} no está compartida con ella: no puede abrirla, y el plugin no puede actuar por ella en esa base hasta que vuelva a compartirla con ella.",
+    "no_access": "{base} no está compartida con ella: no puede abrirla, y el plugin no puede actuar en su nombre en esa base hasta que vuelva a compartirla con ella.",
     "permission_r": "Solo lectura",
     "permission_rw": "Lectura-escritura",
     "permission_unknown": "permiso desconocido",
@@ -91,7 +91,7 @@
     "shared_failed": "No se pudieron leer las bases compartidas con ella.",
     "shared_with_permission": "{base} compartida con el permiso {permission}",
     "someone": "Alguien",
-    "token_missing": "Su token falta o ya no se acepta: vuelva al paso de configuración."
+    "token_missing": "El token de Malika falta o ya no se acepta: vuelva al paso de configuración."
   },
   "controls": {
     "back": "Atrás",
@@ -101,7 +101,7 @@
     "hide_hint": "Ocultar pista",
     "hide_hint_toggle": "▾ Ocultar pista",
     "hint": "Pista",
-    "reopen": "Volver a abrir el curso",
+    "reopen": "Ampliar el curso",
     "show_hint_toggle": "▸ Mostrar pista",
     "show_instruction": "Mostrar la consigna",
     "expand_to_follow": "Amplíe el curso para seguir este paso.",
@@ -112,7 +112,7 @@
       "build": "Construir la automatización",
       "check_mine": "Comprobar mi automatización",
       "guide_me": "Guiarme paso a paso",
-      "just_check": "Ya la construí: compruébela",
+      "just_check": "Ya está hecha: comprobar",
       "next_stage": "Siguiente fase",
       "stage_complete": "Fase completada: pasemos a la siguiente."
     },
@@ -123,12 +123,12 @@
     },
     "check": "Comprobar",
     "colleague": {
-      "configured": "Su compañera está configurada.",
-      "edit": "Dejar que la compañera modifique",
+      "configured": "La cuenta de su compañera está configurada.",
+      "edit": "Dejar que su compañera haga el cambio",
       "failed": "No se pudo hacer el cambio en nombre de la compañera.",
       "replying": "Malika está respondiendo…",
       "side_writes": "Malika actualiza algunos otros clientes…",
-      "written": "✅ Escrito en la fila {row}. Abra ahora el registro de la base y lea la entrada: ¿nombra la fila, está firmada por ella y su menú ofrece Restaurar?"
+      "written": "✅ Escrito en la fila {row}. Abra ahora el registro de la base y lea la entrada: ¿nombra la fila, lleva su nombre y su menú ofrece Restaurar?"
     },
     "feedback": {
       "fail": "❌ Todavía no: {reason}.",
@@ -174,7 +174,7 @@
     "seed": {
       "failed": "No se pudo preparar la entrega.",
       "not_linked": "⚠️ La entrega está ahí, pero su línea todavía no está vinculada: compruebe la automatización que construyó en el paso 2 y ejecute su regla.",
-      "note_ready": "✅ El albarán está en su base, sin líneas y sin archivo. Envíe una desde el explorador de la API y luego compruebe.",
+      "note_ready": "✅ El albarán está en su base, sin líneas y sin archivo. Envíe una desde la documentación de la API y luego compruebe.",
       "prepare": "Preparar la entrega",
       "short_ready": "✅ Le espera una entrega incompleta. Ejecute su regla y luego compruebe."
     },
@@ -202,11 +202,11 @@
   },
   "courses": {
     "checkpoints_caption": "Puntos de control del plugin: siga el resto del curso en el sitio web",
-    "collapse": "Contraer el curso",
+    "collapse": "Ocultar los pasos del curso",
     "done": "completado",
     "exercise": "ejercicio",
     "exercise_title": "Ejercicio: el panel se reduce para que pueda trabajar en su base",
-    "expand": "Desplegar el curso",
+    "expand": "Mostrar los pasos del curso",
     "shrink_icon": "Reducir a un icono móvil"
   },
   "grade": {

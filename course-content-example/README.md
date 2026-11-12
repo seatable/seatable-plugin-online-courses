@@ -5,10 +5,11 @@ plugin expects to find there. Types and field-by-field documentation are in
 `src/utils/custom-utils/courseContent.ts` (`CourseStep`, `CourseManifest`) and
 `src/utils/custom-utils/grader.ts` (grade rules) — this file is the overview.
 
-> **Status — not wired yet.** Every course is still bundled in the plugin:
+> **Status — not wired, by decision.** The team chose bundled content (2026-10-06):
 > `loadAllCourses()` returns `buildAllFallbackManifests()`, and `fetchManifest()` /
-> `fetchStepHtml()` exist but nothing calls the remote path (the `USE_REMOTE_CONTENT`
-> flag is declared, not read). Wiring it is the point of the academy POC.
+> `fetchStepHtml()` exist but nothing calls the remote path. The `USE_REMOTE_CONTENT`
+> flag is declared, not read: flipping it changes nothing until `loadAllCourses()`
+> reads it. The proof of concept that wired it is kept on the `poc-academy` branch.
 
 ## Bundled content: logic and words (current)
 
@@ -68,9 +69,10 @@ A manifest must have a non-empty `steps` array. Each step:
 - **`id`** — the step's title without its `Step N ·` prefix, in lower case, accents and
   apostrophes removed, words joined by hyphens: `Step 3a · Malika’s window in this base` →
   `malikas-window-in-this-base`; the introduction is `introduction`. Unique within the course
-  (the same id in two courses is fine). Saved progress and checkmarks are keyed on it, so it
-  is set when the step is created and **not changed afterwards**, even if the title is
-  reworded: a new id resets that step for every learner.
+  (the same id in two courses is fine). `npm run check-texts` enforces it. Saved progress
+  and checkmarks are keyed on it, so from the first public release on it is **frozen**,
+  even if the title is reworded (a new id resets that step for every learner) — and the
+  id check goes from `check-texts`, which would otherwise demand the new slug.
 - **`type`** — `course` (full-height page) or `exercise` (compact banner over the base).
 - **`title`** — shown in the step list, e.g. `Step 3a · …`. The manifest is deliberately
   **gapped**: it holds only the plugin's checkpoints, while the website carries the course.

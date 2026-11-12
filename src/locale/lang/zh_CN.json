@@ -19,10 +19,10 @@
   },
   "automation": {
     "a_link_missing": "缺少一个链接动作",
-    "add_conditions": "请添加两个条件：Product reference 和 Document reference 不为空",
+    "add_conditions": "请添加两个条件：Product reference 和 Document reference 不是空",
     "add_link_action": "请添加把 {source} 链接到 {target} 的“添加链接”动作",
-    "conditions_required": "需要两个“不为空”条件（Product reference 和 Document reference）",
-    "extra_conditions": "请只保留要求的两个条件（Product reference 和 Document reference 不为空）：任何其他条件都会让部分行无法触发规则",
+    "conditions_required": "需要两个“不是空”条件（Product reference 和 Document reference）",
+    "extra_conditions": "请只保留要求的两个条件（Product reference 和 Document reference 不是空）：任何其他条件都会让部分行无法触发规则",
     "extra_link_match": "你从 {source} 到 {target} 的“添加链接”动作匹配了不止这一对列：请只保留这一项匹配，否则部分行不会被链接",
     "link_action_missing": "缺少链接动作",
     "link_missing_for": "缺少 {source} → {target} 的“添加链接”动作",
@@ -32,12 +32,12 @@
     "rule_gone": "你创建的规则不见了——请重新创建",
     "wrong_table": "“{table}”上还没有自动化规则",
     "wrong_table_pinned": "你的规则还没有在“{table}”上触发",
-    "wrong_condition": "{column} 上的条件应检查该列不为空",
+    "wrong_condition": "{column} 上的条件应检查该列不是空",
     "wrong_trigger": "触发条件不是“当一行增加时”"
   },
   "colleague": {
     "already_set": "{row} 已经是 {values}——无需修改。请先恢复原来的值，再重新运行。",
-    "base_bell_failed": "她在表格内的通知返回了 {status}",
+    "base_bell_failed": "无法读取她在表格内的通知（{status}）。",
     "base_token_failed": "无法为她获取表格令牌（{status}）。",
     "cannot_open": "她无法打开此表格——请检查令牌，以及表格是否仍共享给她。",
     "checking_landed": "正在确认她的修改已到达表格…",
@@ -62,9 +62,9 @@
     "checking": "正在检查…",
     "is_this_her": "这确实是你的同事，而不是你自己吗？如果你在这里看到的是自己，插件在本课程余下部分将以你本人的名义操作。",
     "no_name": "（无名称）",
-    "placeholder": "粘贴你同事的账户令牌",
-    "rejected": "SeaTable 没有接受这个令牌。请确认你从同事的 个人设置 页面完整复制了它，并且它属于此服务器。",
-    "storage_note": "令牌随插件保存在此表格中——下次在任何电脑上都还在。任何与你共享此表格的人都能在这里读到它，所以这个第二个账户应专为本课程创建，不要在别处使用。",
+    "placeholder": "粘贴你同事的账号令牌",
+    "rejected": "SeaTable 没有接受这个令牌。请确认你从同事的“个人设置”页面完整复制了它，并且它属于此服务器。",
+    "storage_note": "令牌随插件保存在此表格中——下次在任何电脑上都还在。任何与你共享此表格的人都能在这里读到它，所以这个第二个账号应专为本课程创建，不要在别处使用。",
     "stored_rejected": "已保存的令牌不再被接受。请重新粘贴。",
     "use_another": "使用其他令牌"
   },
@@ -101,7 +101,7 @@
     "hide_hint": "隐藏提示",
     "hide_hint_toggle": "▾ 隐藏提示",
     "hint": "提示",
-    "reopen": "重新打开课程",
+    "reopen": "展开课程",
     "show_hint_toggle": "▸ 显示提示",
     "show_instruction": "显示说明",
     "expand_to_follow": "展开课程以继续这一步。",
@@ -123,12 +123,12 @@
     },
     "check": "检查",
     "colleague": {
-      "configured": "你的同事已设置好。",
-      "edit": "让同事修改",
+      "configured": "你同事的账号已设置好。",
+      "edit": "让你的同事修改",
       "failed": "无法以同事的身份进行修改。",
       "replying": "Malika 正在回复…",
       "side_writes": "Malika 正在更新其他几位客户…",
-      "written": "✅ 已写入第 {row} 行。现在打开表格日志并查看这条记录：它是否写明了行、是否由她署名、菜单里是否有 恢复？"
+      "written": "✅ 已写入第 {row} 行。现在打开表格日志并查看这条记录：它是否写明了行、是否显示她的名字、菜单里是否有“恢复”？"
     },
     "feedback": {
       "fail": "❌ 还没有——{reason}。",
@@ -138,7 +138,7 @@
     "handoff_default": "下一步请回到网站继续 ↩",
     "intro": {
       "external": "📌 插件暂不支持本课程，但你可以在 {link} 学习。",
-      "missing": "📌 此 base 的结构似乎与本课程不符。开始之前请打开课程的 base——插件的步骤会在其中读取和写入。",
+      "missing": "📌 此表格的结构似乎与本课程不符。开始之前请打开课程的表格——插件的步骤会在其中读取和写入。",
       "missing_link": "可在 {link} 获取。",
       "soon": "🚧 即将推出。"
     },
@@ -174,9 +174,9 @@
     "seed": {
       "failed": "无法准备这次交货。",
       "not_linked": "⚠️ 交货已在，但其明细行还没有被链接——请检查你在第 2 步创建的自动化规则，然后运行你的规则。",
-      "note_ready": "✅ 送货单已在你的表格中，没有明细行，也没有文件。请从 API 浏览器推送一行，然后检查。",
+      "note_ready": "✅ 送货单已在你的表格中，没有明细行，也没有文件。请从 API 文档推送一行，然后检查。",
       "prepare": "准备这次交货",
-      "short_ready": "✅ 一次少交货的交货在等着你。运行你的规则，然后检查。"
+      "short_ready": "✅ 一次数量不足的交货在等着你。运行你的规则，然后检查。"
     },
     "start_over": "重新开始",
     "verify": "检查",
@@ -187,9 +187,9 @@
       "linked": "✅ 全部 {count} 行的 {columns} 都已填好。",
       "look_again": "再看一次",
       "missing_target": "“{table}”中的“{value}”",
-      "missing_targets": "⚠️ 未添加任何内容：此 base 中缺少交货行要关联的内容：{list}。请恢复（或重新导入课程的 base），然后点击“{look_again}”。",
+      "missing_targets": "⚠️ 未添加任何内容：此表格中缺少交货行要关联的内容：{list}。请恢复（或重新导入课程的表格），然后点击“{look_again}”。",
       "not_found": "写入后找不到新的行。",
-      "stalled": "⏳ 已链接 {linked}/{total} 行——{missing} 仍为空。自动化规则可能需要一点时间；请稍等几秒再看。如果仍为空，请检查规则的条件和它的 添加链接 动作。",
+      "stalled": "⏳ 已链接 {linked}/{total} 行——{missing} 仍为空。自动化规则可能需要一点时间；请稍等几秒再看。如果仍为空，请检查规则的条件和它的“添加链接”动作。",
       "waiting": "正在等待你的自动化规则… 已链接 {linked}/{total} 行。",
       "writing": "正在写入交货明细行…",
       "wrong_table": "你当前在“{current}”。请打开子表“{table}”，看着这些行出现——然后再添加。"
@@ -202,11 +202,11 @@
   },
   "courses": {
     "checkpoints_caption": "插件检查点——课程其余部分请在网站上学习",
-    "collapse": "收起课程",
+    "collapse": "隐藏课程步骤",
     "done": "已完成",
     "exercise": "练习",
     "exercise_title": "练习——面板会缩小，方便你在表格中操作",
-    "expand": "展开课程",
+    "expand": "显示课程步骤",
     "shrink_icon": "缩小为可移动的图标"
   },
   "grade": {

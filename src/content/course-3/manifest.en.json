@@ -6,19 +6,19 @@
       "title": "Step 2a · Malika joins you",
       "instruction": "In her account, open Personal settings and copy the account token. Paste it below, and check that the plugin greets the right person.",
       "hint": "In the Account-Token section of her Personal settings, you may first have to generate an account token, if she has never had one.",
-      "html": "<h1>Your colleague’s token</h1> <p>One piece of setup, once. It is what lets this companion act for Malika — so that you never have to sign in as her.</p>",
-      "demoDoneMessage": "✅ Your colleague is configured — the companion can act for her."
+      "html": "<h1>Your colleague’s token</h1> <p>One piece of setup, once. It is what lets this companion act on Malika’s behalf — so that you never have to sign in as her.</p>",
+      "demoDoneMessage": "✅ Your colleague’s account is set up — the companion can act on her behalf."
     },
     "malikas-home-page": {
       "title": "Step 2b · Malika’s home page",
-      "instruction": "Share this base with Malika, then press Refresh, as she would reload her page. Revoke the share and refresh again to see her access go; then share it again as Read-Write.",
-      "html": "<h1>Malika’s home page</h1> <p>What Malika sees, without signing in as her: her real bell, and the bases shared with her.</p> <p>Once the base is shared, her bell shows the share, and Shared with me lists the base.</p>",
+      "instruction": "Share this base with Malika, then press <em>Refresh</em>, as she would reload her page. Revoke the share and refresh again to see her access go; then share it again as Read-Write.",
+      "html": "<h1>Malika’s home page</h1> <p>What Malika sees, without signing in as her: her bell as she sees it, and the bases shared with her.</p> <p>Once the base is shared, her bell shows the share, and Shared with me lists the base.</p>",
       "demoDoneMessage": "✅ This base is shared with Malika, with Read-Write permission."
     },
     "malikas-window-in-this-base": {
       "title": "Step 3a · Malika’s window in this base",
-      "instruction": "After each comment you write on James Bennett, press Refresh, as she would reload the base, and look at her bell.",
-      "html": "<h1>Malika’s window in this base</h1> <p>What Malika sees inside this base. The bell here is the base’s own: the share from Step 2 is not in it. On her home page, these notifications are listed under Bases.</p> <p>Your first comment brings her nothing. Once you mention her, she is part of the conversation, and every new comment on the row reaches her — mentioned or not.</p>",
+      "instruction": "After each comment you write on James Bennett, press <em>Refresh</em>, as she would reload the base, and look at her bell.",
+      "html": "<h1>Malika’s window in this base</h1> <p>What Malika sees inside this base. The bell here is the base’s own: the share from Step 2 is not in it. On her home page, these notifications are listed under Bases.</p> <p>Your first comment sends her no notification. Once you mention her, she is part of the conversation, and every new comment on the row reaches her — mentioned or not.</p>",
       "demoDoneMessage": "✅ Your mention has reached Malika."
     },
     "malika-answers": {

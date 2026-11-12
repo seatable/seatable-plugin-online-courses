@@ -67,6 +67,8 @@ interface OnlineCourseProps {
   stepId: string | null;
   loadNote?: string;
   onSelectStep: (stepId: string) => void;
+  /** Bumped by App on every change to the base — see the controls effect below. */
+  baseVersion?: number;
   // Reports the current step's instruction AND its actions (back / verify / advance)
   // up to App, so the floating toolbar can drive the step without re-expanding the
   // plugin. Follows the automation stepper's sub-stage too. Must be stable.
@@ -129,17 +131,47 @@ const REWOUND_FLAG = 'step4-rewound';
 // flag is what the step list shows as a checkmark.
 const doneFlag = stepDoneKey;
 
+const IDLE: Outcome = { kind: 'idle' };
+
 const OnlineCourse: React.FC<OnlineCourseProps> = ({
   manifest,
   stepId,
   loadNote = '',
   onSelectStep,
+  baseVersion = 0,
   onFloatControls,
   onRequestFloat,
   onContentHeight,
 }) => {
   const [html, setHtml] = useState<string>('');
-  const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
+
+  /**
+   * The step on screen NOW, and setters bound to the step of the render that made
+   * them. A step's work outlives the step: a verify awaits the activity log, a
+   * webhook burst runs for ~10 s, and the learner can click another step meanwhile.
+   * Without this, the late result lands on whichever step is showing when it
+   * returns — a pass checking off a step never done, a "Done" on the wrong page.
+   * Each setter below drops its write once another step is on screen.
+   */
+  const shownStepRef = useRef(stepId);
+  shownStepRef.current = stepId;
+  const onThisStep =
+    <A extends unknown[]>(set: (...args: A) => void) =>
+    (...args: A) => {
+      if (shownStepRef.current === stepId) set(...args);
+    };
+
+  // The outcome is stored WITH the step it grades, and read back only for that step.
+  // On the first render after a step change the reset effect has not run yet, so a
+  // plain state would still hold the previous step's pass — enough for the effect
+  // that persists a pass to check off the step just arrived on (found 2026-11-12:
+  // Course 4, step 2's first guided stage passed, then step 3 clicked in the list).
+  const [outcomeOf, setOutcomeOf] = useState<{ stepId: string | null; outcome: Outcome }>({
+    stepId: null,
+    outcome: IDLE,
+  });
+  const outcome: Outcome = outcomeOf.stepId === stepId ? outcomeOf.outcome : IDLE;
+  const setOutcome = onThisStep((o: Outcome) => setOutcomeOf({ stepId, outcome: o }));
   // The pass shown on arrival came from an earlier visit, not from a verify run
   // just now. It keeps the page in step with the checkmark in the step list — and
   // stops the post-pass "watch it work" demo from offering to write its rows again.
@@ -149,7 +181,8 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
   // Shared by every scripted plugin action (seed, rewind, safety net): what it is
   // doing right now, and whether it is still doing it.
-  const [demoStatus, setDemoStatus] = useState('');
+  const [demoStatus, setDemoStatusNow] = useState('');
+  const setDemoStatus = onThisStep(setDemoStatusNow);
   const [demoRunning, setDemoRunning] = useState(false);
 
   // automation-guided state: 'choice' → guided stepper or one-shot check.
@@ -162,30 +195,41 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
   const guidedBaseline = useRef<string[]>([]);
   const guidedBaselineTaken = useRef(false);
   const guidedRuleId = useRef<string | null>(null);
+  // 'colleague-write': the step whose main change went through on an attempt that
+  // then failed further on (her reply, a side write) — see runColleagueWrite.
+  const colleagueChangeMade = useRef<string | null>(null);
   // 'seed-discrepancy': the document the plugin created for this run. The grade is
   // pinned to it — a brand-new row has no history, so an "automation set Reviewer"
   // entry on it cannot be left over from something the learner did earlier. State,
   // not a ref: it also decides which button the step offers.
-  const [seededDocId, setSeededDocId] = useState<string | null>(null);
+  const [seededDocId, setSeededDocIdNow] = useState<string | null>(null);
+  const setSeededDocId = onThisStep(setSeededDocIdNow);
   // 'rewind': the delivery has been taken out of the base, so the step's action
   // becomes "verify what came back" — with the safety net alongside it. Persisted
   // per course (courseStore.ts): the learner leaves the plugin between the
   // rewind and the verify, and a forgotten flag would offer to rewind the delivery
   // they have just had the AI read back in.
-  const [rewound, setRewound] = useState(false);
-  // Persisted "this step's action has already run" — see doneFlag.
-  const [demoDone, setDemoDone] = useState(false);
+  const [rewound, setRewoundNow] = useState(false);
+  const setRewound = onThisStep(setRewoundNow);
+  // Persisted "this step's action has already run" — see doneFlag. The flag itself is
+  // written for the step that ran the action (markDemoDone's closure); only the
+  // on-screen state is dropped once another step is showing.
+  const [demoDone, setDemoDoneNow] = useState(false);
+  const setDemoDone = onThisStep(setDemoDoneNow);
   const [autoStageIdx, setAutoStageIdx] = useState(0);
 
   // "Watch it work" state (a step with `watch`, entered once the exercise passes).
   // 'ready' = offer to write the rows; 'running' = writing + waiting for the
   // learner's automation to fill the links; 'linked' = it did; 'stalled' = it didn't
   // (yet) — offer another look rather than calling it a failure.
-  const [watchPhase, setWatchPhase] = useState<'idle' | 'ready' | 'running' | 'linked' | 'stalled'>(
-    'idle'
-  );
-  const [watchRowIds, setWatchRowIds] = useState<string[]>([]);
-  const [watchNote, setWatchNote] = useState('');
+  const [watchPhase, setWatchPhaseNow] = useState<
+    'idle' | 'ready' | 'running' | 'linked' | 'stalled'
+  >('idle');
+  const setWatchPhase = onThisStep(setWatchPhaseNow);
+  const [watchRowIds, setWatchRowIdsNow] = useState<string[]>([]);
+  const setWatchRowIds = onThisStep(setWatchRowIdsNow);
+  const [watchNote, setWatchNoteNow] = useState('');
+  const setWatchNote = onThisStep(setWatchNoteNow);
   // The table the base is currently showing, polled while we're waiting for the
   // learner to press "Add the delivery lines", so the "open Line items" nudge can
   // clear itself the moment they switch. Advisory only: we can't navigate the host,
@@ -322,8 +366,12 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
    * leaves it empty and the button fires as before — never trap a learner on a bad
    * read (same rule as getActiveTableName's own contract).
    */
-  const actionPrimary = (title: string, onClick: () => void): FloatControls['primary'] => {
-    if (demoDone)
+  const actionPrimary = (
+    title: string,
+    onClick: () => void,
+    { rerunnable = false }: { rerunnable?: boolean } = {}
+  ): FloatControls['primary'] => {
+    if (demoDone && !rerunnable)
       return { icon: 'run', title: t('course.start_over'), onClick: startOver, busy: demoRunning };
     // Both reads now block, each measured against a real base: `tid`/`vid` are the
     // host's own selection, and the note was watched appearing on the default view
@@ -414,7 +462,14 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     setDemoDone(false);
     setDemoStatus(t('course.working'));
     try {
-      const res = await colleagueStoreWrite(step.colleagueWrite, setDemoStatus);
+      // A retry after a reply that failed: her change already went through on the
+      // previous attempt, and refusing to repeat it ("already set — put the value
+      // back first") would block the reply forever. The refusal stays for a fresh
+      // run, where an unchanged value means the learner has not reset the row.
+      const res = await colleagueStoreWrite(step.colleagueWrite, setDemoStatus, {
+        skipIfUnchanged: colleagueChangeMade.current === step.id,
+      });
+      colleagueChangeMade.current = step.id;
       if (step.colleagueReply) {
         setDemoStatus(t('course.colleague.replying'));
         await colleagueReply(step.colleagueReply);
@@ -424,6 +479,7 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
         await colleagueStoreWrite(side, () => undefined, { skipIfUnchanged: true });
       }
       markDemoDone();
+      colleagueChangeMade.current = null;
       setDemoStatus(step.demoDoneMessage ?? t('course.colleague.written', { row: res.rowId }));
     } catch (err: any) {
       setDemoStatus(t('course.error', { message: err?.message || t('course.colleague.failed') }));
@@ -808,12 +864,14 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
 
     // Demo steps: the primary RUNS the scripted action; its status shows as info.
     if (isSeedDiscrepancy) {
-      const runPrimary: FloatControls['primary'] = {
-        icon: 'run',
-        title: step.demoLabel ?? t('course.seed.prepare'),
-        onClick: runSeedDiscrepancy,
-        busy: demoRunning,
-      };
+      // Same wrong-table guard as every other action. Not actionPrimary's done face,
+      // though: on this graded variant the action having run is not the step being
+      // done, so coming back to it offers to prepare the delivery again directly.
+      const runPrimary = actionPrimary(
+        step.demoLabel ?? t('course.seed.prepare'),
+        runSeedDiscrepancy,
+        { rerunnable: true }
+      );
       // Ungraded variant (Step 7a): the action IS the exercise, and what has to
       // happen next happens on the website. Nothing to verify here — the check
       // belongs to the step that follows, once the learner has pushed a line.
@@ -825,11 +883,24 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           feedback: actionFeedback(),
         };
       }
+      // Once passed, the forward is the website, which left the step with no button
+      // at all — the dead end the rewind step had until 2026-11-10. Start over only
+      // clears the pass and brings back the action, whose text says what it does
+      // (it clears the delivery it seeded before seeding a new one).
+      const startAgain: FloatControls['primary'] = {
+        icon: 'run',
+        title: t('course.start_over'),
+        onClick: () => {
+          startOver();
+          setSeededDocId(null);
+        },
+        busy: demoRunning,
+      };
       return {
         instruction: text,
         onBack,
         primary: passed
-          ? forwardPrimary
+          ? (forwardPrimary ?? startAgain)
           : seededDocId
             ? { icon: 'check', title: t('course.verify'), onClick: onVerify, busy: verifying }
             : runPrimary,
@@ -1098,6 +1169,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
     watchRowIds,
     activeTable,
     activeView,
+    // Some controls are read from the base as it is now, not from state — Course 4's
+    // rewind menu (lines back? document sent?). Without this they waited for the next
+    // click to catch up: "Write the lines" appeared only after a failed Verify.
+    baseVersion,
   ]);
 
   // Measure the exercise banner and report its natural height, so App can size the
@@ -1199,9 +1274,10 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       )}
       <div style={S.instruction} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
       <InstructionBlock html={bodyInstruction} />
-      {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
+      {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} onCleared={unmarkDemoDone} />}
       {isColleagueWindow && step.colleagueWindow && (
         <ColleagueWindow
+          key={step.id}
           surface={step.colleagueWindow.surface}
           caption={step.colleagueWindow.caption}
         />
@@ -1268,16 +1344,21 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
           )}
           {/* A window on the colleague belongs on THIS layout, not in the compact
               exercise banner: the notification panel is as tall as its content, and
-              inside the banner it brought its own scrollbar on top of the page's. */}
+              inside the banner it brought its own scrollbar on top of the page's.
+              One instance per step (key): 2b (her home page) and 3a (her window in the
+              base) must not share the entries read for the other while the new read runs. */}
           {isColleagueWindow && step.colleagueWindow && (
             <ColleagueWindow
+              key={step.id}
               surface={step.colleagueWindow.surface}
               caption={step.colleagueWindow.caption}
               onSuccess={() => !demoDone && markDemoDone()}
               onFailure={() => demoDone && unmarkDemoDone()}
             />
           )}
-          {isColleagueSetup && <ColleagueSetup onVerified={markDemoDone} />}
+          {isColleagueSetup && (
+            <ColleagueSetup onVerified={markDemoDone} onCleared={unmarkDemoDone} />
+          )}
           {(isColleagueWindow || isColleagueSetup) && demoDone && step.demoDoneMessage && (
             // Clear of the window above it, as the closer below is (2026-11-11 test).
             <div style={{ ...S.demoStatus, marginTop: 16 }}>{step.demoDoneMessage}</div>

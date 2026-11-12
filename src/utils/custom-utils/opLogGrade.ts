@@ -48,8 +48,7 @@ function sdk(): any {
 //     `dtableSDK.config` is not guaranteed to carry them there.
 //   - development: the plugin self-initializes the SDK, so `dtableSDK.config` holds them
 //     and `window.dtable` is absent.
-// Same precedence as `fetchMetaData` in template-utils/utils.ts (the order once
-// verified against a real base by the audit plugin this one was built from).
+// Host first, dev config second: the same order as hostConfig() in colleagueIdentity.ts.
 function gatewayConfig(): { server: string; baseToken: string; baseUuid: string } {
   const host = (window as any).dtable || {};
   const cfg = sdk()?.config || {};

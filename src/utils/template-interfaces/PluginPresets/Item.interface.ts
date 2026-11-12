@@ -1,8 +1,7 @@
-import { PresetsArray } from './Presets.interface';
+import { ICourseEntry } from './Presets.interface';
 
 export interface IPresetItemProps {
-  pluginPresets: PresetsArray;
-  activePresetIdx: number;
-  onSelectPreset: (presetId: string) => void;
-  p: any; // preset
+  p: ICourseEntry;
+  active: boolean;
+  onSelectPreset: (courseId: string) => void;
 }

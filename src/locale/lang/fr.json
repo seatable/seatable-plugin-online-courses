@@ -14,7 +14,7 @@
     "removing_lines": "Suppression des lignes de la livraison…",
     "stock_back": "Remise en état du stock…",
     "table_not_found": "Tableau « {table} » introuvable dans cette base.",
-    "waiting_attach": "En attente de votre automatisation pour la rattacher…",
+    "waiting_attach": "En attente du rattachement par votre automatisation…",
     "writing_correct_lines": "Écriture des bonnes lignes…"
   },
   "automation": {
@@ -23,7 +23,7 @@
     "add_link_action": "ajoutez l'action « Ajouter des liens » qui relie {source} à {target}",
     "conditions_required": "les deux conditions « non vide » (Product reference et Document reference) sont nécessaires",
     "extra_conditions": "ne gardez que les deux conditions demandées (Product reference et Document reference ne sont pas vides), car toute condition supplémentaire empêcherait certaines lignes de déclencher la règle",
-    "extra_link_match": "votre action « Ajouter des liens » de {source} vers {target} compare d'autres colonnes en plus de celles demandées ; supprimez ces correspondances en trop, sinon certaines lignes ne seront pas rattachées",
+    "extra_link_match": "votre action « Ajouter des liens » de {source} vers {target} compare d'autres colonnes en plus de celles demandées ; supprimez ces correspondances en trop, sinon certaines lignes ne seront pas rattachées",
     "link_action_missing": "il manque l'action de lien",
     "link_missing_for": "il manque l'action « Ajouter des liens » pour {source} → {target}",
     "no_new_rule": "pas encore de NOUVELLE règle d'automatisation : ajoutez-en une, nommez-la et enregistrez-la",
@@ -37,9 +37,9 @@
   },
   "colleague": {
     "already_set": "{row} vaut déjà {values} : rien à modifier. Remettez d'abord l'ancienne valeur, puis relancez.",
-    "base_bell_failed": "Ses notifications dans la base ont répondu {status}",
+    "base_bell_failed": "Impossible de lire ses notifications dans la base ({status}).",
     "base_token_failed": "Impossible d'obtenir un jeton de base pour elle ({status}).",
-    "cannot_open": "Elle ne peut pas ouvrir cette base : vérifiez le jeton, et que la base est toujours partagée avec elle.",
+    "cannot_open": "Elle ne peut pas ouvrir cette base : vérifiez le jeton et assurez-vous que la base est toujours partagée avec elle.",
     "checking_landed": "Vérification que sa modification est arrivée dans la base…",
     "column_not_found": "Colonne « {column} » introuvable dans « {table} ».",
     "connect_failed": "Impossible de se connecter à la base en son nom : sa modification n'a pas été faite. Réessayez dans un instant.",
@@ -83,7 +83,7 @@
       "comment": "Un nouveau commentaire a été ajouté à l'enregistrement {row}.",
       "shared_base": "L'utilisateur {who} a partagé une base {base} avec vous."
     },
-    "no_access": "{base} n'est pas partagée avec elle : elle ne peut pas l'ouvrir, et le plugin ne peut pas agir pour elle dans cette base tant que vous ne la partagez pas de nouveau avec elle.",
+    "no_access": "{base} n'est pas partagée avec elle : elle ne peut pas l'ouvrir, et le plugin ne peut pas agir en son nom dans cette base tant que vous ne la partagez pas de nouveau avec elle.",
     "permission_r": "Lecture seule",
     "permission_rw": "Lecture / écriture",
     "permission_unknown": "autorisation inconnue",
@@ -112,7 +112,7 @@
       "build": "Construire l'automatisation",
       "check_mine": "Vérifier mon automatisation",
       "guide_me": "Me guider pas à pas",
-      "just_check": "Je l'ai construite, vérifiez-la",
+      "just_check": "Déjà construite : vérifier",
       "next_stage": "Phase suivante",
       "stage_complete": "Phase terminée, passons à la suivante."
     },
@@ -123,12 +123,12 @@
     },
     "check": "Vérifier",
     "colleague": {
-      "configured": "Votre collègue est configurée.",
-      "edit": "Laisser la collègue modifier",
+      "configured": "Le compte de votre collègue est configuré.",
+      "edit": "Laisser votre collègue modifier",
       "failed": "Impossible de faire la modification au nom de la collègue.",
       "replying": "Malika répond…",
       "side_writes": "Malika met à jour quelques autres clients…",
-      "written": "✅ Écrit sur la ligne {row}. Ouvrez maintenant le journal de la base et lisez l'entrée : nomme-t-elle la ligne, est-elle signée par elle, et son menu propose-t-il Restaurer ?"
+      "written": "✅ Écrit sur la ligne {row}. Ouvrez maintenant le journal de la base et lisez l'entrée : nomme-t-elle la ligne, porte-t-elle son nom, et son menu propose-t-il Restaurer ?"
     },
     "feedback": {
       "fail": "❌ Pas encore : {reason}.",
@@ -138,7 +138,7 @@
     "handoff_default": "L'étape suivante se poursuit sur le site ↩",
     "intro": {
       "external": "📌 Ce cours n'est pas encore pris en charge par le plugin, mais vous pouvez le suivre sur {link}.",
-      "missing": "📌 La structure de cette base ne semble pas correspondre à ce cours. Ouvrez la base du cours avant de commencer : c'est dans cette base que le plugin lit et écrit à chaque étape.",
+      "missing": "📌 La structure de cette base ne semble pas correspondre à ce cours. Ouvrez la base du cours avant de commencer : c'est dans cette base que le plugin lit et écrit à chaque étape.",
       "missing_link": "Vous la trouverez sur la page du cours : {link}.",
       "soon": "🚧 Bientôt disponible."
     },
@@ -174,7 +174,7 @@
     "seed": {
       "failed": "Impossible de préparer la livraison.",
       "not_linked": "⚠️ La livraison est là, mais sa ligne n'est pas encore rattachée : vérifiez l'automatisation construite à l'étape 2, puis lancez votre règle.",
-      "note_ready": "✅ Le bon de livraison est dans votre base, sans lignes et sans fichier. Envoyez-en une depuis l'explorateur d'API, puis vérifiez.",
+      "note_ready": "✅ Le bon de livraison est dans votre base, sans lignes et sans fichier. Envoyez-en une depuis la documentation de l'API, puis vérifiez.",
       "prepare": "Préparer la livraison",
       "short_ready": "✅ Une livraison incomplète vous attend. Lancez votre règle, puis vérifiez."
     },
@@ -186,7 +186,7 @@
       "failed": "Impossible d'ajouter les lignes de livraison.",
       "linked": "✅ {columns} renseignés sur les {count} lignes.",
       "look_again": "Regarder à nouveau",
-      "missing_target": "« {value} » dans « {table} »",
+      "missing_target": "« {value} » dans « {table} »",
       "missing_targets": "⚠️ Rien n'a été ajouté, car il manque dans cette base de quoi rattacher les lignes de livraison : {list}. Remettez-les en place (ou réimportez la base du cours), puis cliquez sur {look_again}.",
       "not_found": "Les nouvelles lignes sont introuvables après leur écriture.",
       "stalled": "⏳ {linked}/{total} lignes rattachées, {missing} encore vide(s). Une automatisation peut prendre un moment : attendez quelques secondes et regardez à nouveau. Si rien ne change, vérifiez les conditions de votre règle et ses actions « Ajouter des liens ».",
@@ -198,15 +198,15 @@
     "writing": "Écriture…",
     "wrong_table": "Vous êtes sur « {current} ». Ouvrez d'abord « {table} », sinon vous ne verrez pas ce qui se passe.",
     "wrong_view": "Ouvrez d'abord la vue « {view} » de « {table} » : dans celle-ci, la modification se fait hors de l'écran et vous ne la verriez pas.",
-    "your_turn": "À faire :"
+    "your_turn": "À faire :"
   },
   "courses": {
     "checkpoints_caption": "Points d'étape du plugin : suivez le reste du cours sur le site",
-    "collapse": "Replier le cours",
+    "collapse": "Masquer les étapes du cours",
     "done": "terminé",
     "exercise": "exercice",
     "exercise_title": "Exercice : le panneau se réduit pour que vous puissiez travailler dans votre base",
-    "expand": "Agrandir le cours",
+    "expand": "Afficher les étapes du cours",
     "shrink_icon": "Réduire en une icône déplaçable"
   },
   "grade": {

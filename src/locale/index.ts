@@ -1,5 +1,4 @@
 import { AvailableLocales } from '../utils/template-interfaces/App.interface';
-import setting from '../setting.local';
 
 const files = require.context('./lang', false, /\.json$/);
 
@@ -9,8 +8,11 @@ const AVAILABLE_LOCALES: AvailableLocales = files.keys().reduce((locales: any, k
   return locales;
 }, {});
 
-// If the lang in setting.local.js is not set, then 'en' is the default language value
-const DEFAULT_LOCALE = setting.lang || 'en';
+// English unless the dev harness asks otherwise (`lang` in setting.local.js, which
+// only the dev entry loads, as window.dtablePluginConfig). The production bundle must
+// not import that file: it is git-ignored, so a fresh clone could not build, and the
+// zip would default to whatever language its builder had set locally.
+const DEFAULT_LOCALE: string = (window as any).dtablePluginConfig?.lang || 'en';
 
 /**
  * The locale file for the language SeaTable reports, matched loosely: SeaTable's codes

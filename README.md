@@ -45,8 +45,9 @@ in view; the plugin can also be collapsed into a small toolbar you drag anywhere
 | Courses 1 and 2                     | Listed with a link to follow the course on the website                   |
 | Courses 5–7                         | Listed as coming soon                                                    |
 
-Course content is currently bundled in the plugin. Serving it from an external host is
-planned; the contract a host must follow is described in
+Course content is bundled in the plugin (team decision, 2026-10-06). The code that could
+serve it from an external host is kept, switched off, in case that changes; the contract
+such a host would follow is described in
 [`course-content-example/README.md`](course-content-example/README.md).
 
 ## How to install

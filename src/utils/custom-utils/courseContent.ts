@@ -12,7 +12,8 @@
  *
  * The remote path below (CONTENT_BASE, fetchManifest, fetchStepHtml,
  * USE_REMOTE_CONTENT) is kept, unused: the team chose bundled content (2026-10-06),
- * but may come back to serving it from a host. See [[content-sourcing-and-page-registry]].
+ * but may come back to serving it from a host — the contract is in
+ * course-content-example/README.md, the full proof of concept on the `poc-academy` branch.
  */
 import { AnyGradeRule } from './grader';
 import { RewindSpec } from './rewindDelivery';
@@ -21,7 +22,7 @@ import { ColleagueReplySpec } from './colleagueComment';
 import { WebhookBurstSpec } from './webhookBurst';
 import { AutomationStage } from './automationGrade';
 import { getCurrentStepId } from './courseStore';
-import { fillParams, getCourseTexts } from './courseTexts';
+import { contentLang, fillParams, getCourseTexts } from './courseTexts';
 import { t } from '../../locale/t';
 
 // Base URL of the Hugo-built course content. One sub-directory per courseId,
@@ -32,7 +33,7 @@ export const CONTENT_BASE = 'https://academy.seatable.io/courses';
 export type StepType = 'course' | 'exercise';
 
 export interface CourseStep {
-  id: string; // 4-char qid-style id, used in the `qid` deep-link param
+  id: string; // the English title as a slug — see course-content-example/README.md
   type: StepType;
   title: string;
   /** Inline HTML (used by the fallback / small steps). Takes precedence over contentUrl. */
@@ -288,8 +289,7 @@ export function stepIndex(manifest: CourseManifest, stepId: string): number {
 // once CONTENT_BASE points at a real, CORS-enabled host.
 export const USE_REMOTE_CONTENT = false;
 
-// Initial step: a valid `qid` deep-link wins (dev only); else resume saved
-// progress; else the first step.
+// Initial step: resume saved progress; else the first step.
 export function resolveInitialStepId(manifest: CourseManifest, courseId: string): string {
   const saved = getCurrentStepId(courseId);
   if (saved && findStep(manifest, saved)) return saved;
@@ -505,14 +505,51 @@ export interface CourseMeta {
   name: string; // preset display name
   access: CourseAccess;
   intro: string; // HTML description
-  helpUrl?: string; // the course's page on the website (external courses, and the base to import)
+  helpUrl?: string; // the course's page on the website, in English (external courses, and the base to import)
+  localizedHelp?: boolean; // the website has that page in every language of WEBSITE_HELP_PATHS
+}
+
+/**
+ * Where the website keeps a course page in each language other than English
+ * (`url:` of `online-kurs-<N>/_index.<lang>.md` in webservice-seatable-com), followed by
+ * the course number. A language missing here — Chinese — gets the English page.
+ */
+const WEBSITE_HELP_PATHS: Record<string, string> = {
+  de: 'de/hilfe/online-kurs-',
+  fr: 'fr/aide/cours-en-ligne-',
+  es: 'es/ayuda/curso-en-linea-',
+  pt: 'pt/ajuda/curso-online-',
+  ru: 'ru/pomoshch/onlain-kurs-',
+};
+
+/** A course's page on the website in the interface language, English when there is none. */
+function courseHelpUrl(c: Omit<CourseMeta, 'name' | 'intro'>): string | undefined {
+  if (!c.helpUrl) return undefined;
+  const path = WEBSITE_HELP_PATHS[contentLang().split(/[-_]/)[0].toLowerCase()];
+  const number = c.id.match(/^course-(\d+)$/)?.[1];
+  return c.localizedHelp && path && number ? `https://seatable.com/${path}${number}/` : c.helpUrl;
 }
 
 const COURSE_ROSTER: Omit<CourseMeta, 'name' | 'intro'>[] = [
   { id: 'welcome', access: 'active' },
-  { id: 'course-1', access: 'external', helpUrl: 'https://seatable.com/help/online-course-1/' },
-  { id: 'course-2', access: 'external', helpUrl: 'https://seatable.com/help/online-course-2/' },
-  { id: 'course-3', access: 'active', helpUrl: 'https://seatable.com/help/online-course-3/' },
+  {
+    id: 'course-1',
+    access: 'external',
+    helpUrl: 'https://seatable.com/help/online-course-1/',
+    localizedHelp: true,
+  },
+  {
+    id: 'course-2',
+    access: 'external',
+    helpUrl: 'https://seatable.com/help/online-course-2/',
+    localizedHelp: true,
+  },
+  {
+    id: 'course-3',
+    access: 'active',
+    helpUrl: 'https://seatable.com/help/online-course-3/',
+    localizedHelp: true,
+  },
   { id: 'course-4', access: 'active', helpUrl: 'https://seatable.com/help/online-course-4/' },
   { id: 'course-5', access: 'soon' },
   { id: 'course-6', access: 'soon' },
@@ -548,7 +585,8 @@ function websiteLink(url: string): string {
 
 /** The link to a course's page on the website (where its base is downloaded), if it has one. */
 export function courseWebsiteLink(courseId: string): string | undefined {
-  const url = COURSE_ROSTER.find((c) => c.id === courseId)?.helpUrl;
+  const course = COURSE_ROSTER.find((c) => c.id === courseId);
+  const url = course && courseHelpUrl(course);
   return url ? websiteLink(url) : undefined;
 }
 
@@ -560,7 +598,7 @@ const NOTE_STYLE =
 function introHtml(c: CourseMeta): string {
   let note = '';
   if (c.access === 'external') {
-    const link = websiteLink(c.helpUrl || '');
+    const link = websiteLink(courseHelpUrl(c) || '');
     note = `<div style="${NOTE_STYLE}background:#fff4e5;color:#8a5300;border:1px solid #ffd9a8;">${t('course.intro.external', { link })}</div>`;
   } else if (c.access === 'soon') {
     note = `<div style="${NOTE_STYLE}background:#eef1f5;color:#556070;border:1px solid #d6dbe2;">${t('course.intro.soon')}</div>`;
@@ -589,7 +627,7 @@ function welcomeContentSteps(): CourseStep[] {
     {
       // A full page, not an exercise: the panel has to be at full height for the
       // learner to shrink it, and the page heads it with its own H1 (2026-11-10).
-      id: 'try-the-toolbar',
+      id: 'your-turn',
       type: 'course',
       grade: { kind: 'plugin-ui', check: 'toolbar-lower-right' },
     },
@@ -609,7 +647,7 @@ function course4ContentSteps(): CourseStep[] {
     'course-4',
     [
       {
-        id: 'build-the-linking-automation',
+        id: 'automate-line-linking',
         type: 'course',
         continuesOn: 'website',
         demo: 'automation-guided',

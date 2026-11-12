@@ -4,7 +4,7 @@
   "steps": {
     "welcome": {
       "title": "Passo 1 · Boas-vindas",
-      "html": "<h1>Bem-vindo 👋</h1> <p>Este pequeno painel acompanha-o ao longo dos cursos: guia-o pelos exercícios práticos e verifica o seu trabalho diretamente na sua base.</p> <p>Tire um minuto para o conhecer e poderá começar qualquer curso. Clique em Seguinte, no topo, para avançar nesta apresentação.</p>"
+      "html": "<h1>Bem-vindo 👋</h1> <p>Este pequeno painel acompanha-o ao longo dos cursos: guia-o pelos exercícios práticos e verifica o seu trabalho diretamente na sua base.</p> <p>Tire um minuto para o conhecer e poderá começar qualquer curso. Clique em <em>Seguinte</em>, no topo, para avançar nesta apresentação.</p>"
     },
     "how-a-course-works": {
       "title": "Passo 2 · Como funciona um curso",
@@ -12,29 +12,29 @@
     },
     "room-for-your-base": {
       "title": "Passo 3 · Ajustar a altura do painel",
-      "instruction": "Arraste a pega no topo, ao centro deste painel, para o tornar mais alto ou mais baixo, e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> Verificar, no topo.",
+      "instruction": "Arraste a pega no topo, ao centro deste painel, para o tornar mais alto ou mais baixo, e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> <em>Verificar</em>, no topo.",
       "html": "Algumas páginas, como esta, são exercícios: o painel reduz-se a uma faixa na parte inferior, para que a sua base continue visível enquanto trabalha nela. Os exercícios têm <i class=\"dtable-font dtable-icon-rename\"></i> na lista à esquerda; as outras páginas abrem em altura completa. A altura escolhida mantém-se nos exercícios seguintes.",
       "successMessage": "Feito: os próximos exercícios vão abrir com essa altura."
     },
     "the-buttons": {
       "title": "Passo 4 · Os botões",
-      "hint": "Isto é uma dica: fica escondida até a pedir. Clique em Ocultar dica para a fechar.",
+      "hint": "Isto é uma dica: fica escondida até a pedir. Clique em <em>Ocultar dica</em> para a fechar.",
       "html": "<h1>Os botões</h1> <p>A barra superior tem tudo o que precisa para o passo atual:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>Voltar</b>: regressar ao passo anterior.</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>Dica</b>: mostrar uma dica quando está bloqueado.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verificar</b> (ou <i class=\"dtable-font dtable-icon-right\"></i> <b>Seguinte</b>): verificar o seu trabalho e avançar quando estiver validado.</li> </ul> <p>À direita ficam os controlos da janela: <i class=\"dtable-font dtable-icon-full-screen\"></i> para a reduzir a uma barra de ferramentas e <i class=\"dtable-font dtable-icon-x\"></i> para a fechar.</p>"
     },
     "the-movable-toolbar": {
       "title": "Passo 5 · Reduzir o plugin",
-      "html": "<h1>Reduzir o plugin</h1> <p>Quando o painel o atrapalha a trabalhar na sua base, o ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) transforma-o numa pequena barra de ferramentas que pode deslocar para onde quiser. Vai experimentá-lo no passo seguinte.</p> <p>Enquanto está reduzido, toda a base continua acessível, nada fica bloqueado, e mantém o essencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Deslocar</b>: coloque-a onde não o incomode.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: mostre a instrução (e uma dica) a qualquer momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verificar</b>: verifique o seu trabalho sem reabrir o painel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: reabra o painel completo.</li> </ul>"
+      "html": "<h1>Reduzir o plugin</h1> <p>Quando o painel o atrapalha a trabalhar na sua base, o ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) transforma-o numa pequena barra de ferramentas que pode deslocar para onde quiser. Vai experimentá-lo no passo seguinte.</p> <p>Enquanto está reduzido, toda a base continua acessível, nada fica bloqueado, e mantém o essencial:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Deslocar</b>: coloque-a onde não o incomode.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b>: mostre a instrução (e uma dica) a qualquer momento.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verificar</b>: verifique o seu trabalho sem ampliar o painel.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Ampliar</b>: reabra o painel completo.</li> </ul>"
     },
-    "try-the-toolbar": {
+    "your-turn": {
       "title": "Passo 6 · É a sua vez",
-      "instruction": "Clique no ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) para transformar este painel na barra de ferramentas, arraste-a para o quarto inferior direito do ecrã e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> Verificar na barra.",
+      "instruction": "Clique no ícone de reduzir (<i class=\"dtable-font dtable-icon-full-screen\"></i>, no canto superior direito) para transformar este painel na barra de ferramentas, arraste-a para o quarto inferior direito do ecrã e clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> <em>Verificar</em> na barra.",
       "hint": "Reduza com o ícone <i class=\"dtable-font dtable-icon-full-screen\"></i> no canto superior direito; desloque a barra com a pega <i class=\"dtable-font dtable-icon-drag\"></i>; depois clique em <i class=\"dtable-font dtable-icon-check-mark\"></i> na barra de ferramentas. «Canto inferior direito» quer dizer o quarto inferior direito de todo o seu ecrã.",
-      "html": "<h1>Experimente a barra de ferramentas</h1> <p>Chegou a altura de usar o que a página anterior mostrou: a barra de ferramentas e o seu botão Verificar.</p>",
-      "successMessage": "Perfeito, já domina a barra de ferramentas 🎉 Reabra o plugin e clique em Seguinte para terminar a apresentação."
+      "html": "<h1>Experimente a barra de ferramentas</h1> <p>Chegou a altura de usar o que a página anterior mostrou: a barra de ferramentas e o seu botão <em>Verificar</em>.</p>",
+      "successMessage": "Perfeito, já domina a barra de ferramentas 🎉 Amplie o plugin e clique em Seguinte para terminar a apresentação."
     },
     "youre-ready": {
-      "title": "Passo 7 · Escolha o seu curso",
-      "html": "<h1>Escolha o seu curso</h1> <p>A apresentação terminou. Escolha um curso na lista à esquerda para começar: cada um abre com a sua introdução.</p> <p>Este curso introdutório continua na lista: pode voltar a ele quando quiser.</p>"
+      "title": "Passo 7 · Tudo pronto",
+      "html": "<h1>Tudo pronto</h1> <p>A apresentação terminou. Escolha um curso na lista à esquerda para começar: cada um abre com a sua introdução.</p> <p>Este curso introdutório continua na lista: pode voltar a ele quando quiser.</p>"
     }
   }
 }
