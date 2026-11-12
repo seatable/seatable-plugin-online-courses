@@ -138,6 +138,7 @@
     "handoff_default": "O passo seguinte continua no site ↩",
     "intro": {
       "external": "📌 Este curso ainda não é suportado pelo plugin, mas pode segui-lo em {link}.",
+      "finalizing": "🚧 Este curso ainda está a ser finalizado: parte do seu conteúdo pode mudar.",
       "missing": "📌 A estrutura desta base não parece corresponder a este curso. Abra a base do curso antes de começar: é nela que os passos do plugin leem e escrevem.",
       "missing_link": "Encontra-a em {link}.",
       "soon": "🚧 Em breve."

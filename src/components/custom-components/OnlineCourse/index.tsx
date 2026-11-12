@@ -5,6 +5,7 @@ import {
   fetchStepHtml,
   findStep,
   stepIndex,
+  courseIsFinalizing,
   courseWebsiteLink,
 } from '../../../utils/custom-utils/courseContent';
 import { AutomationRuleRule, Outcome } from '../../../utils/custom-utils/grader';
@@ -1327,10 +1328,16 @@ const OnlineCourse: React.FC<OnlineCourseProps> = ({
       ? t('course.intro.missing') +
         (siteLink ? ` ${t('course.intro.missing_link', { link: siteLink })}` : '')
       : '';
+    // A course shipped before it is published says so, above everything else.
+    const finalizing =
+      step.id === 'introduction' && !!manifest && courseIsFinalizing(manifest.courseId);
     return (
       <div style={S.coursePage}>
         <div style={S.courseInner}>
           {loadNote && <div style={S.loadNote}>{loadNote}</div>}
+          {finalizing && (
+            <div style={{ ...S.placeNote, marginBottom: 20 }}>{t('course.intro.finalizing')}</div>
+          )}
           <div dangerouslySetInnerHTML={{ __html: html }} />
           {missingNote && (
             <div
