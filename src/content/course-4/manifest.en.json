@@ -2,11 +2,11 @@
   "title": "Course 4 — Automation & Integration",
   "intro": "Automate your workflows and connect external tools.<br><br>Covers no-code automations, Python scripts, the API, webhooks, workflow orchestration with n8n, and AI-powered document extraction — around a warehouse receiving scenario.",
   "steps": {
-    "build-the-linking-automation": {
-      "title": "Step 2 · Build the linking automation",
+    "automate-line-linking": {
+      "title": "Step 2 · Automate line linking",
       "instruction": "Build an automation on Line items that links each new line to its product and document.",
-      "hint": "On Line items: trigger “a new row is added”, two conditions (Product reference & Document reference not empty), then two Add links actions — one to Products (Reference), one to Documents (Delivery reference).",
-      "html": "<h1>Build the linking automation</h1> <p>Your first automation: every new line in Line items finds its Product and its Document on its own, by matching references — no links entered by hand.</p> <p>Choose Guide me to build it one stage at a time, each checked before the next, or Just check it if you have already built it. Automation rules are in your base, behind this panel: shrink the plugin (<i class=\"dtable-font dtable-icon-full-screen\"></i>) to reach them — Guide me does it for you.</p>",
+      "hint": "On Line items: trigger “When a row is added”, two conditions (Product reference & Document reference not empty), then two Add links actions — one to Products (Reference), one to Documents (Delivery reference).",
+      "html": "<h1>Build the linking automation</h1> <p>Your first automation: every new line in Line items finds its Product and its Document on its own, by matching references — no links entered by hand.</p> <p>Choose <em>Guide me step by step</em> to build it one stage at a time, each checked before the next, or <em>I built it — just check it</em> if you already have. Automation rules are in your base, behind this panel: shrink the plugin (<i class=\"dtable-font dtable-icon-full-screen\"></i>) to reach them — <em>Guide me step by step</em> does it for you.</p>",
       "successMessage": "Your linking automation is complete — every new line will now find its product and its document on its own.",
       "watch": {
         "html": "Watch it work. Your rule is built, but nothing has set it off yet — so let’s give it something: the plugin brings in the delivery lines, as if your supplier had sent through a tidy list of what was loaded onto the truck. Neither the Product nor the Document column is part of what it writes.",
@@ -16,8 +16,8 @@
       "automationStages": {
         "created": {
           "title": "Automation created",
-          "instruction": "Open Automation rules, add a new rule and give it a name, then click Check.",
-          "hint": "The name field of the rule has to be focused out for it to exist"
+          "instruction": "Open Automation rules, add a new rule and give it a name, then click <em>Check</em>.",
+          "hint": "The rule only exists once you click out of its name field"
         },
         "trigger": {
           "title": "Trigger + guard",
@@ -40,17 +40,17 @@
     },
     "a-reviewer-for-a-short-delivery": {
       "title": "Step 3 · A reviewer for a short delivery",
-      "instruction": "Let the plugin create the short delivery. Then open Automation rules and press Run now on your reviewer rule — no need to wait for the hour you set — and come back to verify.",
-      "hint": "Use Run now in Automation rules — no need to wait for the scheduled hour.",
-      "html": "<p>Give your rule something to find. A scheduled rule only shows what it is worth on a delivery that actually needs attention — so rather than have you stage one, the plugin does it: it creates a new delivery and one line received short of what was ordered. Run it again and it first removes the delivery, and its line, left by the previous run. Your step-2 automation attaches the line on its own; the plugin waits until it has.</p> <p>What is checked is not that a reviewer is there, but that your automation, and not you, is the one that put it there.",
+      "instruction": "Let the plugin create the short delivery. Then open Automation rules and press <em>Run now</em> on your reviewer rule — no need to wait for the hour you set — and come back to verify.",
+      "hint": "Use <em>Run now</em> in Automation rules — no need to wait for the scheduled hour.",
+      "html": "<p>Give your rule something to find. A scheduled rule only shows what it is worth on a delivery that actually needs attention — so rather than have you stage one, the plugin does it: it creates a new delivery and one line received short of what was ordered. Run it again and it first removes the delivery, and its line, left by the previous run. Your Step 2 automation attaches the line on its own; the plugin waits until it has.</p> <p>What is checked is not that a reviewer is there, but that your automation, and not you, is the one that put it there.</p>",
       "handoffNote": "You’re done here — head back to the website to continue the course ↩"
     },
     "rewind-and-do-it-for-real": {
       "title": "Step 4 · Rewind, and do it for real",
       "instruction": "Let the plugin take the delivery back out. Then receive it for real: in the Delivery check app, open New delivery note, attach the photo of the delivery note and submit. Watch the reading, the extraction and the script do the rest, then come back and verify.",
       "hint": "The form is the second page of the Delivery check app — attach the photo and submit; everything else is read from the picture.",
-      "html": "<p>Take the delivery back out. You have the chain — what you do not have is anything to feed it: that delivery is already in your base, lines and all. Let the plugin remove them, and the document with them, so the same note can arrive the way it really would. Your stock goes back to where it was too. Once the step is done, Start over takes the delivery out again in the same way, so you can receive it once more.</p> <p>If the extraction goes off the rails, the plugin writes the delivery's lines for you — whole if it produced none, corrected if it got them wrong. What is checked is that the lines are back, never that the AI got them right on its own.",
-      "successMessage": "The delivery is back — read off a photograph this time, with its lines linked by the rule you built in step 2.",
+      "html": "<p>Take the delivery back out. You have the chain — what you do not have is anything to feed it: that delivery is already in your base, lines and all. Let the plugin remove them, and the document with them, so the same note can arrive the way it really would. Your stock goes back to where it was too. Once the step is done, <em>Start over</em> takes the delivery out again in the same way, so you can receive it once more.</p> <p>If the extraction goes off the rails, the plugin writes the delivery's lines for you — whole if it produced none, corrected if it got them wrong. What is checked is that the lines are back, never that the AI got them right on its own.</p>",
+      "successMessage": "The delivery is back — read off a photograph this time, with its lines linked by the rule you built in Step 2.",
       "handoffNote": "You’re done here — head back to the website to continue the course ↩",
       "grade": {
         "noun": "lines for this delivery"
@@ -60,15 +60,15 @@
       "title": "Step 5a · See what SeaTable sends",
       "instruction": "Point your webhook at the test endpoint and keep the test page beside your base, then let the plugin make its change.",
       "hint": "Nothing is graded here — the whole exercise is to go and read what arrived at the other end.",
-      "html": "<p>Give your webhook something to say. The plugin makes a change you know the shape of: it adds a row to Products, edits it a few seconds later, then deletes it — leaving your catalog exactly as it was. The three changes are spaced so you can watch each one land on both sides. If nothing reaches the endpoint, try moving both pages into the same browser window.</p> <p>Three operations, three requests: what was written, what changed (with the value it held before), and what went. Nothing is checked here — reading the other side is the whole exercise.",
+      "html": "<p>Give your webhook something to say. The plugin makes a change you know in advance: it adds a row to Products, edits it a few seconds later, then deletes it — leaving your catalog exactly as it was. The three changes are spaced so you can watch each one land on both sides. If nothing reaches the endpoint, try moving both pages into the same browser window.</p> <p>Three operations, three requests: what was written, what changed (with the value it held before), and what went. Nothing is checked here — the whole exercise is reading what arrives at the other end.</p>",
       "handoffNote": "You’re done here — head back to the website to continue the course ↩",
       "demoDoneMessage": "✅ The three changes have been made — go and read them at the other end."
     },
     "write-the-deliverys-lines": {
       "title": "Step 5b · Write the delivery’s lines",
-      "instruction": "Let the plugin write the second delivery’s lines. Then finish the way the office finishes: read the list against the note, and press Notify the dock on the document.",
-      "hint": "The lines land in Line items and your step-2 rule attaches them; then press Notify the dock on the document.",
-      "html": "<p>Let the plugin do the typing. The second delivery note is in your base, and its lines are not. Copying three barcodes off a photograph teaches nothing, so the plugin writes them for you — the same lines a clean reading of that note would have produced.</p> <p>They land in Line items carrying their references, so the rule you built in step 2 attaches each one to its product and its document as it arrives. Nothing is checked here.",
+      "instruction": "Let the plugin write the second delivery’s lines. Then finish the way the office finishes: read the list against the note, and press <em>Notify the dock</em> on the document.",
+      "hint": "The lines land in Line items and your Step 2 rule attaches them; then press <em>Notify the dock</em> on the document.",
+      "html": "<p>Let the plugin do the typing. The second delivery note is in your base, and its lines are not. Copying three barcodes off a photograph teaches nothing, so the plugin writes them for you — the same lines an error-free reading of that note would have produced.</p> <p>They land in Line items carrying their references, so the rule you built in Step 2 attaches each one to its product and its document as it arrives. Nothing is checked here.</p>",
       "handoffNote": "You’re done here — head back to the website to continue the course ↩",
       "demoLabel": "Write the lines",
       "demoDoneMessage": "✅ The delivery’s lines are in Line items, linked by your own rule."
@@ -77,7 +77,7 @@
       "title": "Step 7a · The electronic delivery note",
       "instruction": "Let the plugin lay down the note’s header. Then, back on the website, push at least one line into Line items from the API reference, and come back here at Step 7b when it is sent.",
       "hint": "Nothing is graded here — this only puts the note in your base so your pushed lines have something to link to.",
-      "html": "<p>Play the supplier's system — the first half. One of your suppliers now generates its delivery note when the truck is loaded and sends it straight to your base. That conversation has two halves: the header of the note, then its lines. The plugin lays down the header, so that the half you do by hand stays small enough to read.</p> <p>A new document appears in Documents with the reference {apiDeliveryReference} and no file attached — there is nothing to photograph any more. Run it again and it first removes that document, with any line already pushed to it.",
+      "html": "<p>Play the supplier's system — the first half. One of your suppliers now generates its delivery note when the truck is loaded and sends it straight to your base. That conversation has two halves: the header of the note, then its lines. The plugin lays down the header, so that the half you do by hand stays small enough to read.</p> <p>A new document appears in Documents with the reference {apiDeliveryReference} and no file attached — there is nothing to photograph any more. Run it again and it first removes that document, with any line already pushed to it.</p>",
       "handoffNote": "Now go and push one of its lines from the API reference ↩",
       "demoLabel": "Create new delivery",
       "demoDoneMessage": "✅ The delivery note is in your base, with no lines and no file."
@@ -86,7 +86,7 @@
       "title": "Step 7b · Check the pushed line",
       "instruction": "Push at least one line into Line items from the API reference, then verify.",
       "hint": "In the API reference, table_name is \"Line items\" and the row needs Document reference \"{apiDeliveryReference}\", a Product reference from your catalog, and a Qty.",
-      "html": "<p>The second half is yours: a line for the note, with the reference {apiDeliveryReference} in Document reference, a product from your catalog in Product reference, and a Qty.</p> <p>What is checked is not only that your line arrived, but that it attached itself — to its product and to its document — through the automation you built back in step 2, and that it really came in from outside: a row typed into the grid by hand does not count here.",
+      "html": "<p>The second half is yours: a line for the note, with the reference {apiDeliveryReference} in Document reference, a product from your catalog in Product reference, and a Qty.</p> <p>What is checked is not only that your line arrived, but that it attached itself — to its product and to its document — through the automation you built back in Step 2, and that it really came in from outside: a row typed into the grid by hand does not count here.</p>",
       "successMessage": "Your line came in through the API and attached itself on the way — no scanner, no camera, no keyboard, and nothing in your base can tell the difference.",
       "handoffNote": "You’re done here — head back to the website to continue the course ↩",
       "grade": {

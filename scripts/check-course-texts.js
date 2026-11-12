@@ -60,8 +60,35 @@ function h1Errors(json) {
     // Text before the first tag, then a closing </p>: the opening <p> is missing.
     if (/^\s*[^<\s]/.test(html) && /<\/p>/.test(html))
       out.push(`steps.${id}.html: starts outside a <p> but closes one`);
+    // Every <p> closed: an unclosed last paragraph renders fine and so went unseen,
+    // in six Course 4 steps in every language (found 2026-11-12).
+    const opened = (html.match(/<p[\s>]/g) || []).length;
+    const closed = (html.match(/<\/p>/g) || []).length;
+    if (opened !== closed) out.push(`steps.${id}.html: ${opened} <p> opened, ${closed} closed`);
   });
   return out;
+}
+
+/**
+ * A step's id is its English title, without the `Step N · ` prefix, in lower case,
+ * accents and apostrophes removed, words joined by hyphens (course-content-example/
+ * README.md). Enforced while the plugin has no learners, so a retitled step gets the
+ * id that matches; once it is public, ids are frozen and this check goes.
+ */
+function slug(title) {
+  return title
+    .replace(/^Step \S+\s*·\s*/, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+function stepIdErrors(json) {
+  return Object.entries(json.steps || {})
+    .filter(([id, step]) => typeof step.title === 'string' && slug(step.title) !== id)
+    .map(([id, step]) => `steps.${id}: the id of "${step.title}" is "${slug(step.title)}"`);
 }
 
 let errors = 0;
@@ -76,7 +103,7 @@ for (const courseId of fs.readdirSync(contentDir).sort()) {
   }
   const englishJson = JSON.parse(fs.readFileSync(englishFile, 'utf8'));
   const english = flatten(englishJson);
-  h1Errors(englishJson).forEach((e) => {
+  [...h1Errors(englishJson), ...stepIdErrors(englishJson)].forEach((e) => {
     console.log(`✗ ${courseId}/manifest.en.json\n    error   ${e}`);
     errors += 1;
   });

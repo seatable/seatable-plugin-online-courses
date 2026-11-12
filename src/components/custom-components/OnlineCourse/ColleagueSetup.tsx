@@ -83,9 +83,11 @@ const S: Record<string, React.CSSProperties> = {
 interface Props {
   /** Told to the parent so the step can mark itself done. */
   onVerified?: (account: ColleagueAccount) => void;
+  /** No working token any more (forgotten, or a new one rejected): the step is not done. */
+  onCleared?: () => void;
 }
 
-const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
+const ColleagueSetup: React.FC<Props> = ({ onVerified, onCleared }) => {
   const [value, setValue] = useState('');
   const [account, setAccount] = useState<ColleagueAccount | null>(null);
   const [error, setError] = useState('');
@@ -129,12 +131,14 @@ const ColleagueSetup: React.FC<Props> = ({ onVerified }) => {
       // later, in a step that has no idea why.
       clearColleagueToken();
       setError(t('colleague_setup.rejected'));
+      onCleared?.();
     }
     setBusy(false);
   };
 
   const forget = () => {
     clearColleagueToken();
+    onCleared?.();
     setAccount(null);
     setValue('');
     setError('');

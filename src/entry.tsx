@@ -17,7 +17,7 @@ const SeaTablePlugin = {
       root = createRoot(container);
       (container as any)[rootKey] = root;
     }
-    root.render(<App showDialog={true} key={Date.now()} />);
+    root.render(<App key={Date.now()} />);
   },
 };
 

@@ -88,10 +88,6 @@ export function clearColleagueToken(): void {
   setStoredColleagueToken('');
 }
 
-export function hasColleagueToken(): boolean {
-  return getColleagueToken().length > 0;
-}
-
 /** A GET against the account API, authenticated as the colleague. */
 export async function colleagueAccountGet(path: string): Promise<any> {
   const token = getColleagueToken();

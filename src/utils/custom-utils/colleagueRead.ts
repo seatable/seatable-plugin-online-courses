@@ -212,13 +212,6 @@ export async function colleagueOwnBases(): Promise<HomeBase[]> {
   }));
 }
 
-/** What she was told about THIS base: the share, if it is still in force. */
-export async function colleagueShareOfThisBase(): Promise<SharedBase | null> {
-  const { baseName } = hostConfig();
-  const shared = await colleagueSharedBases();
-  return shared.find((s) => s.name === baseName) || null;
-}
-
 /**
  * Her IN-BASE notifications — where a comment or an @mention lands (an account
  * event like a share never appears here; that is the point of the distinction).

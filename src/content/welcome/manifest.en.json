@@ -4,7 +4,7 @@
   "steps": {
     "welcome": {
       "title": "Step 1 · Welcome",
-      "html": "<h1>Welcome 👋</h1> <p>This little panel is your course companion. It walks you through hands-on exercises and checks your work right here in your own base.</p> <p>Take a minute to get familiar with it — then you'll be ready for any course. Use Next at the top to move through this tour.</p>"
+      "html": "<h1>Welcome 👋</h1> <p>This little panel is your course companion. It walks you through hands-on exercises and checks your work right here in your own base.</p> <p>Take a minute to get familiar with it — then you'll be ready for any course. Use <em>Next</em> at the top to move through this tour.</p>"
     },
     "how-a-course-works": {
       "title": "Step 2 · How a course works",
@@ -12,24 +12,24 @@
     },
     "room-for-your-base": {
       "title": "Step 3 · Room for your base",
-      "instruction": "Drag the grip at the top center of this panel to make it taller or shorter, then press <i class=\"dtable-font dtable-icon-check-mark\"></i> Verify at the top.",
+      "instruction": "Drag the grip at the top center of this panel to make it taller or shorter, then press <i class=\"dtable-font dtable-icon-check-mark\"></i> <em>Verify</em> at the top.",
       "html": "Some pages, like this one, are exercises: the panel shrinks to a strip at the bottom so your base stays in view while you work in it. Exercises carry a <i class=\"dtable-font dtable-icon-rename\"></i> in the list on the left; the other pages open at full height. The height you choose is kept for the exercises that follow.",
       "successMessage": "Done — the exercises to come will open at that height."
     },
     "the-buttons": {
       "title": "Step 4 · The buttons",
-      "hint": "This is a hint: it stays hidden until you ask for it. Press Hide hint to put it away.",
+      "hint": "This is a hint: it stays hidden until you ask for it. Press <em>Hide hint</em> to put it away.",
       "html": "<h1>The buttons</h1> <p>The top bar carries everything you need for the current step:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>Back</b> — return to the previous step.</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>Hint</b> — reveal a hint when you're stuck.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verify</b> (or <i class=\"dtable-font dtable-icon-right\"></i> <b>Next</b>) — check your work, then move on once it passes.</li> </ul> <p>On the far right are the window controls: <i class=\"dtable-font dtable-icon-full-screen\"></i> shrink to a toolbar and <i class=\"dtable-font dtable-icon-x\"></i> close.</p>"
     },
     "the-movable-toolbar": {
       "title": "Step 5 · The movable toolbar",
       "html": "<h1>The movable toolbar</h1> <p>When the panel gets in the way of your base, the shrink icon (<i class=\"dtable-font dtable-icon-full-screen\"></i>, top-right) turns it into a small toolbar you can drag anywhere. You'll try it on the next step.</p> <p>While it's a toolbar the whole base stays clickable — nothing is blocked — and you keep the essentials:</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Drag</b> it wherever it's out of your way.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b> — show the instruction (and a hint) any time.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Verify</b> — check your work without expanding.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Expand</b> — bring the full panel back.</li> </ul>"
     },
-    "try-the-toolbar": {
-      "title": "Step 6 · Try the toolbar",
-      "instruction": "Click shrink (<i class=\"dtable-font dtable-icon-full-screen\"></i>, top-right) to collapse this panel into the toolbar, drag it into the lower-right quarter of your screen, then press <i class=\"dtable-font dtable-icon-check-mark\"></i> Verify on the toolbar.",
+    "your-turn": {
+      "title": "Step 6 · Your turn",
+      "instruction": "Click shrink (<i class=\"dtable-font dtable-icon-full-screen\"></i>, top-right) to collapse this panel into the toolbar, drag it into the lower-right quarter of your screen, then press <i class=\"dtable-font dtable-icon-check-mark\"></i> <em>Verify</em> on the toolbar.",
       "hint": "Shrink with the <i class=\"dtable-font dtable-icon-full-screen\"></i> icon at the top-right; drag using the <i class=\"dtable-font dtable-icon-drag\"></i> handle on the toolbar; then click the <i class=\"dtable-font dtable-icon-check-mark\"></i> on the toolbar. “Lower-right” means the bottom-right quarter of your whole screen.",
-      "html": "<h1>Try the toolbar</h1> <p>Time to use what the last page showed: the toolbar, and its Verify.</p>",
+      "html": "<h1>Try the toolbar</h1> <p>Time to use what the last page showed: the toolbar, and its <em>Verify</em>.</p>",
       "successMessage": "Perfect — you've got the toolbar down 🎉 Expand the plugin, then press Next to finish the tour."
     },
     "youre-ready": {

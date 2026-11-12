@@ -25,6 +25,7 @@
 import { AutomationRuleRule, Outcome } from './grader';
 import { getColumn, getTableByName } from './sdkRead';
 import { t } from '../../locale/t';
+import { hostConfig } from './colleagueIdentity';
 
 // SeaTable stamps automation-rule link actions with this action type.
 const LINK_ACTION_TYPE = 'link_records';
@@ -34,24 +35,12 @@ const ROWS_ADDED = 'rows_added';
 /** Which slice of the automation to check — drives the guided stepper. */
 export type AutomationStage = 'created' | 'trigger' | `action:${number}` | 'all';
 
-function sdk(): any {
-  return (window as any).dtableSDK;
-}
-
-// Resolve the account-API identity of the current base. Prod exposes it on
-// window.dtable (fileName is the base NAME the api/v2.1 URL wants — dtableName is
-// empty in prod, so we fall back across both surfaces, same as the old authored
-// -write getConfig fix).
+// Resolve the account-API identity of the current base — window.dtable FIRST, the
+// dev-only SDK config as a fallback (hostConfig, colleagueIdentity.ts). The order is
+// the point: reading the dev config first was the 2026-09-01 trap.
 function accountApiConfig(): { server: string; workspaceId: string; baseName: string } {
-  const cfg = sdk()?.config || {};
-  const win = (window as any).dtable || {};
-  return {
-    server: String(cfg.server || win.server || '').replace(/\/+$/, ''),
-    workspaceId: String(
-      win.workspaceID || cfg.workspaceID || win.workspace_id || cfg.workspace_id || ''
-    ),
-    baseName: String(cfg.dtableName || cfg.fileName || win.dtableName || win.fileName || ''),
-  };
+  const { server, workspaceID, baseName } = hostConfig();
+  return { server, workspaceId: workspaceID, baseName };
 }
 
 /**

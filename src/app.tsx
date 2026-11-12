@@ -8,59 +8,41 @@ import PluginPresets from './components/template-components/PluginPresets';
 import ResizableWrapper, { clampHeight } from './components/template-components/ResizableWrapper';
 import CustomPlugin from './components/custom-components/index';
 // Import of Interfaces
-import {
-  AppActiveState,
-  AppIsShowState,
-  IAppProps,
-  IPluginDataStore,
-} from './utils/template-interfaces/App.interface';
-import {
-  TableArray,
-  TableViewArray,
-  Table,
-  TableView,
-  TableRow,
-  IActiveTableAndView,
-} from './utils/template-interfaces/Table.interface';
-import { PresetsArray } from './utils/template-interfaces/PluginPresets/Presets.interface';
+import { AppIsShowState, IAppProps } from './utils/template-interfaces/App.interface';
 // Import of CSS
 import styles from './styles/template-styles/Plugin.module.scss';
-import './assets/css/plugin-layout.css';
 // The plugin's own icon — used for the floating "movable icon" puck.
 import pluginIcon from './plugin-config/icon.png';
 import { FloatControls } from './utils/custom-interfaces/FloatControls';
 // Import of Constants
-import {
-  INITIAL_IS_SHOW_STATE,
-  INITIAL_CURRENT_STATE,
-  PLUGIN_NAME,
-  DEFAULT_PLUGIN_DATA,
-  ACTIVE_PRESET_ID,
-} from './utils/template-constants';
+import { INITIAL_IS_SHOW_STATE, PLUGIN_NAME } from './utils/template-constants';
 import './locale';
 import {
-  cleanActiveTable,
-  cleanActiveTableViews,
-  cleanAllTables,
-  createDefaultPluginDataStore,
-  findPresetName,
-  getActiveStateSafeGuard,
-  getActiveTableAndActiveView,
-  getPluginDataStore,
-  isMobile,
-  parsePluginDataToActiveState,
-} from './utils/template-utils/utils';
-import {
+  COURSES,
   CourseManifest,
   courseName,
   loadAllCourses,
   resolveInitialStepId,
 } from './utils/custom-utils/courseContent';
 import {
+  getStoredActiveCourseId,
   getStoredBannerHeight,
+  getStoredFloatPos,
   setCurrentStepId,
+  setStoredActiveCourseId,
   setStoredBannerHeight,
+  setStoredFloatPos,
 } from './utils/custom-utils/courseStore';
+
+// Where a learner lands the first time the plugin is opened in a base; later openings
+// resume the course they last had open. The in-plugin tour explains what the plugin is
+// and how a course works — the right first thing after installing it.
+const DEFAULT_COURSE_ID = 'welcome';
+
+// The left-hand list: the fixed course roster, in display order.
+const COURSE_LIST = COURSES.map((c) => ({ _id: c.id, name: c.name }));
+
+const isMobile = () => window.innerWidth <= 800;
 
 // Plugin-window height presets (fraction of viewport, with a px floor): the full
 // lesson view vs the compact exercise banner at the bottom of the window.
@@ -146,30 +128,25 @@ const App: React.FC<IAppProps> = (props) => {
   // Boolean state to show/hide the plugin's components
   const [isShowState, setIsShowState] = useState<AppIsShowState>(INITIAL_IS_SHOW_STATE);
   const { isShowPlugin, isLoading, isShowPresets } = isShowState;
-  // Tables, Presets, Views as dataStates. The main data of the plugin
-  const [allTables, setAllTables] = useState<TableArray>([]);
-  const [activeTableViews, setActiveTableViews] = useState<TableViewArray>([]);
-  const [pluginDataStore, setPluginDataStore] = useState<IPluginDataStore>(DEFAULT_PLUGIN_DATA);
-  const [pluginPresets, setPluginPresets] = useState<PresetsArray>([]);
-  // appActiveState: Define the app's active Preset + (Table + View) state using the useState hook
-  const [appActiveState, setAppActiveState] = useState<AppActiveState>(INITIAL_CURRENT_STATE);
-  // Destructure properties from the app's active state for easier access
-  const { activeTable, activePresetId, activePresetIdx } = appActiveState;
+  // The course open in the left-hand list — restored from the base once it is loaded.
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(DEFAULT_COURSE_ID);
+  // Bumped on every change to the base, local or remote. Passed down so what the
+  // runner derives from the base as it is now (Course 4's rewind menu) is recomputed.
+  const [baseVersion, setBaseVersion] = useState(0);
 
   // Course navigation state — source of truth for BOTH the left-panel tree and
-  // the (controlled) OnlineCourse runner. The active course is the selected preset
-  // (preset _id === courseId); we hold every course's manifest + the current step
-  // per course. The `qid`/`cid` URL params are dead in prod (dtable-web strips
-  // unknown params), so navigation is entirely in-plugin.
+  // the (controlled) OnlineCourse runner: every course's manifest + the current step
+  // per course. Navigation is entirely in-plugin (dtable-web strips unknown URL params).
   const [courses, setCourses] = useState<CourseManifest[]>([]);
   const [stepByCourse, setStepByCourse] = useState<Record<string, string>>({});
   const manifestLoaded = useRef(false);
 
-  // Active course follows the selected preset; guard against a stale/unknown id
-  // (e.g. localStorage left over from the old single-preset build).
-  const activeCourseId = courses.some((c) => c.courseId === activePresetId)
-    ? activePresetId
-    : (courses[0]?.courseId ?? '');
+  // Guard against a stale/unknown id (a course renamed or removed since it was stored).
+  const activeCourseId = courses.some((c) => c.courseId === selectedCourseId)
+    ? selectedCourseId
+    : (courses.find((c) => c.courseId === DEFAULT_COURSE_ID)?.courseId ??
+      courses[0]?.courseId ??
+      '');
   const activeManifest = courses.find((c) => c.courseId === activeCourseId) ?? null;
   const activeStepId = activeCourseId ? (stepByCourse[activeCourseId] ?? null) : null;
   const activeStep = activeManifest?.steps.find((s) => s.id === activeStepId) ?? null;
@@ -264,7 +241,7 @@ const App: React.FC<IAppProps> = (props) => {
   // Navigate to a step, from the runner (active course) or the tree (any course):
   // activate that course and remember the step so the learner resumes there.
   const onSelectStep = (courseId: string, stepId: string) => {
-    if (courseId !== activePresetId) onSelectPreset(courseId);
+    if (courseId !== activeCourseId) onSelectPreset(courseId);
     setStepByCourse((prev) => ({ ...prev, [courseId]: stepId }));
     setCurrentStepId(courseId, stepId);
   };
@@ -296,24 +273,23 @@ const App: React.FC<IAppProps> = (props) => {
     if (px) setUserBannerPx(px);
   }, [isLoading]);
 
-  // Restore the saved puck position from the datastore once it has loaded (else
-  // keep the bottom-left default).
+  // Restore the saved toolbar position once the base is loaded (else keep the
+  // bottom-left default).
   useEffect(() => {
     if (floatPosLoaded.current || isLoading) return;
-    if (pluginDataStore?.floatIconPos) setFloatPos(pluginDataStore.floatIconPos);
+    const pos = getStoredFloatPos();
+    if (pos) setFloatPos(pos);
     floatPosLoaded.current = true;
-  }, [isLoading, pluginDataStore]);
+  }, [isLoading]);
 
   // Shrink to / restore from the floating toolbar.
   const onFloat = () => setFloating(true);
   const onRestoreFromFloat = () => setFloating(false);
-  // Persist the puck's new position so it re-pops there next time.
+  // Persist the toolbar's new position so it re-pops there next time.
   const saveFloatPos = (pos: { x: number; y: number }) => {
     setFloatPos(pos);
     floatPosLoaded.current = true;
-    const updated = { ...pluginDataStore, floatIconPos: pos };
-    setPluginDataStore(updated);
-    updatePluginDataStore(updated);
+    setStoredFloatPos(pos);
   };
 
   const initPluginDTableData = async () => {
@@ -338,67 +314,19 @@ const App: React.FC<IAppProps> = (props) => {
     throw new Error('Method not implemented.');
   };
 
+  // The base's plugin settings are readable from here on (in dev, only once the SDK
+  // has connected): restore the course the learner had open, then show the plugin.
   const onDTableConnect = () => {
     resetData();
   };
   const onDTableChanged = () => {
-    resetData();
+    setBaseVersion((v) => v + 1);
   };
 
-  const resetData = async () => {
-    let allTables: TableArray = cleanAllTables();
-    let activeTable: Table = cleanActiveTable();
-    let activeTableViews: TableViewArray = cleanActiveTableViews(activeTable);
-    let pluginDataStore: IPluginDataStore = getPluginDataStore(activeTable, PLUGIN_NAME);
-    let pluginPresets: PresetsArray = pluginDataStore.presets;
-
-    let localActivePresetId = localStorage.getItem(ACTIVE_PRESET_ID);
-    // Repair a missing OR stale active-preset id (e.g. left over from the old
-    // single-preset build) by falling back to the first seeded preset.
-    const isValidActive =
-      !!localActivePresetId && pluginPresets.some((p) => p._id === localActivePresetId);
-    if (!isValidActive) {
-      localActivePresetId = pluginPresets[0]?._id ?? null;
-      if (localActivePresetId) localStorage.setItem(ACTIVE_PRESET_ID, localActivePresetId);
-    }
-    setPluginDataStore(pluginDataStore);
-    setAllTables(allTables);
-    setPluginPresets(pluginPresets);
+  const resetData = () => {
+    const stored = getStoredActiveCourseId();
+    if (stored) setSelectedCourseId(stored);
     setIsShowState((prevState) => ({ ...prevState, isLoading: false }));
-
-    if (localActivePresetId) {
-      const appActiveState = parsePluginDataToActiveState(
-        pluginDataStore,
-        pluginPresets,
-        allTables
-      );
-
-      onSelectPreset(localActivePresetId, appActiveState);
-      return;
-    } else {
-      if (pluginPresets.length === 0) {
-        const defaultPluginDataStore: IPluginDataStore = createDefaultPluginDataStore(
-          activeTable,
-          PLUGIN_NAME
-        );
-        window.dtableSDK.updatePluginSettings(PLUGIN_NAME, defaultPluginDataStore);
-      }
-      const activeTableAndView: IActiveTableAndView = getActiveTableAndActiveView(
-        pluginPresets,
-        allTables
-      );
-      const activeViewRows: TableRow[] = [];
-
-      const activeStateSafeGuard = getActiveStateSafeGuard(
-        pluginPresets,
-        activeTable,
-        activeTableAndView,
-        activeViewRows
-      );
-
-      setActiveTableViews(activeTableAndView?.table?.views || activeTableViews);
-      setAppActiveState(activeStateSafeGuard);
-    }
   };
 
   const onPluginToggle = () => {
@@ -408,52 +336,9 @@ const App: React.FC<IAppProps> = (props) => {
     window.app.onClosePlugin(lang);
   };
 
-  const onSelectPreset = (presetId: string, newPresetActiveState?: AppActiveState) => {
-    localStorage.setItem(ACTIVE_PRESET_ID, presetId);
-
-    let updatedActiveState: AppActiveState;
-    let updatedActiveTableViews: TableView[];
-    const _activePresetIdx = pluginPresets.findIndex((preset) => preset._id === presetId);
-
-    if (newPresetActiveState !== undefined) {
-      updatedActiveState = {
-        ...newPresetActiveState,
-      };
-      updatedActiveTableViews = newPresetActiveState?.activeTable?.views!;
-    } else {
-      const activePreset = pluginPresets.find((preset) => preset._id === presetId);
-      const selectedTable = activePreset?.settings?.selectedTable;
-      const selectedView = activePreset?.settings?.selectedView;
-
-      const _activeTableName = selectedTable?.label as string;
-      const _activeTableId = selectedTable?.value as string;
-      const _activeViewId = selectedView?.value as string;
-
-      updatedActiveTableViews =
-        allTables.find((table) => table._id === _activeTableId)?.views || [];
-
-      updatedActiveState = {
-        activeTable: allTables.find((table) => table._id === _activeTableId) || activeTable,
-        activeTableName: _activeTableName,
-        activeTableView:
-          updatedActiveTableViews.find((view) => view._id === _activeViewId) || activeTableViews[0],
-        activePresetId: presetId,
-        activePresetIdx: _activePresetIdx,
-      };
-
-      updatePluginDataStore({
-        ...pluginDataStore,
-        activePresetId: presetId,
-        activePresetIdx: _activePresetIdx,
-      });
-    }
-
-    setActiveTableViews(updatedActiveTableViews);
-    setAppActiveState(updatedActiveState);
-  };
-
-  const updatePluginDataStore = (pluginDataStore: IPluginDataStore) => {
-    window.dtableSDK.updatePluginSettings(PLUGIN_NAME, pluginDataStore);
+  const onSelectPreset = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setStoredActiveCourseId(courseId);
   };
 
   const togglePresets = () => {
@@ -473,8 +358,7 @@ const App: React.FC<IAppProps> = (props) => {
       <div style={{ display: floating ? 'none' : 'contents' }}>
         {/* presets  */}
         <PluginPresets
-          pluginPresets={pluginPresets}
-          activePresetIdx={activePresetIdx}
+          pluginPresets={COURSE_LIST}
           isShowPresets={isShowPresets}
           onTogglePresets={togglePresets}
           onSelectPreset={onSelectPreset}
@@ -487,7 +371,7 @@ const App: React.FC<IAppProps> = (props) => {
         />
         <div className={styles.plugin} style={{ flex: 1, width: 'auto', minWidth: 0 }}>
           <Header
-            presetName={courseName(activePresetId) ?? findPresetName(pluginPresets, activePresetId)}
+            presetName={courseName(activeCourseId)}
             stepTitle={activeStep?.title}
             controls={floatControls}
             isShowPresets={isShowPresets}
@@ -504,12 +388,10 @@ const App: React.FC<IAppProps> = (props) => {
               className={styles.body}
               style={{ padding: '10px', flex: '1', minWidth: 0 }}>
               <CustomPlugin
-                appActiveState={appActiveState}
-                allTables={allTables}
-                pluginDataStore={pluginDataStore}
                 courseManifest={activeManifest}
                 courseStepId={activeStepId}
                 onSelectStep={(stepId) => onSelectStep(activeCourseId, stepId)}
+                baseVersion={baseVersion}
                 onFloatControls={reportFloatControls}
                 onRequestFloat={onFloat}
                 onContentHeight={reportContentHeight}

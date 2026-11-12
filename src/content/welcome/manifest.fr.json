@@ -4,7 +4,7 @@
   "steps": {
     "welcome": {
       "title": "Étape 1 · Bienvenue",
-      "html": "<h1>Bienvenue 👋</h1> <p>Ce petit panneau vous accompagne tout au long des cours : il vous guide dans les exercices pratiques et vérifie votre travail directement dans votre base.</p> <p>Prenez une minute pour le découvrir, et vous pourrez aborder n'importe quel cours. Cliquez sur Suivant, en haut, pour avancer dans cette présentation.</p>"
+      "html": "<h1>Bienvenue 👋</h1> <p>Ce petit panneau vous accompagne tout au long des cours : il vous guide dans les exercices pratiques et vérifie votre travail directement dans votre base.</p> <p>Prenez une minute pour le découvrir, et vous pourrez aborder n'importe quel cours. Cliquez sur <em>Suivant</em>, en haut, pour avancer dans cette présentation.</p>"
     },
     "how-a-course-works": {
       "title": "Étape 2 · Comment se déroule un cours",
@@ -12,29 +12,29 @@
     },
     "room-for-your-base": {
       "title": "Étape 3 · Régler la hauteur du panneau",
-      "instruction": "Faites glisser la poignée en haut au centre de ce panneau pour l'agrandir ou le réduire, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> Vérifier, en haut.",
-      "html": "Certaines pages, comme celle-ci, sont des exercices : le panneau se réduit à une bande en bas de l'écran, pour que votre base reste visible pendant que vous y travaillez. Les exercices sont signalés par <i class=\"dtable-font dtable-icon-rename\"></i> dans la liste à gauche ; les autres pages s'ouvrent en pleine hauteur. La hauteur choisie est conservée pour les exercices suivants.",
+      "instruction": "Faites glisser la poignée en haut au centre de ce panneau pour l'agrandir ou le réduire, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> <em>Vérifier</em>, en haut.",
+      "html": "Certaines pages, comme celle-ci, sont des exercices : le panneau se réduit à une bande en bas de l'écran, pour que votre base reste visible pendant que vous y travaillez. Les exercices sont signalés par <i class=\"dtable-font dtable-icon-rename\"></i> dans la liste à gauche ; les autres pages s'ouvrent en pleine hauteur. La hauteur choisie est conservée pour les exercices suivants.",
       "successMessage": "C'est fait : les prochains exercices s'ouvriront à cette hauteur."
     },
     "the-buttons": {
       "title": "Étape 4 · Les boutons",
-      "hint": "Voici un indice : il reste caché tant que vous ne le demandez pas. Cliquez sur Masquer l'indice pour le refermer.",
-      "html": "<h1>Les boutons</h1> <p>La barre du haut contient tout ce qu'il vous faut pour l'étape en cours :</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>Retour</b> : revenir à l'étape précédente.</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>Indice</b> : afficher un indice quand vous êtes bloqué.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Vérifier</b> (ou <i class=\"dtable-font dtable-icon-right\"></i> <b>Suivant</b>) : vérifier votre travail, puis avancer une fois qu'il est validé.</li> </ul> <p>Tout à droite se trouvent les commandes de la fenêtre : <i class=\"dtable-font dtable-icon-full-screen\"></i> pour réduire en barre d'outils et <i class=\"dtable-font dtable-icon-x\"></i> pour fermer.</p>"
+      "hint": "Voici un indice : il reste caché tant que vous ne le demandez pas. Cliquez sur <em>Masquer l'indice</em> pour le refermer.",
+      "html": "<h1>Les boutons</h1> <p>La barre du haut contient tout ce qu'il vous faut pour l'étape en cours :</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-left\"></i> <b>Retour</b> : revenir à l'étape précédente ;</li> <li><i class=\"dtable-font dtable-icon-help-center\"></i> <b>Indice</b> : afficher un indice quand vous êtes bloqué ;</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Vérifier</b> (ou <i class=\"dtable-font dtable-icon-right\"></i> <b>Suivant</b>) : vérifier votre travail, puis avancer une fois qu'il est validé.</li> </ul> <p>Tout à droite se trouvent les commandes de la fenêtre : <i class=\"dtable-font dtable-icon-full-screen\"></i> pour réduire en barre d'outils et <i class=\"dtable-font dtable-icon-x\"></i> pour fermer.</p>"
     },
     "the-movable-toolbar": {
       "title": "Étape 5 · Réduire le plugin",
-      "html": "<h1>Réduire le plugin</h1> <p>Quand le panneau vous gêne pour travailler dans votre base, l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) le transforme en une petite barre d'outils que vous pouvez déplacer où vous voulez. Vous l'essaierez à l'étape suivante.</p> <p>Tant qu'il est en barre d'outils, toute la base reste accessible, rien n'est bloqué, et vous gardez l'essentiel :</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Déplacer</b> : placez-la là où elle ne vous gêne pas.</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b> : affichez la consigne (et un indice) à tout moment.</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Vérifier</b> : vérifiez votre travail sans rouvrir le panneau.</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Agrandir</b> : rouvrez le panneau complet.</li> </ul>"
+      "html": "<h1>Réduire le plugin</h1> <p>Quand le panneau vous gêne pour travailler dans votre base, l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) le transforme en une petite barre d'outils que vous pouvez déplacer où vous voulez. Vous l'essaierez à l'étape suivante.</p> <p>Tant qu'il est en barre d'outils, toute la base reste accessible, rien n'est bloqué, et vous gardez l'essentiel :</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>Déplacer</b> : placez-la là où elle ne vous gêne pas ;</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>Info</b> : affichez la consigne (et un indice) à tout moment ;</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>Vérifier</b> : vérifiez votre travail sans agrandir le plugin ;</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>Agrandir</b> : réaffichez le panneau complet.</li> </ul>"
     },
-    "try-the-toolbar": {
+    "your-turn": {
       "title": "Étape 6 · À vous de jouer",
-      "instruction": "Cliquez sur l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) pour transformer ce panneau en barre d'outils, faites-la glisser dans le quart inférieur droit de votre écran, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> Vérifier dans la barre d'outils.",
-      "hint": "Réduisez avec l'icône <i class=\"dtable-font dtable-icon-full-screen\"></i> en haut à droite ; déplacez la barre avec la poignée <i class=\"dtable-font dtable-icon-drag\"></i> ; puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> dans la barre d'outils. « Coin inférieur droit » désigne le quart inférieur droit de tout votre écran.",
-      "html": "<h1>Essayez la barre d'outils</h1> <p>Place à la pratique de la page précédente : la barre d'outils, et son bouton Vérifier.</p>",
-      "successMessage": "Parfait, vous maîtrisez la barre d'outils 🎉 Rouvrez le plugin, puis cliquez sur Suivant pour terminer la présentation."
+      "instruction": "Cliquez sur l'icône de réduction (<i class=\"dtable-font dtable-icon-full-screen\"></i>, en haut à droite) pour transformer ce panneau en barre d'outils, faites-la glisser dans le quart inférieur droit de votre écran, puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> <em>Vérifier</em> dans la barre d'outils.",
+      "hint": "Réduisez avec l'icône <i class=\"dtable-font dtable-icon-full-screen\"></i> en haut à droite ; déplacez la barre avec la poignée <i class=\"dtable-font dtable-icon-drag\"></i> ; puis cliquez sur <i class=\"dtable-font dtable-icon-check-mark\"></i> dans la barre d'outils. On parle ici du quart inférieur droit de votre écran entier.",
+      "html": "<h1>Essayez la barre d'outils</h1> <p>Mettez en pratique ce que montrait la page précédente : la barre d'outils et son bouton <em>Vérifier</em>.</p>",
+      "successMessage": "Parfait, vous maîtrisez la barre d'outils 🎉 Agrandissez le plugin, puis cliquez sur Suivant pour terminer la présentation."
     },
     "youre-ready": {
-      "title": "Étape 7 · Choisissez votre cours",
-      "html": "<h1>Choisissez votre cours</h1> <p>La présentation est terminée. Choisissez un cours dans la liste à gauche pour commencer : chacun s'ouvre sur son introduction.</p> <p>Ce cours d'introduction reste dans la liste : vous pouvez y revenir quand vous voulez.</p>"
+      "title": "Étape 7 · Vous êtes prêt",
+      "html": "<h1>Vous êtes prêt</h1> <p>La présentation est terminée. Choisissez un cours dans la liste à gauche pour commencer : chacun s'ouvre sur son introduction.</p> <p>Ce cours d'introduction reste dans la liste : vous pouvez y revenir quand vous voulez.</p>"
     }
   }
 }

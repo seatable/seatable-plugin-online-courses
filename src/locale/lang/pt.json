@@ -37,7 +37,7 @@
   },
   "colleague": {
     "already_set": "{row} já é {values}: nada a alterar. Reponha primeiro o valor anterior e volte a executar.",
-    "base_bell_failed": "As notificações dela na base responderam {status}",
+    "base_bell_failed": "Não foi possível ler as notificações dela nesta base ({status}).",
     "base_token_failed": "Não foi possível obter um token de base para ela ({status}).",
     "cannot_open": "Ela não consegue abrir esta base: verifique o token e se a base continua partilhada com ela.",
     "checking_landed": "A verificar se a alteração dela chegou à base…",
@@ -83,7 +83,7 @@
       "comment": "Adicionado um novo comentário ao registo {row}.",
       "shared_base": "{who} compartilhou uma base chamada {base} para você."
     },
-    "no_access": "{base} não está partilhada com ela: ela não a consegue abrir, e o plugin não pode agir por ela nessa base enquanto não a partilhar de novo com ela.",
+    "no_access": "{base} não está partilhada com ela: ela não a consegue abrir, e o plugin não pode agir em nome dela nessa base enquanto não a partilhar de novo com ela.",
     "permission_r": "Somente leitura",
     "permission_rw": "Ler escrever",
     "permission_unknown": "permissão desconhecida",
@@ -91,7 +91,7 @@
     "shared_failed": "Não foi possível ler as bases partilhadas com ela.",
     "shared_with_permission": "{base} partilhada com a permissão {permission}",
     "someone": "Alguém",
-    "token_missing": "O token dela falta ou já não é aceite: volte ao passo de configuração."
+    "token_missing": "O token dela está em falta ou já não é aceite: volte ao passo de configuração."
   },
   "controls": {
     "back": "Voltar",
@@ -101,7 +101,7 @@
     "hide_hint": "Ocultar dica",
     "hide_hint_toggle": "▾ Ocultar dica",
     "hint": "Dica",
-    "reopen": "Reabrir o curso",
+    "reopen": "Ampliar o curso",
     "show_hint_toggle": "▸ Mostrar dica",
     "show_instruction": "Mostrar a instrução",
     "expand_to_follow": "Amplie o curso para seguir este passo.",
@@ -112,7 +112,7 @@
       "build": "Construir a automação",
       "check_mine": "Verificar a minha automação",
       "guide_me": "Guiar-me passo a passo",
-      "just_check": "Já a construí: verifique-a",
+      "just_check": "Já está feita: verificar",
       "next_stage": "Fase seguinte",
       "stage_complete": "Fase concluída: passemos à seguinte."
     },
@@ -123,12 +123,12 @@
     },
     "check": "Verificar",
     "colleague": {
-      "configured": "A sua colega está configurada.",
-      "edit": "Deixar a colega editar",
+      "configured": "A conta da sua colega está configurada.",
+      "edit": "Deixar a sua colega fazer a alteração",
       "failed": "Não foi possível fazer a alteração em nome da colega.",
       "replying": "A Malika está a responder…",
       "side_writes": "A Malika atualiza mais alguns clientes…",
-      "written": "✅ Escrito na linha {row}. Abra agora o registo da base e leia a entrada: indica a linha, está assinada por ela e o menu propõe Restaurar?"
+      "written": "✅ Escrito na linha {row}. Abra agora o registo da base e leia a entrada: indica a linha, tem o nome dela e o menu propõe Restaurar?"
     },
     "feedback": {
       "fail": "❌ Ainda não: {reason}.",
@@ -174,7 +174,7 @@
     "seed": {
       "failed": "Não foi possível preparar a entrega.",
       "not_linked": "⚠️ A entrega está lá, mas a linha ainda não está ligada: verifique a automação que construiu no passo 2 e execute a sua regra.",
-      "note_ready": "✅ A guia de remessa está na sua base, sem linhas e sem ficheiro. Envie uma a partir do explorador da API e depois verifique.",
+      "note_ready": "✅ A guia de remessa está na sua base, sem linhas e sem ficheiro. Envie uma a partir da documentação da API e depois verifique.",
       "prepare": "Preparar a entrega",
       "short_ready": "✅ Há uma entrega incompleta à sua espera. Execute a sua regra e depois verifique."
     },
@@ -202,11 +202,11 @@
   },
   "courses": {
     "checkpoints_caption": "Pontos de verificação do plugin: siga o resto do curso no site",
-    "collapse": "Recolher o curso",
+    "collapse": "Ocultar os passos do curso",
     "done": "concluído",
     "exercise": "exercício",
     "exercise_title": "Exercício: o painel reduz-se para que possa trabalhar na sua base",
-    "expand": "Expandir o curso",
+    "expand": "Mostrar os passos do curso",
     "shrink_icon": "Reduzir a um ícone móvel"
   },
   "grade": {
@@ -261,6 +261,6 @@
     "lower_right": "arraste a barra de ferramentas para o quarto inferior direito do ecrã",
     "read_failed": "não foi possível ler a janela do plugin",
     "resize": "arraste primeiro a pega no topo, ao centro do painel, para cima ou para baixo",
-    "shrink": "reduza primeiro o plugin a barra de ferramentas (o ícone de reduzir, no canto superior direito)"
+    "shrink": "reduza primeiro o plugin à barra de ferramentas (o ícone de reduzir, no canto superior direito)"
   }
 }

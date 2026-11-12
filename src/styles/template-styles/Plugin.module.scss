@@ -54,20 +54,6 @@
       padding: 10px 10px 7px;
     }
 
-    &_views {
-      display: flex;
-      max-width: 50%;
-      align-items: center;
-      flex-wrap: nowrap;
-      padding-bottom: 15px;
-      margin-right: 10px;
-      margin-bottom: -15px;
-
-      @include mobile {
-        width: 40%;
-      }
-    }
-
     &_icon_btn {
       all: unset;
       width: 25px;
@@ -93,15 +79,6 @@
         background: $modal-header-hover;
       }
 
-      &_active {
-        width: auto;
-        padding-inline: 3px;
-      }
-
-      &_settings {
-        height: 24px;
-        line-height: 24px;
-      }
       &:focus,
       &:not(:hover) {
         outline: none;
@@ -125,33 +102,6 @@
       @include mobile {
         font-size: 12px;
       }
-
-      &_icons {
-        justify-self: center;
-        opacity: 0;
-        color: colorContrast($preset-bgColor);
-
-        @include mobile {
-          opacity: 1;
-        }
-      }
-      &_settings {
-        opacity: 0;
-        color: colorContrast($preset-bgColor);
-
-        @include mobile {
-          opacity: 1;
-        }
-      }
-
-      &:hover {
-        .plugin_header_viewBtn_icons {
-          opacity: 1;
-        }
-        .plugin_header_viewBtn_settings {
-          opacity: 1;
-        }
-      }
     }
 
     &_viewBtn_active {
@@ -166,14 +116,6 @@
       }
     }
 
-    &_languageDropdownContainer {
-      margin-bottom: 10px;
-    }
-
-    &_label {
-      margin-right: 8px;
-    }
-
     &_select {
       border: 1px solid $toggle-active-bgColor;
       outline: none;
@@ -186,81 +128,6 @@
       p {
         margin-bottom: 0;
       }
-    }
-  }
-}
-
-.main {
-  padding-top: 50px;
-  align-items: flex-start;
-}
-
-.preset_dropdown {
-  position: absolute;
-  top: 46px;
-  right: 0px;
-  background-color: $preset-bgColor;
-  border: 1px solid rgba($preset-bgColor, 0.12);
-  box-shadow: 0 0 5px $dropDown-boxShadow;
-  z-index: 100;
-  padding: 0;
-
-  li {
-    padding: 6px 20px;
-    font-weight: 400;
-    cursor: pointer;
-
-    &:hover {
-      background-color: color.adjust($preset-bgColor, $lightness: 30%);
-    }
-  }
-}
-
-.add_row {
-  border: none;
-  cursor: pointer;
-  width: 60px;
-  height: 60px;
-  background-color: $preset-bgColor;
-  position: fixed;
-  bottom: 50px;
-  right: 50px;
-  border-radius: 50%;
-  outline: none !important;
-
-  &:hover {
-    opacity: 0.9;
-
-    .add_row_toolTip {
-      opacity: 0.9;
-    }
-  }
-
-  &_toolTip {
-    left: -340%;
-    position: absolute;
-    color: $modal-bgColor;
-    white-space: nowrap;
-    background-color: #000;
-    padding: 4px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-
-    &::before {
-      content: '';
-      position: absolute;
-      display: block;
-      width: 0px;
-      right: 10px;
-      top: 50%;
-      border: 10px solid transparent;
-      border-right: 0;
-      border-left: 10px solid #000;
-      transform: translate(calc(100% + 5px), -50%);
     }
   }
 }

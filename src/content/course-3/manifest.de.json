@@ -1,30 +1,30 @@
 {
   "title": "Kurs 3 — Zusammenarbeit",
-  "intro": "Arbeiten Sie gemeinsam an Ihren Daten – teilen, gemeinsam bearbeiten, synchron bleiben.<br><br>Behandelt Freigaben und Berechtigungen, Gruppen, Kommentare und Erwähnungen, die Historie, gemeinsame Datensätze und das Whiteboard.",
+  "intro": "Arbeiten Sie gemeinsam an Ihren Daten – teilen, gemeinsam bearbeiten, synchron bleiben.<br><br>Themen: Freigaben und Berechtigungen, Gruppen, Kommentare und Erwähnungen, die Historie, gemeinsame Datensätze und das Whiteboard.",
   "steps": {
     "malika-joins-you": {
       "title": "Schritt 2a · Malika kommt dazu",
-      "instruction": "Öffnen Sie in ihrem Account die Persönlichen Einstellungen und kopieren Sie das Account-Token. Fügen Sie es unten ein und prüfen Sie, ob das Plugin die richtige Person begrüßt.",
-      "hint": "Im Bereich Account-Token ihrer Persönlichen Einstellungen müssen Sie unter Umständen zuerst auf Account-Token erzeugen klicken, falls sie noch nie eines hatte.",
-      "html": "<h1>Das Token Ihrer Kollegin</h1> <p>Eine einzige Einstellung, ein einziges Mal. Mit ihr kann das Plugin für Malika handeln – ohne dass Sie sich je mit ihrem Account anmelden müssen.</p>",
-      "demoDoneMessage": "✅ Ihre Kollegin ist eingerichtet – das Plugin kann für sie handeln."
+      "instruction": "Öffnen Sie in ihrem Account Persönliche Einstellungen und kopieren Sie das Account-Token. Fügen Sie es unten ein und prüfen Sie, ob das Plugin die richtige Person begrüßt.",
+      "hint": "Im Bereich Account-Token von Persönliche Einstellungen müssen Sie unter Umständen zuerst auf Account-Token erzeugen klicken, falls sie noch nie eines hatte.",
+      "html": "<h1>Das Token Ihrer Kollegin</h1> <p>Eine einzige Einstellung, ein einziges Mal. Mit ihr kann das Plugin in Malikas Namen handeln – ohne dass Sie sich je mit ihrem Account anmelden müssen.</p>",
+      "demoDoneMessage": "✅ Der Account Ihrer Kollegin ist eingerichtet – das Plugin kann in ihrem Namen handeln."
     },
     "malikas-home-page": {
       "title": "Schritt 2b · Malikas Startseite",
-      "instruction": "Geben Sie diese Base für Malika frei und klicken Sie dann auf Aktualisieren – so, als würde sie ihre Seite neu laden. Entziehen Sie die Freigabe und aktualisieren Sie erneut, um zu sehen, wie ihr Zugriff verschwindet; geben Sie die Base dann wieder als Lesen und Schreiben frei.",
-      "html": "<h1>Malikas Startseite</h1> <p>Was Malika sieht, ohne dass Sie sich mit ihrem Account anmelden: ihre echte Glocke und die für sie freigegebenen Bases.</p> <p>Sobald die Base freigegeben ist, zeigt ihre Glocke die Freigabe, und unter An mich freigegebene Bases erscheint die Base.</p>",
+      "instruction": "Geben Sie diese Base für Malika frei und klicken Sie dann auf <em>Aktualisieren</em> – so, als würde sie ihre Seite neu laden. Entziehen Sie die Freigabe und aktualisieren Sie erneut, um zu sehen, wie ihr Zugriff verschwindet; geben Sie die Base dann wieder als Lesen und Schreiben frei.",
+      "html": "<h1>Malikas Startseite</h1> <p>Was Malika sieht, ohne dass Sie sich mit ihrem Account anmelden: ihre Glocke, wie sie sie selbst sieht, und die für sie freigegebenen Bases.</p> <p>Sobald die Base freigegeben ist, zeigt ihre Glocke die Freigabe, und unter An mich freigegebene Bases erscheint die Base.</p>",
       "demoDoneMessage": "✅ Diese Base ist für Malika freigegeben, mit der Berechtigung Lesen und Schreiben."
     },
     "malikas-window-in-this-base": {
       "title": "Schritt 3a · Was Malika in der Base sieht",
-      "instruction": "Klicken Sie nach jedem Kommentar, den Sie zu James Bennett schreiben, auf Aktualisieren – so, als würde sie die Base neu laden – und sehen Sie sich ihre Glocke an.",
-      "html": "<h1>Was Malika in der Base sieht</h1> <p>Hier sehen Sie ihr Fenster in dieser Base. Die Glocke ist hier die der Base: Die Freigabe aus Schritt 2 ist nicht darin. Auf ihrer Startseite stehen diese Benachrichtigungen unter Bases.</p> <p>Ihr erster Kommentar bringt ihr nichts. Sobald Sie sie erwähnen, gehört sie zur Konversation, und jeder neue Kommentar in der Zeile erreicht sie – ob er sie erwähnt oder nicht.</p>",
+      "instruction": "Klicken Sie nach jedem Kommentar, den Sie zu James Bennett schreiben, auf <em>Aktualisieren</em> – so, als würde sie die Base neu laden – und sehen Sie sich ihre Glocke an.",
+      "html": "<h1>Was Malika in der Base sieht</h1> <p>Hier sehen Sie ihr Fenster in dieser Base. Die Glocke ist hier die der Base: Die Freigabe aus Schritt 2 ist nicht darin. Auf ihrer Startseite stehen diese Benachrichtigungen unter Bases.</p> <p>Von Ihrem ersten Kommentar bekommt sie nichts mit. Sobald Sie sie erwähnen, gehört sie zur Konversation, und jeder neue Kommentar in der Zeile erreicht sie – ob er sie erwähnt oder nicht.</p>",
       "demoDoneMessage": "✅ Ihre Erwähnung hat Malika erreicht."
     },
     "malika-answers": {
       "title": "Schritt 3b · Malika antwortet",
       "instruction": "Lassen Sie Malika tun, worum Sie gebeten haben, und sehen Sie sich dann Ihre eigene Glocke in dieser Base an.",
-      "html": "<p>Malika hat Ihre Bitte gelesen. Mit dem Button oben tut sie, worum Sie gebeten haben: Sie ändert die Branche von James Bennett von Manufacturing auf Technology und antwortet dann in der Konversation.</p> <p>Wenn sie schon in der Base ist, aktualisiert sie auch ein paar andere Kunden, die sie betreut – diesen Änderungen begegnen Sie in Schritt 4.</p> <p>Ihre Antwort erwähnt Sie nicht und erreicht Sie trotzdem: Sie haben diese Konversation begonnen, also gehören Sie dazu.</p>",
+      "html": "<p>Malika hat Ihre Bitte gelesen. Mit dem Button oben tut sie, worum Sie gebeten haben: Malika ändert die Branche von James Bennett von Manufacturing auf Technology und antwortet dann in der Konversation.</p> <p>Da sie schon einmal in der Base ist, aktualisiert sie auch ein paar andere Kunden, die sie betreut – diesen Änderungen begegnen Sie in Schritt 4.</p> <p>Malikas Antwort erwähnt Sie nicht und erreicht Sie trotzdem: Sie haben diese Konversation begonnen, also gehören Sie dazu.</p>",
       "demoLabel": "Malika antworten lassen",
       "demoDoneMessage": "✅ Malika hat die Branche von James Bennett auf Technology gesetzt und in der Konversation geantwortet."
     },

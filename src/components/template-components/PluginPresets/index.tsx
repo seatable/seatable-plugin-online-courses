@@ -4,17 +4,15 @@ import stylesPresets from '../../../styles/template-styles/PluginPresets.module.
 import icon from '../../../plugin-config/icon.png';
 import { IPresetsProps } from '../../../utils/template-interfaces/PluginPresets/Presets.interface';
 import { isStepDone, PROGRESS_EVENT } from '../../../utils/custom-utils/courseStore';
-import { PLUGIN_NAME } from '../../../utils/template-constants';
-import { AppActiveState } from '../../../utils/template-interfaces/App.interface';
+import { pluginDisplayName } from '../../../utils/template-constants';
 import { HiChevronDown, HiChevronRight, HiOutlineChevronDoubleLeft } from 'react-icons/hi2';
 import { t } from '../../../locale/t';
 
-// The left-hand panel: the fixed list of courses, each expanding to its steps. The
-// template's preset management (new / rename / duplicate / delete / export) is gone:
-// the course presets are seeded once and never edited — see custom-components/index.tsx.
+// The left-hand panel: the fixed list of courses (COURSES, courseContent.ts), each
+// expanding to its steps. The names still say "presets": the plugin template it grew
+// from listed user-made presets here, and the component kept its place in the layout.
 const PluginPresets: React.FC<IPresetsProps> = ({
   pluginPresets,
-  activePresetIdx,
   isShowPresets,
   onTogglePresets,
   onSelectPreset,
@@ -39,8 +37,8 @@ const PluginPresets: React.FC<IPresetsProps> = ({
     if (activeCourseId) setOpenCourseId(activeCourseId);
   }, [activeCourseId]);
   const toggleOpen = (id: string) => setOpenCourseId((cur) => (cur === id ? '' : id));
-  const handleSelectPreset = (presetId: string, st?: AppActiveState) => {
-    onSelectPreset(presetId, st);
+  const handleSelectPreset = (presetId: string) => {
+    onSelectPreset(presetId);
     setOpenCourseId(presetId);
     // Clicking a course TITLE jumps to that course's first (introduction) step — a
     // full course page — so from a compact exercise view the plugin expands again
@@ -58,7 +56,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
 
   return (
     <div
-      className={`${stylesPresets.presets}  ${!isShowPresets && stylesPresets.presets_collapsed}`}
+      className={`${stylesPresets.presets}  ${isShowPresets ? '' : stylesPresets.presets_collapsed}`}
       style={{ height: '100%' }}>
       <button onClick={onTogglePresets} className={stylesPresets.presets_collapse_btn}>
         <HiOutlineChevronDoubleLeft />
@@ -73,7 +71,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
             title={onFloat ? t('courses.shrink_icon') : undefined}
             style={onFloat ? { cursor: 'pointer' } : undefined}
           />
-          <div className={stylesPresets.presets_name}>{PLUGIN_NAME}</div>
+          <div className={stylesPresets.presets_name}>{pluginDisplayName()}</div>
         </div>
         {/* Scrollable course list, so the current step stays reachable when the
             plugin window is short (compact/exercise view). Each course preset is a
@@ -112,8 +110,7 @@ const PluginPresets: React.FC<IPresetsProps> = ({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <PresetItem
                       p={preset}
-                      activePresetIdx={activePresetIdx}
-                      pluginPresets={pluginPresets}
+                      active={isActiveCourse}
                       onSelectPreset={handleSelectPreset}
                     />
                   </div>

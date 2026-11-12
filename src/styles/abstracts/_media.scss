@@ -1,17 +1,5 @@
 // All breakpoints for responsiveness
 
-@mixin large_desktop {
-  @media (min-width: 2000px) {
-    @content;
-  }
-}
-
-@mixin desktop {
-  @media (min-width: 801px) {
-    @content;
-  }
-}
-
 @mixin tablet {
   @media (max-width: 1024px) and (-webkit-min-device-pixel-ratio: 1) {
     @content;

@@ -1,30 +1,30 @@
 {
   "title": "Curso 3 — Colaboración",
-  "intro": "Trabaje con otras personas sobre sus datos: comparta, editen juntos y manténganse sincronizados.<br><br>Incluye uso compartido y permisos, grupos, comentarios y menciones, historial de cambios, conjuntos de datos comunes y la pizarra.",
+  "intro": "Trabaje con otras personas sobre sus datos: comparta, edite en equipo y mantenga a todos sincronizados.<br><br>Incluye uso compartido y permisos, grupos, comentarios y menciones, historial de cambios, conjuntos de datos comunes y la pizarra.",
   "steps": {
     "malika-joins-you": {
       "title": "Paso 2a · Malika se une a usted",
-      "instruction": "En su cuenta, abra Opciones personales y copie el token de cuenta. Péguelo abajo y compruebe que el plugin saluda a la persona correcta.",
+      "instruction": "En la cuenta de Malika, abra Opciones personales y copie el token de cuenta. Péguelo abajo y compruebe que el plugin saluda a la persona correcta.",
       "hint": "En la sección Account-Token de sus Opciones personales, puede que primero tenga que pulsar Generate Account-Token, si nunca ha tenido uno.",
-      "html": "<h1>El token de su compañera</h1> <p>Un único ajuste, una sola vez. Es lo que permite al plugin actuar por Malika, sin que usted tenga que iniciar sesión con su cuenta.</p>",
-      "demoDoneMessage": "✅ Su compañera está configurada: el plugin puede actuar por ella."
+      "html": "<h1>El token de su compañera</h1> <p>Un único ajuste, una sola vez. Es lo que permite al plugin actuar en nombre de Malika, sin que usted tenga que iniciar sesión con su cuenta.</p>",
+      "demoDoneMessage": "✅ La cuenta de su compañera está configurada: el plugin puede actuar en su nombre."
     },
     "malikas-home-page": {
       "title": "Paso 2b · La página de inicio de Malika",
-      "instruction": "Comparta esta base con Malika y pulse Actualizar, como si ella recargara su página. Retire el acceso y actualice de nuevo para ver cómo desaparece; luego vuelva a compartir la base con permiso Lectura-escritura.",
-      "html": "<h1>La página de inicio de Malika</h1> <p>Lo que ve Malika, sin iniciar sesión con su cuenta: su campana real y las bases compartidas con ella.</p> <p>Una vez compartida la base, su campana muestra el uso compartido, y la base aparece en Compartidas conmigo.</p>",
+      "instruction": "Comparta esta base con Malika y pulse <em>Actualizar</em>, como si ella recargara su página. Retire el acceso y actualice de nuevo para ver cómo desaparece; luego vuelva a compartir la base con permiso Lectura-escritura.",
+      "html": "<h1>La página de inicio de Malika</h1> <p>Lo que ve Malika, sin iniciar sesión con su cuenta: su campana, tal como ella la ve, y las bases compartidas con ella.</p> <p>Una vez compartida la base, su campana muestra el uso compartido, y la base aparece en Compartidas conmigo.</p>",
       "demoDoneMessage": "✅ Esta base está compartida con Malika, con el permiso Lectura-escritura."
     },
     "malikas-window-in-this-base": {
       "title": "Paso 3a · Lo que Malika ve en la base",
-      "instruction": "Después de cada comentario que escriba en James Bennett, pulse Actualizar, como si ella recargara la base, y mire su campana.",
-      "html": "<h1>Lo que Malika ve en la base</h1> <p>Esta es su ventana en esta base. La campana es aquí la de la base: el uso compartido del paso 2 no aparece. En su página de inicio, estas notificaciones figuran en Bases.</p> <p>Su primer comentario no le llega. En cuanto la menciona, forma parte de la conversación, y cada nuevo comentario en la fila le llega, la mencione o no.</p>",
+      "instruction": "Después de cada comentario que escriba en James Bennett, pulse <em>Actualizar</em>, como si ella recargara la base, y mire su campana.",
+      "html": "<h1>Lo que Malika ve en la base</h1> <p>Esta es su ventana en esta base. La campana es aquí la de la base: el uso compartido del paso 2 no aparece. En su página de inicio, estas notificaciones figuran en Bases.</p> <p>Su primer comentario no le envía ninguna notificación a Malika. En cuanto la menciona, forma parte de la conversación, y cada nuevo comentario en la fila le llega, la mencione o no.</p>",
       "demoDoneMessage": "✅ Su mención ha llegado a Malika."
     },
     "malika-answers": {
       "title": "Paso 3b · Malika responde",
       "instruction": "Deje que Malika haga lo que le pidió y mire después su propia campana, en esta base.",
-      "html": "<p>Malika ha leído su petición. Con el botón de arriba, hace lo que le pidió: cambia el sector de James Bennett de Manufacturing a Technology y responde en el hilo de comentarios.</p> <p>Ya que está en la base, actualiza también algunos otros clientes de los que se ocupa: encontrará esos cambios en el paso 4.</p> <p>Su respuesta no le menciona y, sin embargo, le llega: usted inició esta conversación, así que forma parte de ella.</p>",
+      "html": "<p>Malika ha leído su petición. Con el botón de arriba, hace lo que le pidió: cambia el sector de James Bennett de Manufacturing a Technology y responde en el hilo de comentarios.</p> <p>Ya que está en la base, actualiza también algunos otros clientes de los que se ocupa: encontrará esos cambios en el paso 4.</p> <p>La respuesta de Malika no lo menciona a usted y, sin embargo, le llega: usted inició esta conversación, así que forma parte de ella.</p>",
       "demoLabel": "Dejar responder a Malika",
       "demoDoneMessage": "✅ Malika ha cambiado el sector de James Bennett a Technology y ha respondido en el hilo."
     },

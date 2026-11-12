@@ -25,7 +25,7 @@
       "title": "第 5 步 · 缩小插件",
       "html": "<h1>缩小插件</h1> <p>面板挡住了你在表格中的操作时，右上角的缩小图标（<i class=\"dtable-font dtable-icon-full-screen\"></i>）可以把它变成一个可随意拖动的小工具栏。下一步你就可以亲自试一试。</p> <p>缩小后，整个表格都可以操作，没有任何遮挡，常用功能也都还在：</p> <ul style=\"line-height:1.7;\"> <li><i class=\"dtable-font dtable-icon-drag\"></i> <b>移动</b>：把它放到不碍事的地方。</li> <li><i class=\"dtable-font dtable-icon-info\"></i> <b>信息</b>：随时显示说明（和提示）。</li> <li><i class=\"dtable-font dtable-icon-check-mark\"></i> <b>检查</b>：无需展开即可检查你的操作。</li> <li><i class=\"dtable-font dtable-icon-full-screen\"></i> <b>展开</b>：恢复完整面板。</li> </ul>"
     },
-    "try-the-toolbar": {
+    "your-turn": {
       "title": "第 6 步 · 轮到你了",
       "instruction": "点击缩小图标（<i class=\"dtable-font dtable-icon-full-screen\"></i>，右上角）把这个面板变成工具栏，把它拖到屏幕的右下四分之一处，然后点击工具栏上的 <i class=\"dtable-font dtable-icon-check-mark\"></i> “检查”。",
       "hint": "用右上角的 <i class=\"dtable-font dtable-icon-full-screen\"></i> 图标缩小；用工具栏上的 <i class=\"dtable-font dtable-icon-drag\"></i> 把手拖动；然后点击工具栏上的 <i class=\"dtable-font dtable-icon-check-mark\"></i>。“右下角”指整个屏幕的右下四分之一。",

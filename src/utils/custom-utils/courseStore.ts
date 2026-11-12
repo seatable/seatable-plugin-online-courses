@@ -31,22 +31,22 @@ type ProgressMap = { [courseId: string]: string };
  * ⚠️ What WE have written, kept in memory — because the datastore is written from
  * more than one place and not every writer knows about these keys.
  *
- * `app.tsx` rewrites the whole store from a React state captured earlier
- * (`updatePluginDataStore`), which has no `courseFlags` in it; and a read-modify-write
- * here can read a store that does not yet reflect the write before it. Either way the
- * mark we just stored is dropped — which is exactly how Step 5a's "done" vanished the
- * moment the learner paged away and came back (2026-08-27).
+ * This module is the store's ONLY writer since 2026-11-12 (`app.tsx` used to rewrite
+ * the whole store from a React state captured earlier, which dropped the marks stored
+ * here — how Step 5a's "done" vanished on 2026-08-27). The shadow stays for the other
+ * half of that bug: a read-modify-write here can read a store that does not yet
+ * reflect the write before it.
  *
  * So: merge these over every read, and write the whole merged picture back on every
- * write, so the persisted store repairs itself at the next one. The colleague's token
- * joins the same shadow for the same reason — dropping it mid-course would send the
- * learner back to the setup step with no idea why.
+ * write, so the persisted store repairs itself at the next one.
  */
 const written: {
   flags: FlagMap;
   progress: ProgressMap;
   colleagueToken?: string;
   bannerHeight?: number;
+  activeCourseId?: string;
+  floatPos?: { x: number; y: number };
 } = {
   flags: {},
   progress: {},
@@ -72,17 +72,30 @@ function mergedColleagueToken(store: IPluginDataStore): string {
   return written.colleagueToken ?? store.colleagueAccountToken ?? '';
 }
 
-/** Persist them all together — never one without the others, or we drop the others. */
+/** The course the learner had open; `activePresetId` is where builds before 2026-11-12 kept it. */
+function mergedActiveCourseId(store: IPluginDataStore): string | undefined {
+  return written.activeCourseId ?? store.activeCourseId ?? store.activePresetId;
+}
+
+/**
+ * Persist them all together — never one without the others, or we drop the others.
+ * Only these keys are written: what the template once kept here (its presets, a
+ * "New chart" preset, the plugin name) is dropped at the first write.
+ */
 function persist(): void {
   const store = readStore();
   const bannerHeight = written.bannerHeight ?? store.bannerHeight;
-  sdk()?.updatePluginSettings?.(PLUGIN_NAME, {
-    ...store,
+  const activeCourseId = mergedActiveCourseId(store);
+  const floatIconPos = written.floatPos ?? store.floatIconPos;
+  const next: IPluginDataStore = {
     courseFlags: mergedFlags(store),
     courseProgress: mergedProgress(store),
     colleagueAccountToken: mergedColleagueToken(store),
+    ...(activeCourseId ? { activeCourseId } : {}),
     ...(bannerHeight ? { bannerHeight } : {}),
-  });
+    ...(floatIconPos ? { floatIconPos } : {}),
+  };
+  sdk()?.updatePluginSettings?.(PLUGIN_NAME, next);
 }
 
 /** The last-reached step id for a course, or null if the learner is new to it. */
@@ -159,5 +172,26 @@ export function getStoredBannerHeight(): number | null {
 
 export function setStoredBannerHeight(px: number): void {
   written.bannerHeight = Math.round(px);
+  persist();
+}
+
+/** The course the learner had open in this base, or null the first time. */
+export function getStoredActiveCourseId(): string | null {
+  return mergedActiveCourseId(readStore()) ?? null;
+}
+
+export function setStoredActiveCourseId(courseId: string): void {
+  written.activeCourseId = courseId;
+  persist();
+}
+
+/** Where the learner last left the floating toolbar, or null (bottom-left default). */
+export function getStoredFloatPos(): { x: number; y: number } | null {
+  const pos = written.floatPos ?? readStore().floatIconPos;
+  return pos && typeof pos.x === 'number' && typeof pos.y === 'number' ? pos : null;
+}
+
+export function setStoredFloatPos(pos: { x: number; y: number }): void {
+  written.floatPos = { x: Math.round(pos.x), y: Math.round(pos.y) };
   persist();
 }

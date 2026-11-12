@@ -8,7 +8,7 @@
     "creating_delivery": "Creating a delivery…",
     "deleting_it": "Deleting it…",
     "editing_it": "Editing it…",
-    "labelling_document": "Labelling the document…",
+    "labelling_document": "Labeling the document…",
     "looking_delivery": "Looking for the delivery…",
     "removing_document": "Removing the document…",
     "removing_lines": "Removing the delivery lines…",
@@ -33,11 +33,11 @@
     "wrong_table": "no automation on \"{table}\" yet",
     "wrong_table_pinned": "your rule doesn’t trigger on \"{table}\" yet",
     "wrong_condition": "the condition on {column} must check that the column is not empty",
-    "wrong_trigger": "the trigger isn’t “when a new row is added”"
+    "wrong_trigger": "the trigger isn’t “When a row is added”"
   },
   "colleague": {
     "already_set": "{row} is already {values} — nothing to change. Put the value back first, then run this again.",
-    "base_bell_failed": "Her in-base notifications answered {status}",
+    "base_bell_failed": "Could not read her notifications in this base ({status}).",
     "base_token_failed": "Could not get a base token for her ({status}).",
     "cannot_open": "She cannot open this base — check the token, and that the base is still shared with her.",
     "checking_landed": "Checking that her change reached the base…",
@@ -60,7 +60,7 @@
   },
   "colleague_setup": {
     "checking": "Checking…",
-    "is_this_her": "Is this your colleague, and not you? If you recognise yourself here, the plugin would act in your own name for the rest of the course.",
+    "is_this_her": "Is this your colleague, and not you? If you recognize yourself here, the plugin would act in your own name for the rest of the course.",
     "no_name": "(no name)",
     "placeholder": "Paste your colleague's account token",
     "rejected": "SeaTable did not accept that token. Check that you copied it whole, from your colleague's Personal settings page, and that it is for this server.",
@@ -69,9 +69,9 @@
     "use_another": "Use another token"
   },
   "colleague_window": {
-    "a_base": "a base",
-    "a_record": "a record",
-    "a_team": "a team",
+    "a_base": "(no name)",
+    "a_record": "(no name)",
+    "a_team": "a group",
     "access_through_group": "Malika can already open {base} through a group. Remove her from that group to follow this step: otherwise sharing and revoking change nothing for her.",
     "bell_failed": "Could not read her notifications.",
     "bell_label": "Malika's notifications",
@@ -83,7 +83,7 @@
       "comment": "Added a new comment for record named {row}.",
       "shared_base": "{who} has shared a base named {base} to you."
     },
-    "no_access": "{base} is not shared with her, so she cannot open it — and the companion cannot act for her in it until you share it with her again.",
+    "no_access": "{base} is not shared with her, so she cannot open it — and the companion cannot act on her behalf in it until you share it with her again.",
     "permission_r": "Read-Only",
     "permission_rw": "Read-Write",
     "permission_unknown": "unknown permission",
@@ -101,7 +101,7 @@
     "hide_hint": "Hide hint",
     "hide_hint_toggle": "▾ Hide hint",
     "hint": "Hint",
-    "reopen": "Reopen the course",
+    "reopen": "Expand the course",
     "show_hint_toggle": "▸ Show hint",
     "show_instruction": "Show the instruction",
     "expand_to_follow": "Expand the course to follow this step.",
@@ -123,12 +123,12 @@
     },
     "check": "Check",
     "colleague": {
-      "configured": "Your colleague is configured.",
-      "edit": "Let the colleague edit",
+      "configured": "Your colleague’s account is set up.",
+      "edit": "Let your colleague make the change",
       "failed": "Could not make the change as the colleague.",
       "replying": "Malika is replying…",
       "side_writes": "Malika updates a few other customers…",
-      "written": "✅ Written on row {row}. Now open the base log and read the entry: does it name the row, is it signed by her, and does its menu offer Restore?"
+      "written": "✅ Written on row {row}. Now open the base log and read the entry: does it name the row, does it carry her name, and does its menu offer Restore?"
     },
     "error": "❌ {message}",
     "feedback": {
@@ -176,8 +176,8 @@
     "rewinding": "Rewinding…",
     "seed": {
       "failed": "Could not prepare the delivery.",
-      "not_linked": "⚠️ The delivery is there, but its line has not been linked yet — check the automation you built in step 2, then run your rule.",
-      "note_ready": "✅ The delivery note is in your base, with no lines and no file. Push one from the API explorer, then verify.",
+      "not_linked": "⚠️ The delivery is there, but its line has not been linked yet — check the automation you built in Step 2, then run your rule.",
+      "note_ready": "✅ The delivery note is in your base, with no lines and no file. Push one from the API reference, then verify.",
       "prepare": "Prepare the delivery",
       "short_ready": "✅ A short delivery is waiting. Run your rule, then verify."
     },
@@ -205,11 +205,11 @@
   },
   "courses": {
     "checkpoints_caption": "Plugin checkpoints — follow the rest of the course on the website",
-    "collapse": "Collapse course",
+    "collapse": "Hide this course’s steps",
     "done": "done",
     "exercise": "exercise",
     "exercise_title": "Exercise — the panel shrinks so you can work in your base",
-    "expand": "Expand course",
+    "expand": "Show this course’s steps",
     "shrink_icon": "Shrink to a movable icon"
   },
   "grade": {
